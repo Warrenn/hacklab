@@ -1,0 +1,4 @@
+# Whitelisted Arduino libraries, one per line, name@version (arduino-cli lib install syntax).
+# Servo is NOT bundled with the arduino:avr core; it is a Library Manager library.
+Servo@1.3.0
+IRremote@4.7.1

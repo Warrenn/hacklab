@@ -466,6 +466,6 @@ Steps (tests before implementation):
 - [x] Step 1 — branch, LICENSE, README skeleton, .gitignore, config example, pyproject — completed 2026-10-28
 - [x] Step 2 — tests written (red) — completed 2026-10-28
 - [x] Step 3 — config, mock data, fake runner, app (green, ruff clean) — completed 2026-10-28
-- [ ] Step 4 — install-toolchain.sh, Dockerfile.dev, compose; local docker build green
+- [x] Step 4 — install-toolchain.sh, Dockerfile.dev, compose; local docker build green — completed 2026-10-28
 - [ ] Step 5 — CI workflow green on both jobs
 - [ ] Step 6 — README complete, PR opened and merged

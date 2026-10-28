@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: ruff + pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e '.[dev]'
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: pytest -q
+
+  toolchain:
+    # Builds the Pi toolchain image natively on arm64. The Dockerfile's own
+    # smoke compile (Servo + IRremote for arduino:avr:nano) is the test.
+    name: toolchain image (arm64)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -f Dockerfile.dev -t turret-lab-dev .
+      - run: docker run --rm turret-lab-dev pytest -q
