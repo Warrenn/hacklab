@@ -7,17 +7,20 @@ provisioning/local/
 *.crt
 *.key
 
-# CrunchLabs stock sketches (license unverified; user-supplied at install)
-boxes/*/stock/*.ino
-sketches/
-
-# Runtime
+# Runtime state (sketch versions, logs)
+data/
 logs/
 *.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
 
 # Local tooling
 _to_delete/
 .claude/settings.local.json
-__pycache__/
-.venv/
 .DS_Store
