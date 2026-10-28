@@ -1,4 +1,4 @@
-# STRATEGY.md — turret-lab (Hack Pack Lab)
+# STRATEGY.md — Hack Lab (repo: turret-lab)
 
 Kid-facing "program your robot" system for CrunchLabs Hack Pack boxes. An
 11-year-old with only an iPad asks in plain language for a behaviour ("make it
@@ -25,7 +25,11 @@ currently owns the **IR Turret** and the **Laser Synthesizer** ("laser DJ").
    loops/conditions/timing/variables introduced by need.
 4. **Easy to use, easy to see how it works.** Code visible on request;
    curiosity prompts (≤3) open short in-app explanations. **No external links
-   of any kind in the MVP.**
+   of any kind in the MVP.** Levels borrow the Hack Pack IDE's own vocabulary:
+   Level 1 = AI does it (default), Level 2 = change the numbers, Level 3 =
+   edit all the code. Level 3 is always available, never the default.
+   The AI is called "the AI helper" in the UI, with a visible
+   "AI helper is here / away" status.
 5. **Feedback everywhere.** To the kid: progress, praise, help. To the
    maintainer: a durable, remotely readable log of every request, sketch,
    compile and flash result.
@@ -44,8 +48,8 @@ currently owns the **IR Turret** and the **Laser Synthesizer** ("laser DJ").
    Undo and Back-to-original. Reset is **per box**.
 5. **Works without the AI.** Offline behaviour library + template editing +
    compile + flash + reset must all work with no internet and no API key.
-6. **Public repo hygiene.** No secrets, PII, or CrunchLabs stock sketches
-   committed (license unverified; user-supplied at install).
+6. **Public repo hygiene.** No secrets or PII. CrunchLabs stock sketches are
+   MIT (verified 2026-10-28) and are committed with their license headers.
 
 ## Hardware on hand
 
@@ -95,6 +99,54 @@ Rules:
   picker says box B.
 - The ops agent is independent of the app (own systemd unit, own venv) so a
   broken app never takes out remote visibility.
+
+## Findings from the Hack Pack IDE (ide.crunchlabs.com, read 2026-10-28)
+
+- **Stock code is MIT-licensed** (IR Turret: "Copyright (c) 2025 Crunchlabs LLC
+  (IRTurret Control Code)" + IRremote by Armin Joachimsmeyer; Laser
+  Synthesizer: "Copyright (c) 2025 Crunchlabs LLC (Laser Synthesizer Code)").
+  → Stock sketches CAN be committed under `boxes/<id>/stock/` with the license
+  header intact. Supersedes the "user-supplied, untracked" rule.
+- **Their Level 2 is an inline annotation convention** on a line's trailing
+  comment: `///{"range":[10,90],"step":10}` or `///{"min":125,"max":225}`,
+  e.g. `int yawMoveSpeed = 90; // … -- ///{"range":[10,90],"step":10}` and
+  `upMove(1); ///{"range":[1,10]}`. → Adopt the SAME convention for our
+  templates and behaviours: the Tweak screen parses `///{…}` markers; no
+  separate `{{tweakable}}` syntax. Stock sketches then work as Level 2
+  templates with zero editing.
+- Sketches are organised with `#pragma region` blocks: LICENSE, LIBRARIES,
+  IR CODES, PINS AND PARAMS, SETUP, LOOP, FUNCTIONS. → Box profile hardware.md
+  and the genie's system prompt reference these regions; the editor can fold
+  LICENSE/LIBRARIES by default.
+- The IDE has a GUIDED on/off toggle and lock icons on regions — their
+  Level 1/2 gating. Same idea as ours.
+- Each box ships "hacks" (variants): IR Turret has `stock.ino`,
+  `passcode.ino`, `roulette.ino`. → Seed the behaviour library with the
+  official hacks (MIT) before writing our own.
+- **IR Turret hardware (from stock.ino):** yaw servo pin 10 (continuous
+  rotation: write 90 = stop, speed ± around 90, moves are timed by
+  `yawPrecision` ms), pitch servo pin 11 (positional, clamped pitchMin 33 to
+  pitchMax 150, home 100), roll servo pin 12 (continuous; `fire()` = run for
+  `rollPrecision` ≈158 ms = one dart), IR receiver pin 9, NEC protocol. Remote
+  codes: left 0x8, right 0x5A, up 0x18, down 0x52, ok 0x1C, 1–9/0 = 0x45 0x46
+  0x47 0x44 0x40 0x43 0x7 0x15 0x9 0x19, star 0x16, hash 0xD. Libraries:
+  Servo, IRremote (3.x API: `IrReceiver.decode()` / `.decodedIRData.command`).
+  Built-in functions: leftMove, rightMove, upMove, downMove, fire, fireAll,
+  homeServos, shakeHeadYes(n), shakeHeadNo(n). NOTE: "shake head" is yaw
+  speed+time, not angle — the design mock's `pan.write(60/120)` is wrong;
+  fix in P2 templates.
+- **Laser Synthesizer:** `StockCode.ino` + `config.h`, `system_config.h`,
+  `wavetables.h`, `scale_tables.h`; Mozzi audio library (stereo); pots on
+  A5/A6/A7 (A6/A7 exist only on Nano-class boards → same flash path as the
+  turret, certainty 8 [VERIFY by plugging it in]); touchpad X/Y, proximity
+  sensor, "fidget spinner" LFO. Hacks: Cloud9ChordBuilder, DrumnBass5.
+  → Flash core must handle **multi-file sketch folders**, not only one .ino.
+- Newer boxes (NixieClock with a WifiSTA hack, ColorComposer, SpaceOddity,
+  RobotRanger, RoboLamp, TankPlant, OmnibotForklift) are multi-file projects
+  with `include/Configuration.h` and `src/` — PlatformIO-style, and at least
+  NixieClock has WiFi, so probably ESP32-class. → Box profile needs a `board`
+  field (fqbn + core); the "all Nano" assumption holds for the two boxes on
+  hand, not for the whole range.
 
 ## Dev & deploy
 
@@ -149,19 +201,41 @@ IoT Core already authenticated with the device certificate.
 Decisions: minisign (no deps on Pi). First few releases uploaded to S3 by hand;
 CI upload once the flow is proven.
 
+## Maintainer scripts (how a deployment gets updated)
+
+All under `scripts/`, idempotent, documented in README. The nephew's Pi is
+updated only through these; nothing is hand-edited on the device.
+
+| Script | Does | Typical trigger |
+| --- | --- | --- |
+| `new-box.sh <id> "<Name>"` | Scaffolds `boxes/<id>/` from a template profile (profile.yaml, hardware.md, pins.yaml, concepts.yaml, behaviours/, templates/, stock/README) | A new Hack Pack box arrives |
+| `check-box.sh <id>` | Validates the profile, compiles every behaviour and template in Docker, lints kid-facing strings | Before committing a profile |
+| `release.sh [version]` | Builds the signed tarball (app + PWA + all box profiles), writes manifest, uploads to S3; CI runs the same | Anything to ship: new box, new behaviour, bug fix |
+| `deploy.sh <device> <version>` | Creates the IoT Job for that device; waits and prints the result (succeeded / failed + log) | After `release.sh` |
+| `rollback.sh <device>` | IoT Job: switch `current` to the previous release | A bad release |
+| `status.sh <device>` | Reads the device shadow: version, box selected, last flash, AI reachable, throttled state, disk, uptime | Any time |
+| `logs.sh <device> [since]` | IoT Job `upload-logs`, then downloads the bundle from S3 | Investigating |
+| `provision-device.sh <device>` | One-time: creates the IoT thing + cert, writes `provisioning/local/<device>/` (untracked) | New Pi |
+
+A new box therefore costs: `new-box.sh` → fill the profile → `check-box.sh`
+→ commit → `release.sh` → `deploy.sh`. The PWA reads `/api/boxes` so the
+picker updates with no frontend change.
+
 ## Box profile schema (`boxes/<box_id>/`)
 
 ```
-profile.yaml      id, name, picture, board fqbn, port hints, libraries
+profile.yaml      id, name, picture, board {fqbn, core}, port hints, libraries,
+                  sketch layout (single .ino or folder)
 hardware.md       spec for the system prompt: actuators, sensors, inputs,
                   ranges, remote key map, safety limits (kid language + exact)
 pins.yaml         pin map + clamp ranges enforced in code
 behaviours/       <name>.ino + <name>.yaml (title, kid description, tweakables,
                   trigger/action tags, tested: date)
-templates/        base sketches with {{tweakable}} markers + ranges
+templates/        sketches using the IDE's `///{"range":[a,b],"step":s}` /
+                  `///{"min":a,"max":b}` trailing-comment markers
 concepts.yaml     concept id → kid explanation (2–4 sentences, no links),
                   tags used to pick curiosity prompts
-stock/            README only; stock.ino is user-supplied, untracked
+stock/            the official stock sketch + hacks (MIT, headers kept)
 ```
 
 MVP ships `ir-turret` complete and `laser-synth` as the proof that the
@@ -221,16 +295,21 @@ check, version store per box, reset-to-baseline. Port backend is injectable:
 `RealBoard` (pyserial + arduino-cli upload) and `FakeBoard` (emulated Nano with
 scripted failures). Unit tests run on FakeBoard; one HIL smoke script.
 
-**P2 — Box profiles + offline path.** Profile loader/validator; `ir-turret`
-profile with ≥6 tested behaviours and ≥2 templates; template rendering with
+**P2 — Box profiles + offline path.** Profile loader/validator; `scripts/new-box.sh`
++ `check-box.sh`; `ir-turret` profile with ≥6 tested behaviours and ≥2 templates
+derived from the stock sketch's own structure (constants at top, `switch` on IR
+command → action functions), mirroring the Hack Pack IDE's Level 2 variables; template rendering with
 range clamping; `/api/behaviours`, `/flash/*`, `/undo`, `/reset`. Tests:
 profile validation, template clamping, every shipped behaviour compiles in CI.
 
-**P3 — PWA.** Single-file HTML/CSS/JS, no build step, served by FastAPI. Screens:
-box picker, home (try-this + ask box + behaviour list), job progress, result
-(praise + prompts + "show code"), template tweak, Undo / Back-to-original always
-visible, offline banner. Built against the P0 mock first. Tests: Playwright
-against mock on iPad viewport.
+**P3 — PWA.** Single-file HTML/CSS/JS, no build step, served by FastAPI. Screens
+per the "Hack Lab Screens" design canvas (2026-10-28): box picker, home
+(try-this + ask box), working (4-stage progress + one-line explanation), done
+(praise + curiosity prompts + code with tweakables highlighted + Level 3 link),
+Level 2 tweak (sliders + live code), home-with-AI-away (offline tricks grid).
+Undo / Back-to-how-it-came identical on every screen. Level 3 = plain code
+editor + Send, reachable but never default. Built against the P0 mock first.
+Tests: Playwright against mock on iPad viewport.
 
 **P4 — Genie.** Anthropic API client; system prompt = persona + box hardware.md
 + current sketch + rules; full-sketch output; compile-retry loop (max 3);
@@ -288,7 +367,7 @@ touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 ## Public-repo hygiene
 
 - `.gitignore`: `.env`, `config.toml`, `secrets/`, `provisioning/local/`,
-  `boxes/*/stock/*.ino`, sketch version store, logs, IoT certs.
+  sketch version store, logs, IoT certs.
 - No PII: nephew's name, network names, Tailscale/IoT identifiers in untracked
   config only.
 - API key via env only; CI never touches real keys.
@@ -297,8 +376,8 @@ touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 
 1. Raw API loop vs Claude Agent SDK for P4 (raw loop is the low-risk default)
    [VERIFY SDK footprint on Pi 3 arm64].
-2. Laser Synthesizer hardware and whether its board is flashable by the same
-   path [VERIFY on unit before P6].
+2. Laser Synthesizer: Nano-class per its pin usage (A6/A7); confirm by
+   plugging it in and checking the USB chip/bootloader before P6.
 3. AWS account for IoT Core (Busyweb vs new).
 
 ## Testing policy

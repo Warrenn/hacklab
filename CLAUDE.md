@@ -1,7 +1,17 @@
-# CLAUDE.md — turret-lab
+# CLAUDE.md — Hack Lab (repo: turret-lab)
 
-Read STRATEGY.md first; it is the source of truth for scope, constraints, and
-phase order. Do not start a phase out of order without being asked.
+Read, in this order, before any work:
+1. STRATEGY.md — the WHAT and the ORDER: scope, constraints, architecture, box
+   profile schema, API contract, phases, maintainer scripts, IDE findings.
+2. docs/DESIGN.md — the WHY: principles, the kid experience, learning model,
+   robustness table, and the decision log. A decision there is settled; do
+   not re-open it without being asked, and append to the log when a new one
+   is made.
+3. docs/screens/*.dc.html — the visual spec for the PWA (P3): plain HTML with
+   inline styles inside `<x-dc>`, plus a mock-state script. Match layout,
+   copy, button names and positions; ignore the mock JS.
+
+Do not start a phase out of order without being asked.
 
 ## Workflow rules
 
@@ -17,9 +27,12 @@ phase order. Do not start a phase out of order without being asked.
    marked [VERIFY] in STRATEGY.md must be verified before the code that depends
    on them is written.
 5. This is a PUBLIC repository. Never commit: secrets, API keys, WiFi
-   credentials, Tailscale identifiers, the nephew's personal details, or the
-   CrunchLabs stock sketch (unverified license — user-supplied at install time).
-   Check every commit against the hygiene list in STRATEGY.md.
+   credentials, Tailscale/IoT identifiers, or the nephew's name or any
+   personal details (say "the nephew"). CrunchLabs stock sketches are MIT and
+   are committed with their license headers. Check every commit against the
+   hygiene list in STRATEGY.md.
+6. Kid-facing copy: the AI is "the AI helper"; levels are "Level 1/2/3" as in
+   STRATEGY.md; no emoji; no external links of any kind.
 
 ## Safety context
 

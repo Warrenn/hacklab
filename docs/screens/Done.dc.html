@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hack Lab — Done</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+body{margin:0;font-family:Nunito,system-ui,sans-serif;color:#1B1F3A}
+a{color:#1B1F3A}a:hover{color:#FF6B1A}
+</style>
+</helmet>
+<div style="width: 1180px; height: 820px; box-sizing: border-box; background: #FFFFFF; display: flex; flex-direction: column; font-family: Nunito, system-ui, sans-serif; color: #1B1F3A">
+
+  <header style="display: flex; align-items: center; justify-content: space-between; padding: 20px 32px; border-bottom: 2px solid #EEF0F5">
+    <div style="display: flex; align-items: center; gap: 14px">
+      <div style="width: 44px; height: 44px; border-radius: 12px; background: {{accent}}; display: flex; align-items: center; justify-content: center">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg>
+      </div>
+      <div style="font-size: 26px; font-weight: 900">Hack Lab</div>
+    </div>
+    <span style="padding: 10px 16px; border-radius: 999px; background: #F3F4F8; font-weight: 800; font-size: 17px">IR Turret · plugged in</span>
+  </header>
+
+  <main style="flex: 1; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; padding: 28px 32px; min-height: 0">
+
+    <section style="grid-column: span 7; display: flex; flex-direction: column; gap: 18px; min-width: 0">
+      <div style="display: flex; align-items: center; gap: 16px">
+        <div style="width: 60px; height: 60px; border-radius: 50%; background: #0FA3A3; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>
+        </div>
+        <h1 style="margin: 0; font-size: 38px; font-weight: 900; line-height: 1.1">Done! Press 7 and watch.</h1>
+      </div>
+      <p style="margin: 0; font-size: 21px; font-weight: 700; color: #5B6078; line-height: 1.4">Nice one. The turret now shakes its head three times whenever you press <strong style="color: #1B1F3A">7</strong> on the remote. That was your third change today.</p>
+
+      <div style="margin-top: 6px; font-size: 18px; font-weight: 800; color: #5B6078">Curious?</div>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <sc-for list="{{prompts}}" as="p" hint-placeholder-count="3">
+          <button type="button" onClick="{{p.pick}}" style="display: flex; align-items: center; gap: 14px; text-align: left; font: inherit; font-size: 19px; font-weight: 800; padding: 16px 20px; border-radius: 16px; border: 2px solid #E3E6EE; background: #FAFBFD; cursor: pointer">
+            <span style="width: 34px; height: 34px; border-radius: 10px; background: #FFE8DA; color: #C44E0B; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 20px; font-weight: 900">?</span>
+            <span>{{p.text}}</span>
+          </button>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{showExplain}}" hint-placeholder-val="{{true}}">
+        <div style="background: #FFF4EC; border-radius: 18px; padding: 20px 24px; font-size: 19px; font-weight: 700; line-height: 1.45; color: #1B1F3A">
+          A <strong>servo</strong> is a small motor that turns to an exact angle you ask for, like a clock hand. Shaking the head is the code saying “go to 60°, now 120°, now 60°…” with a short wait in between so you can see it.
+        </div>
+      </sc-if>
+
+      <div style="margin-top: auto; display: flex; gap: 12px">
+        <a href="Main.dc.html" style="flex: 1; text-align: center; font-size: 22px; font-weight: 900; color: #fff; background: {{accent}}; border-radius: 18px; padding: 18px; text-decoration: none">Try something else</a>
+        <button type="button" style="font: inherit; font-size: 22px; font-weight: 900; padding: 18px 26px; border-radius: 18px; border: 3px solid #1B1F3A; background: #fff; cursor: pointer">Undo</button>
+      </div>
+    </section>
+
+    <aside style="grid-column: span 5; display: flex; flex-direction: column; gap: 12px; min-width: 0">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <div style="font-size: 18px; font-weight: 800; color: #5B6078">The code that does it</div>
+        <button type="button" onClick="{{toggleCode}}" style="font: inherit; font-size: 16px; font-weight: 800; padding: 8px 14px; border-radius: 999px; border: 2px solid #E3E6EE; background: #fff; cursor: pointer">{{codeLabel}}</button>
+      </div>
+      <pre style="margin: 0; flex: 1; overflow: auto; background: #1B1F3A; color: #E8EAF2; border-radius: 18px; padding: 20px; font-family: 'JetBrains Mono', monospace; font-size: 15px; line-height: 1.55"><span style="color: #8A90A8">// when I press 7 → shake head</span>
+<span style="color: #FFB38A">if</span> (key == <span style="color: #7FD8D8">7</span>) {
+  <span style="color: #FFB38A">for</span> (<span style="color: #7FD8D8">int</span> i = 0; i &lt; <span style="background: #3A3F63; border-radius: 4px; padding: 0 4px">3</span>; i++) {
+    pan.write(<span style="background: #3A3F63; border-radius: 4px; padding: 0 4px">60</span>);
+    delay(<span style="background: #3A3F63; border-radius: 4px; padding: 0 4px">200</span>);
+    pan.write(<span style="background: #3A3F63; border-radius: 4px; padding: 0 4px">120</span>);
+    delay(<span style="background: #3A3F63; border-radius: 4px; padding: 0 4px">200</span>);
+  }
+  pan.write(90);
+}</pre>
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 15px; font-weight: 700; color: #8A90A8">
+        <span>The highlighted numbers are the ones you can change yourself. <a href="Tweak.dc.html" style="color: #FF6B1A">Try it</a></span>
+        <a href="Tweak.dc.html" style="white-space: nowrap; color: #5B6078; text-decoration: underline">Level 3: edit all the code</a>
+      </div>
+    </aside>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#FF6B1A","options":["#FF6B1A","#5B5BFF","#0FA3A3","#E0338C"]},"$preview":{"width":1180,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const open = this.state && this.state.open !== undefined ? this.state.open : 0;
+    const prompts = [
+      'How does a servo motor move the head?',
+      'What does the “for” loop do here?',
+      'Why is there a delay between moves?'
+    ].map((text, i) => ({ text, pick: () => this.setState({ open: i }) }));
+    return {
+      accent: this.props.accent ?? '#FF6B1A',
+      prompts,
+      showExplain: open === 0,
+      codeLabel: 'Hide code',
+      toggleCode: () => this.setState({ code: !(this.state && this.state.code) })
+    };
+  }
+}
+</script>
+</body>
+</html>

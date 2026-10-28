@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hack Lab — Which box?</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap">
+<style>
+body{margin:0;font-family:Nunito,system-ui,sans-serif;color:#1B1F3A}
+a{color:#1B1F3A}a:hover{color:#FF6B1A}
+</style>
+</helmet>
+<div style="width: 1180px; height: 820px; box-sizing: border-box; background: #FFFFFF; display: flex; flex-direction: column; font-family: Nunito, system-ui, sans-serif; color: #1B1F3A">
+
+  <header style="display: flex; align-items: center; gap: 14px; padding: 20px 32px; border-bottom: 2px solid #EEF0F5">
+    <div style="width: 44px; height: 44px; border-radius: 12px; background: {{accent}}; display: flex; align-items: center; justify-content: center">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg>
+    </div>
+    <div style="font-size: 26px; font-weight: 900">Hack Lab</div>
+  </header>
+
+  <main style="flex: 1; display: flex; flex-direction: column; gap: 28px; padding: 36px 48px">
+    <div>
+      <h1 style="margin: 0 0 8px; font-size: 40px; font-weight: 900; line-height: 1.1">Which box is plugged in?</h1>
+      <p style="margin: 0; font-size: 20px; font-weight: 700; color: #5B6078">Plug the USB cable into the box you want to play with, then tap it here.</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; flex: 1">
+      <sc-for list="{{boxes}}" as="b" hint-placeholder-count="3">
+        <button type="button" onClick="{{b.pick}}" style="display: flex; flex-direction: column; align-items: stretch; gap: 16px; text-align: left; font: inherit; padding: 22px; border-radius: 24px; border: 3px solid {{b.border}}; background: {{b.bg}}; cursor: pointer">
+          <div style="flex: 1; min-height: 230px; border-radius: 16px; background: #F3F4F8; display: flex; align-items: center; justify-content: center; color: #8A90A8; font-size: 17px; font-weight: 800">[PHOTO OF {{b.name}}]</div>
+          <div style="display: flex; align-items: center; justify-content: space-between">
+            <div style="font-size: 26px; font-weight: 900">{{b.name}}</div>
+            <sc-if value="{{b.selected}}" hint-placeholder-val="{{true}}">
+              <span style="width: 34px; height: 34px; border-radius: 50%; background: #0FA3A3; display: flex; align-items: center; justify-content: center">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>
+              </span>
+            </sc-if>
+          </div>
+          <div style="font-size: 17px; font-weight: 700; color: #5B6078">{{b.blurb}}</div>
+        </button>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <div style="font-size: 16px; font-weight: 700; color: #8A90A8">Picked the wrong one? No problem, nothing breaks. Just come back here.</div>
+      <a href="Main.dc.html" style="font-size: 22px; font-weight: 900; color: #fff; background: {{accent}}; border-radius: 18px; padding: 18px 36px; text-decoration: none">Let's go</a>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#FF6B1A","options":["#FF6B1A","#5B5BFF","#0FA3A3","#E0338C"]},"$preview":{"width":1180,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const sel = this.state && this.state.sel !== undefined ? this.state.sel : 0;
+    const boxes = [
+      { name: 'IR Turret', blurb: 'Aims, nods and fires. Listens to the remote.' },
+      { name: 'Laser Synth', blurb: 'Makes music and draws it with lasers.' },
+      { name: 'New box', blurb: 'Got a new one? Ask Uncle to add it.' }
+    ].map((b, i) => ({
+      ...b,
+      selected: i === sel,
+      border: i === sel ? '#0FA3A3' : '#E3E6EE',
+      bg: i === sel ? '#F0FAFA' : '#FFFFFF',
+      pick: () => this.setState({ sel: i })
+    }));
+    return { accent: this.props.accent ?? '#FF6B1A', boxes };
+  }
+}
+</script>
+</body>
+</html>
