@@ -391,3 +391,81 @@ shipped behaviour and template must compile in CI.
 Original (turret-only) 25–40 h. Scope now adds profiles, offline path, ops
 agent: judgment, not verified — 45–70 active hours; MVP cut (P0–P4 with
 ir-turret only, P5 minimal) 25–35 h.
+
+## P0 plan (2026-10-28, approved; done via PR #1)
+
+Decisions taken with the maintainer on 2026-10-28: the mock backend is the
+real FastAPI skeleton with a swappable fake job runner (nothing thrown away in
+P1/P2); package name `hacklab`; MIT, copyright "Warrenn"; docs committed to
+main before the P0 branch.
+
+Verified 2026-10-28: arduino-cli latest is v1.5.1 (Linux_ARM64 asset exists;
+install script pins with `sh -s 1.5.1`, `BINDIR` sets the target);
+`debian:bookworm` and Pi OS Bookworm ship Python 3.11.2; GitHub-hosted
+`ubuntu-24.04-arm` runners are GA and free for public repos; fastapi 0.162,
+uvicorn 0.54, ruff 0.17, pytest 9.2 are current.
+
+Parallelism: **serial, one agent.** Units (package, provisioning/Docker, CI)
+are each under an hour, CI is only verifiable once the other two exist, and
+all three touch pyproject.toml / README / .gitignore (3 shared files > budget).
+
+Layout after P0:
+```
+LICENSE  README.md  config.example.toml  pyproject.toml  .gitignore
+hacklab/        __init__.py  config.py  app.py  jobs.py  mock_data.py
+tests/          test_config.py  test_api.py
+provisioning/   install-toolchain.sh  libraries.txt
+Dockerfile.dev  docker-compose.yml
+.github/workflows/ci.yml
+```
+
+Design:
+- `hacklab/config.py`: `tomllib` reads `config.toml` if present (example
+  committed as `config.example.toml`); env overrides `FAKE_BOARD`,
+  `HACKLAB_DATA_DIR`, `ANTHROPIC_API_KEY` (env only, never in the file).
+- `hacklab/jobs.py`: `JobRunner` protocol (`submit(kind, payload) -> job_id`,
+  `get(job_id)`, `subscribe()`), and `FakeJobRunner`: asyncio task walks
+  queued→thinking→compiling→uploading→verifying→done with a per-stage delay
+  (`HACKLAB_MOCK_DELAY`, default 1 s, 0 in tests) and a canned kid message per
+  stage. P1 adds the real runner behind the same protocol.
+- `hacklab/mock_data.py`: ir-turret + laser-synth box entries, 3 behaviours
+  with `///{range}` tweakables, a stock-sketch excerpt (MIT header kept), 2
+  concepts. Replaced by the profile loader in P2.
+- `hacklab/app.py`: every route in the API contract; SSE on `/api/events` via
+  `StreamingResponse` (no extra dependency). Flash/ask routes refuse (409) when
+  no box is selected — the "never flash box A while the picker says B" rule
+  lives here from day one.
+- `provisioning/install-toolchain.sh`: idempotent; `PREFIX` (default
+  `/opt/turret-lab`); venv + `pip install -e .`; arduino-cli 1.5.1 into
+  `$PREFIX/bin`; `ARDUINO_DIRECTORIES_*` under `$PREFIX/arduino`; `arduino:avr`
+  core; libraries from `provisioning/libraries.txt` (IRremote pinned; exact
+  version checked against `arduino-cli lib search` during this phase).
+- `Dockerfile.dev`: `debian:bookworm`, runs the same script, then compiles a
+  minimal sketch for `arduino:avr:nano` as the image's own smoke test — a
+  broken toolchain fails the build. `docker-compose.yml`: bind-mount, :8000,
+  `FAKE_BOARD=1`.
+- CI: `test` job (ubuntu-latest, Python 3.11, ruff + pytest) and `toolchain`
+  job (`ubuntu-24.04-arm`, `docker build -f Dockerfile.dev`).
+- Skipped in P0: dependency lock file (pins land in `release.sh`, P5);
+  static PWA mount (P3); FakeBoard serial emulation (P1).
+
+Steps (tests before implementation):
+1. Branch `feat/p0-scaffold`; LICENSE, README skeleton, .gitignore fix (stock
+   sketches are now committed), `config.example.toml`, `pyproject.toml`.
+2. Write `tests/test_config.py` and `tests/test_api.py` (red).
+3. Implement `config.py`, `mock_data.py`, `jobs.py`, `app.py` until green;
+   `ruff check` clean.
+4. `provisioning/install-toolchain.sh` + `libraries.txt` (shellcheck clean);
+   `Dockerfile.dev` + `docker-compose.yml`; local `docker build` passes the
+   smoke compile; `docker compose up` answers `/api/status`.
+5. `.github/workflows/ci.yml`; push; both jobs green.
+6. README filled in (dev quickstart, test, layout, hygiene); PR; merge.
+   Deploy gate: local-only until P5 — flagged "merged, not deployed".
+
+## Progress — P0
+- [x] Step 1 — branch, LICENSE, README skeleton, .gitignore, config example, pyproject — completed 2026-10-28
+- [x] Step 2 — tests written (red) — completed 2026-10-28
+- [x] Step 3 — config, mock data, fake runner, app (green, ruff clean) — completed 2026-10-28
+- [x] Step 4 — install-toolchain.sh, Dockerfile.dev, compose; local docker build green — completed 2026-10-28
+- [x] Step 5 — CI workflow green on both jobs — completed 2026-10-28
+- [x] Step 6 — README complete, PR #1 opened and merged — completed 2026-10-28

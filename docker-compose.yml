@@ -1,0 +1,13 @@
+# Dev only. `docker compose up` then open http://localhost:8000/api/status
+# (or http://<mac-ip>:8000 from the iPad on the same WiFi).
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      FAKE_BOARD: "1"

@@ -1,0 +1,15 @@
+# Hack Lab configuration. Copy to config.toml (untracked) and edit.
+# The Anthropic API key is NEVER put in this file: set ANTHROPIC_API_KEY in
+# the environment (systemd EnvironmentFile on the Pi, .env locally).
+
+[app]
+host = "0.0.0.0"
+port = 8000
+# Where sketch versions, logs and state live. Must be writable.
+data_dir = "data"
+# Use the emulated board instead of a real USB Nano (dev / CI).
+fake_board = false
+
+[ai]
+model = "claude-sonnet-5-5"
+monthly_cap_usd = 10
