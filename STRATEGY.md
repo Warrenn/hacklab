@@ -392,7 +392,7 @@ Original (turret-only) 25–40 h. Scope now adds profiles, offline path, ops
 agent: judgment, not verified — 45–70 active hours; MVP cut (P0–P4 with
 ir-turret only, P5 minimal) 25–35 h.
 
-## P0 plan (2026-10-28, awaiting approval)
+## P0 plan (2026-10-28, approved; done via PR #1)
 
 Decisions taken with the maintainer on 2026-10-28: the mock backend is the
 real FastAPI skeleton with a swappable fake job runner (nothing thrown away in
@@ -467,5 +467,5 @@ Steps (tests before implementation):
 - [x] Step 2 — tests written (red) — completed 2026-10-28
 - [x] Step 3 — config, mock data, fake runner, app (green, ruff clean) — completed 2026-10-28
 - [x] Step 4 — install-toolchain.sh, Dockerfile.dev, compose; local docker build green — completed 2026-10-28
-- [ ] Step 5 — CI workflow green on both jobs
-- [ ] Step 6 — README complete, PR opened and merged
+- [x] Step 5 — CI workflow green on both jobs — completed 2026-10-28
+- [x] Step 6 — README complete, PR #1 opened and merged — completed 2026-10-28
