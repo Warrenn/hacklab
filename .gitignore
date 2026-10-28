@@ -1,0 +1,23 @@
+# Secrets / local config (see STRATEGY.md "Public-repo hygiene")
+.env
+config.toml
+secrets/
+provisioning/local/
+*.pem
+*.crt
+*.key
+
+# CrunchLabs stock sketches (license unverified; user-supplied at install)
+boxes/*/stock/*.ino
+sketches/
+
+# Runtime
+logs/
+*.log
+
+# Local tooling
+_to_delete/
+.claude/settings.local.json
+__pycache__/
+.venv/
+.DS_Store
