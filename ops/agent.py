@@ -154,6 +154,12 @@ class JobsWorker:
             qos=self.qos,
             callback=self._on_started,
         )[0].result(timeout=30)
+        self.jobs.subscribe_to_update_job_execution_rejected(
+            j.UpdateJobExecutionSubscriptionRequest(thing_name=self.thing, job_id="+"),
+            qos=self.qos,
+            callback=lambda e: log.warning("job update rejected: %s %s", e.code, e.message),
+        )[0].result(timeout=30)
+        self._done: set[str] = set()
         self._ask_next()
 
     def _ask_next(self) -> None:
@@ -168,6 +174,9 @@ class JobsWorker:
     def _on_started(self, response) -> None:
         ex = getattr(response, "execution", None)
         if ex is None or ex.job_id is None:
+            return
+        if ex.job_id in self._done:  # already reported terminal; never loop on one job
+            log.warning("job %s offered again after completion; ignoring", ex.job_id)
             return
         import threading
 
@@ -197,8 +206,12 @@ class JobsWorker:
                     job_id, JS.IN_PROGRESS, {"step": step, "op": op}
                 ),
             )
-            status = JS.SUCCEEDED if result.ok else (JS.REJECTED if result.rejected else JS.FAILED)
+            # devices may only end a job as SUCCEEDED or FAILED; a rejected op is a FAILED job
+            status = JS.SUCCEEDED if result.ok else JS.FAILED
             details = {k: str(v)[:1000] for k, v in result.details.items()}
+            if result.rejected:
+                details["reason"] = "rejected: " + details.get("reason", "not an allowed op")
+            self._done.add(job_id)
             self._report(job_id, status, details)
             self.last = {"job": job_id, "op": doc.get("op"), "status": str(status), **details}
             log.info("job %s -> %s %s", job_id, status, details.get("reason", ""))
