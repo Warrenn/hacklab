@@ -44,11 +44,13 @@ def test_stock_dir_repo_vs_device(tmp_path: Path):
 
 
 def test_to_api_box_entry(boxes_dir: Path):
-    assert load_boxes(boxes_dir)["testbox"].to_api() == {
+    api = load_boxes(boxes_dir)["testbox"].to_api()
+    assert {k: api[k] for k in ("id", "name", "picture")} == {
         "id": "testbox",
         "name": "Test Box",
         "picture": "/static/boxes/testbox.svg",
     }
+    assert set(api) == {"id", "name", "picture", "ask_placeholder", "suggestions"}
 
 
 @pytest.mark.parametrize(
@@ -97,3 +99,32 @@ def test_dotfiles_next_to_behaviours_are_ignored(boxes_dir: Path):
     (boxes_dir / "testbox" / "behaviours" / "._shake.toml").write_bytes(junk)
     (boxes_dir / "testbox" / "._profile.toml").write_bytes(b"\x00\x05\x16\x07junk")
     assert list(load_boxes(boxes_dir)["testbox"].behaviours) == ["shake"]
+
+
+def test_copy_section_gives_placeholder_and_suggestions(boxes_dir: Path):
+    """Per-box UI copy (UI backlog): the PWA invents nothing, the profile says it."""
+    b = load_boxes(boxes_dir)["testbox"]
+    assert b.copy["ask_placeholder"] == "Wave when I press OK"
+    assert b.copy["suggestions"] == [
+        {"title": "Wave", "behaviour": "shake"},
+        {"title": "Wave twice", "ask": "wave two times when I press OK"},
+    ]
+    api = b.to_api()
+    assert api["ask_placeholder"] == "Wave when I press OK" and len(api["suggestions"]) == 2
+
+
+def test_copy_defaults_when_absent(tmp_path: Path):
+    from tests.conftest import write_box
+
+    root = tmp_path / "boxes"
+    write_box(root, "plain", copy=False)
+    b = load_boxes(root)["plain"]
+    assert b.copy["ask_placeholder"]  # a generic default, never empty
+    assert b.copy["suggestions"][0]["behaviour"] == "shake"  # falls back to the first behaviours
+
+
+def test_copy_rejects_unknown_behaviour(boxes_dir: Path):
+    p = boxes_dir / "testbox" / "profile.toml"
+    p.write_text(p.read_text().replace('behaviour = "shake"', 'behaviour = "nope"'))
+    with pytest.raises(ProfileError, match="nope"):
+        load_boxes(boxes_dir)

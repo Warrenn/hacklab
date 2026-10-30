@@ -34,7 +34,9 @@ void loop() { for (int i = 0; i < shakes; i++) { s.write(speed); delay(200); } }
 """
 
 
-def write_box(root: Path, box_id: str = "testbox", *, stock_location: str = "repo") -> Path:
+def write_box(
+    root: Path, box_id: str = "testbox", *, stock_location: str = "repo", copy: bool = True
+) -> Path:
     b = root / box_id
     (b / "behaviours" / "shake").mkdir(parents=True)
     (b / "templates" / "wave").mkdir(parents=True)
@@ -47,6 +49,13 @@ def write_box(root: Path, box_id: str = "testbox", *, stock_location: str = "rep
         f'[stock]\nlocation = "{stock_location}"\nmain = "stock"\n'
         '[genie]\nskeleton = "genie/skeleton.ino"\n'
         'helpers = ["wave(n): wave n times"]\nkeys = ["ok", "cmd1"]\n'
+        + (
+            '[copy]\nask_placeholder = "Wave when I press OK"\n'
+            '[[copy.suggestions]]\ntitle = "Wave"\nbehaviour = "shake"\n'
+            '[[copy.suggestions]]\ntitle = "Wave twice"\nask = "wave two times when I press OK"\n'
+            if copy
+            else ""
+        )
     )
     (b / "pins.toml").write_text("[pins]\nservo = 10\n[limits]\nangle = { min = 0, max = 180 }\n")
     (b / "hardware.md").write_text("# Test Box\nOne servo on pin 10.\n")

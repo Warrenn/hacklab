@@ -14,6 +14,18 @@ core = "arduino:avr"
 location = "device"         # data/boxes/omnibot-forklift/stock/StockCode/StockCode.ino (+ config.h)
 main = "StockCode"
 
+[copy]
+ask_placeholder = "Lift the fork up and down every five seconds"
+[[copy.suggestions]]
+title = "Lift the fork every five seconds"
+ask = "lift the fork up for one second then put it down, every five seconds"
+[[copy.suggestions]]
+title = "Say hello on the serial monitor"
+ask = "print the word hello on the serial monitor every two seconds"
+[[copy.suggestions]]
+title = "Drive slower"
+ask = "make the wheels go at half speed"
+
 [genie]
 skeleton = "genie/skeleton.ino"   # on the device: data/boxes/omnibot-forklift/genie/skeleton.ino (stock-derived, not in git)
 notes = "This box has no remote-key switch: put every rule in the loop fragment (it runs after the stock drive code each loop, use millis() for timing) and leave cases empty. Keep it short: one or two rules."

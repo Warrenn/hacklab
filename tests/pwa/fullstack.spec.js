@@ -79,36 +79,38 @@ test('the whole loop: ask -> real compile/flash on the emulated board -> Done wi
 
 test('a trick from the box profile flashes and becomes a version; the code is the shipped behaviour', async ({ page }) => {
   await pickTurret(page);
-  await page.getByRole('button', { name: /Dance/ }).click();
+  // the turret profile's [copy] lists these three tricks
+  for (const name of ['Shake its head no', 'Nod yes', 'Fire a burst']) await expect(page.getByRole('button', { name })).toBeVisible();
+  await page.getByRole('button', { name: 'Shake its head no' }).click();
   await expect(doneScreen(page)).toBeVisible({ timeout: 30000 });
-  await expect(page.locator('pre')).toContainText('shakeNo(1)');  // the shipped behaviour's own code
+  await expect(page.locator('pre')).toContainText('shakeNo(3)');  // the shipped behaviour's own code
   const stored = fs.readdirSync(path.join(dataDir, 'ir-turret', 'versions')).sort();
   expect(stored[stored.length - 1]).not.toBe('0000');
 });
 
 test('changing the numbers renders the chosen value into the flashed sketch, clamped to the range', async ({ page }) => {
   await pickTurret(page);
-  await page.getByRole('button', { name: /Dance/ }).click();
+  await page.getByRole('button', { name: 'Shake its head no' }).click();
   await expect(doneScreen(page)).toBeVisible({ timeout: 30000 });
   await page.getByRole('button', { name: 'Try it' }).click();
   await expect(page.getByText('Level 2: change the numbers')).toBeVisible();
-  const rounds = page.getByLabel(/How many rounds/);
-  await expect(rounds).toHaveAttribute('max', '5');
-  await rounds.fill('4');
+  const shakes = page.getByLabel(/How many shakes/);
+  await expect(shakes).toHaveAttribute('max', '10');
+  await shakes.fill('7');
   await page.getByRole('button', { name: /Send to IR Turret/ }).click();
   await expect(doneScreen(page)).toBeVisible({ timeout: 30000 });
-  await expect(page.locator('pre')).toContainText(/i < 4;/);
+  await expect(page.locator('pre')).toContainText(/shakeNo\(7\)|int shakes = 7;/);
   // what was actually "uploaded": the stored current version carries the number
   const cur = fs.readFileSync(path.join(dataDir, 'ir-turret', 'current'), 'utf8').trim();
   const dir = path.join(dataDir, 'ir-turret', 'versions', cur);
   const ino = fs.readdirSync(dir).find((d) => d !== 'meta.json');
   const src = fs.readFileSync(path.join(dir, ino, `${ino}.ino`), 'utf8');
-  expect(src).toMatch(/i < 4;/);
+  expect(src).toMatch(/shakeNo\(7\)/);
 });
 
 test('Back to how it came restores the stock sketch after several changes', async ({ page }) => {
   await pickTurret(page);
-  for (const name of [/Dance/, /Fire a burst/]) {
+  for (const name of ['Nod yes', 'Fire a burst']) {
     await page.getByRole('button', { name }).click();
     await expect(doneScreen(page)).toBeVisible({ timeout: 30000 });
     await page.getByRole('button', { name: 'Try something else' }).click();

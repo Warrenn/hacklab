@@ -146,7 +146,9 @@ const locked = () => remote() && !helping();
 const dis = (extra = false) => (locked() || extra ? 'disabled' : '');
 const boxName = () => (S.boxes.find((b) => b.id === S.status?.box) || {}).name || 'box';
 const changes = () => Math.max(0, (S.status?.versions_count || 1) - 1);
-const tweakable = () => S.behaviours.find((b) => b.tweakables && b.tweakables.length);
+// "Try it" / "Change the numbers" follow the trick the kid just flashed, else the first one with numbers.
+const tweakable = () => S.behaviours.find((b) => b.id === S.lastBehaviour && b.tweakables?.length)
+  || S.behaviours.find((b) => b.tweakables && b.tweakables.length);
 
 // ---------- icons (inline, no external assets) ----------
 const I = {
@@ -192,7 +194,12 @@ function rescue(note) {
     <div class="note">${note}</div>`;
 }
 function tries() {
-  return S.behaviours.slice(0, 3).map((b) => `<button class="try" data-act="behaviour" data-id="${esc(b.id)}" ${dis()}><span>${esc(b.title)}</span>${I.arrow}</button>`).join('');
+  // "Try one of these" comes from the box profile ([copy].suggestions): a shipped trick or a plain ask.
+  const box = S.boxes.find((b) => b.id === S.status?.box) || {};
+  const sugg = box.suggestions || S.behaviours.slice(0, 3).map((b) => ({ title: b.title, behaviour: b.id }));
+  return sugg.map((x) => x.behaviour
+    ? `<button class="try" data-act="behaviour" data-id="${esc(x.behaviour)}" ${dis()}><span>${esc(x.title)}</span>${I.arrow}</button>`
+    : `<button class="try" data-act="suggest" data-id="${esc(x.ask)}" ${dis()}><span>${esc(x.title)}</span>${I.arrow}</button>`).join('');
 }
 function highlight(src, values) {
   // Numbers carrying a ///{...} Level 2 marker get the highlight; values the
@@ -233,7 +240,7 @@ function home() {
   return `${header()}<main>
     <section class="col7"><h1>What should the ${name} do?</h1>
       <label class="lead" for="ask">Say it or type it. Tap the mic on your keyboard to talk.</label>
-      <form class="ask" data-form="ask"><input id="ask" type="text" placeholder="Make it shake its head when I press 7" autocomplete="off" enterkeyhint="go"><button class="primary" type="submit" ${dis()}>Go!</button></form>
+      <form class="ask" data-form="ask"><input id="ask" type="text" placeholder="${esc((S.boxes.find((b) => b.id === S.status?.box) || {}).ask_placeholder || 'What should it do?')}" autocomplete="off" enterkeyhint="go"><button class="primary" type="submit" ${dis()}>Go!</button></form>
       <div class="lead" style="margin-top:8px">Try one of these</div><div class="list">${tries()}</div></section>
     <aside class="col5">${rightNow()}${rescue('Nothing you try can break it. Those two buttons always put it right.')}</aside></main>`;
 }
@@ -403,11 +410,12 @@ const ACTIONS = {
     finally { S.busy = false; render(); }
   },
   helping: async () => { await api('/helping', { on: !helping() }); await refresh(); render(); },
+  suggest: (text) => startJob('ask', '/ask', { text }, text),
   home: () => { S.screen = homeScreen(); render(); },
   done: () => { S.screen = 'done'; render(); },
   code: () => { S.job = null; S.concept = null; S.screen = 'done'; render(); },
   togglecode: () => { S.showCode = !S.showCode; render(); },
-  behaviour: (id) => { const b = S.behaviours.find((x) => x.id === id); startJob('flash', '/flash/behaviour', { id }, b ? b.title : id); },
+  behaviour: (id) => { S.lastBehaviour = id; const b = S.behaviours.find((x) => x.id === id); startJob('flash', '/flash/behaviour', { id }, b ? b.title : id); },
   undo: () => startJob('undo', '/undo', {}, 'Undo last change'),
   reset: () => startJob('reset', '/reset', {}, 'Back to how it came'),
   tweak: (id) => openTweak(id),
