@@ -405,7 +405,7 @@ unit first); 5 release + deploy via P5c; 6 docs, PR.
 ## Progress — P6
 - [ ] Step 1 — board registry, cores in the toolchain
 - [ ] Step 2 — import-box importer with fixture tests
-- [ ] Step 3 — skeleton generator, per-box copy in profiles and PWA
+- [ ] Step 3 — skeleton generator (unit B, in progress); per-box copy in profiles and PWA done 2026-10-30 (Forklift suggestions are plain asks; Try it follows the last trick)
 - [ ] Step 4 — Laser Synthesizer profile via the pipeline
 - [ ] Step 5 — shipped as a release to the Pi
 - [ ] Step 6 — README, notes, PR merged
