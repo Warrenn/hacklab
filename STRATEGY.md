@@ -413,7 +413,7 @@ Steps:
 - [x] Step 2 — remote.py + app wiring green (149 tests) — completed 2026-10-30
 - [ ] Step 3 — PWA banner, switch, helping line, pw tests
 - [x] Step 4 — verified on the Pi from the Mac: remote writes 403, LAN cannot toggle, toggle from Tailscale, LAN status shows helping, real ask over Tailscale flashed the Forklift (57 s) and undo, off blocks again, asks.jsonl source=tailscale, helping.jsonl peers — completed 2026-10-30
-- [ ] Step 5 — README, notes done; PR open, merge pending
+- [x] Step 5 — README, notes, PR #10 merged — completed 2026-10-30
 
 ## P5b plan — Appliance (2026-10-30, awaiting approval)
 
@@ -1208,6 +1208,25 @@ Steps:
 - No PII: nephew's name, network names, Tailscale/IoT identifiers in untracked
   config only.
 - API key via env only; CI never touches real keys.
+
+## UI backlog (owner, 2026-10-30; postponed, not yet planned)
+
+- **Per-box suggestions and copy.** "Try one of these" is empty for the
+  Omnibot Forklift (no behaviours shipped for it) and the ask placeholder
+  "Make it shake its head when I press 7" is turret copy. Both must come from
+  the box profile: `profile.toml [copy]` with `ask_placeholder` and
+  `suggestions` (ids of behaviours, or plain asks for boxes without a
+  behaviour library), served through `/api/boxes` / `/api/status`; the PWA
+  invents nothing. Forklift behaviours themselves are blocked on the stock
+  code's license (device-only), so its suggestions are asks.
+- **Code view with developer comfort.** Syntax highlighting and
+  autocompletion when viewing/editing the whole sketch (Level 3). Constraint:
+  no external links or CDNs, works offline on the Pi -> a vendored editor
+  (CodeMirror 6 with the C++ mode, built once into `static/vendor/`, MIT) and
+  completions seeded from the box's helper list, pins and the stock sketch's
+  identifiers. Keep the kid-facing default simple; the editor is Level 3.
+- Carry over from the P3 agent: version title + timestamp on the Home card,
+  per-stage explanation text, job cancel, PNG box pictures.
 
 ## Roadmap item — every Hack Pack box, zero maintenance on arrival (owner's ask 2026-10-30)
 
