@@ -444,7 +444,7 @@ Steps:
 - [x] Step 2 — tests written (red) — completed 2026-10-30
 - [ ] Step 3 — genie, skeleton, spend, runner + app wiring green
 - [x] Step 4 — 4 goldens re-recorded live on the Pi with real compiles (both sketches compile); cache_read 7643 tokens from the 2nd call; impossible and off-mission asks answered in kid language — completed 2026-10-30
-- [ ] Step 5 — Pi: key installed, forklift HIL ask flashed and undone
+- [x] Step 5 — Pi: live ask on the Forklift through the real app: timed lift rule generated with labelled tweak markers, compiled, flashed, serial banner, prompts, Undo; 51 s turn, $0.013 (cache hit 9384 tokens) — completed 2026-10-30. Service-level key install belongs to P5 install.sh
 - [ ] Step 6 — README, notes, PR merged
 
 ## Sequencing change 2026-10-30: P3 runs in parallel with P1
@@ -787,6 +787,32 @@ Steps:
 - [x] Step 4 — iot-device.yaml CloudFormation stack + provision-device.sh + status.sh, lint clean, thing provisioned — completed 2026-10-30
 - [x] Step 5 — install-ops.sh run end-to-end over Tailscale (root@hacklab), heartbeat in the shadow incl. tailscale_ip, survives reboot — completed 2026-10-30
 - [ ] Step 6 — README/P5 notes, hygiene check, PR merged
+
+## P4 notes — the AI helper, verified 2026-10-30
+
+- Live on the Pi with the Forklift (`scripts/hil-ask.sh`): "lift the fork up
+  for one second then put it down, every five seconds" -> one call (79 in /
+  1117 out, 9384 cached), a millis()-based loop rule with two tweakables and
+  kid labels, compiled and flashed first try, Undo back to stock. Turn 51 s
+  of which compile+flash ~36 s. Cost $0.013. Goldens for the turret recorded
+  live: both sketches compile; impossible ("make it fly") and off-mission
+  (homework) asks come back as `explain` in kid language.
+- Two things the HIL found: (1) multi-file boxes need the stock sketch's
+  sibling files (`config.h`) copied next to the genie sketch -- taken from
+  the baseline version now; (2) the `anthropic` import takes ~15 s on a Pi 3
+  and app start ~18 s (hil scripts wait 60 s; the P5 service starts once).
+- Retry path exercised for real: three failed compiles end as `failed` with
+  the kid message and the full compiler log in the job log.
+- Persona tweak after the run: the model said "press upload" -- the app
+  flashes by itself, so the rules now forbid mentioning upload/app buttons.
+- Spend: `data/spend/YYYY-MM.jsonl`, price table in `hacklab/spend.py`
+  (Sonnet 5.5 $2/$10 per MTok, cache read $0.20); cap from `monthly_cap_usd`;
+  the Console workspace limit is the second, independent cap.
+- Key handling: `.env` on the Mac (git-ignored, backed up to Parameter Store
+  `/hacklab/anthropic/api-key`); on the Pi passed per run for now, root-only
+  `/etc/default/hacklab` when P5's install.sh creates the service.
+- Forklift skeleton lives only on the device (`/root/hil/forklift-skeleton.ino`
+  for HIL; `data/boxes/omnibot-forklift/genie/skeleton.ino` in production).
 
 ## P2 notes — box profiles, verified 2026-10-30
 
