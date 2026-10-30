@@ -1,0 +1,52 @@
+"""Shared fixtures: a tiny on-disk box profile for profile/API tests."""
+
+from pathlib import Path
+
+import pytest
+
+SKETCH = """\
+#include <Servo.h>
+Servo s;
+int shakes = 3; // how many -- ///{"range":[1,10],"step":1}
+int speed = 90; ///{"min":10,"max":90}
+bool fast = false; ///{"options":["true","false"]}
+void setup() { s.attach(10); }
+void loop() { for (int i = 0; i < shakes; i++) { s.write(speed); delay(200); } }
+"""
+
+
+def write_box(root: Path, box_id: str = "testbox", *, stock_location: str = "repo") -> Path:
+    b = root / box_id
+    (b / "behaviours" / "shake").mkdir(parents=True)
+    (b / "templates" / "wave").mkdir(parents=True)
+    (b / "stock" / "stock").mkdir(parents=True)
+    (b / "profile.toml").write_text(
+        f'id = "{box_id}"\nname = "Test Box"\npicture = "/static/boxes/{box_id}.svg"\n'
+        'libraries = ["Servo@1.3.0"]\n[board]\nfqbn = "arduino:avr:nano"\ncore = "arduino:avr"\n'
+        f'[stock]\nlocation = "{stock_location}"\nmain = "stock"\n'
+    )
+    (b / "pins.toml").write_text("[pins]\nservo = 10\n[limits]\nangle = { min = 0, max = 180 }\n")
+    (b / "hardware.md").write_text("# Test Box\nOne servo on pin 10.\n")
+    (b / "concepts.toml").write_text(
+        '[servo]\ntitle = "What is a servo?"\n'
+        'explanation = "A motor that goes to an angle."\ntags = ["motor"]\n'
+    )
+    (b / "behaviours" / "shake.toml").write_text(
+        'id = "shake"\ntitle = "Shake"\ndescription = "Press OK and it shakes."\n'
+        'trigger = "key ok"\naction = "shake"\ntested = "compile-only"\nconcepts = ["servo"]\n'
+    )
+    (b / "behaviours" / "shake" / "shake.ino").write_text(SKETCH)
+    (b / "templates" / "wave.toml").write_text(
+        'id = "wave"\ntitle = "Wave"\ndescription = "Change the numbers."\n'
+        'tested = "compile-only"\n'
+    )
+    (b / "templates" / "wave" / "wave.ino").write_text(SKETCH)
+    (b / "stock" / "stock" / "stock.ino").write_text("void setup(){} void loop(){}\n")
+    return b
+
+
+@pytest.fixture
+def boxes_dir(tmp_path: Path) -> Path:
+    root = tmp_path / "boxes"
+    write_box(root)
+    return root

@@ -1,0 +1,13 @@
+# Box profile template: copy with scripts/new-box.sh <id> "<Name>". See STRATEGY.md.
+id = "BOX_ID"
+name = "BOX_NAME"
+picture = "/static/boxes/BOX_ID.svg"
+libraries = []                 # subset of provisioning/libraries.txt, name@version
+
+[board]
+fqbn = "arduino:avr:nano"      # the flasher adds the cpu= bootloader option
+core = "arduino:avr"
+
+[stock]
+location = "device"            # "repo" only when the stock code's license allows committing it
+main = "StockCode"             # sketch directory name: stock/StockCode/StockCode.ino

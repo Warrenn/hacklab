@@ -1,0 +1,7 @@
+id = "key-fire"
+title = "Pick a key to fire"
+description = "Choose which number key fires and how many darts."
+trigger = "key"
+action = "fire"
+tested = "compile-only"
+concepts = ['event', 'loop']

@@ -1,0 +1,7 @@
+id = "look-and-fire"
+title = "Look and fire"
+description = "Press OK: the turret looks left, looks right, then shoots."
+trigger = "key ok"
+action = "look-fire"
+tested = "compile-only"
+concepts = ['servo', 'event']

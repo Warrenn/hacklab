@@ -26,6 +26,9 @@ class Config:
     api_key: str | None = None
     arduino_cli: str = "/opt/hacklab/bin/arduino-cli"
     arduino_config: str | None = "/opt/hacklab/arduino/arduino-cli.yaml"
+    boxes_dir: Path = field(
+        default_factory=lambda: Path(__file__).resolve().parent.parent / "boxes"
+    )
 
 
 def load_config(path: Path | str = "config.toml", env: Mapping[str, str] | None = None) -> Config:
@@ -43,6 +46,10 @@ def load_config(path: Path | str = "config.toml", env: Mapping[str, str] | None 
         arduino_cli=app.get("arduino_cli", Config.arduino_cli),
         arduino_config=app.get("arduino_config", Config.arduino_config),
     )
+    if app.get("boxes_dir"):
+        cfg.boxes_dir = Path(app["boxes_dir"])
+    if env.get("HACKLAB_BOXES_DIR"):
+        cfg.boxes_dir = Path(env["HACKLAB_BOXES_DIR"])
     if "FAKE_BOARD" in env:
         cfg.fake_board = env["FAKE_BOARD"].strip().lower() in _TRUTHY
     if env.get("HACKLAB_DATA_DIR"):

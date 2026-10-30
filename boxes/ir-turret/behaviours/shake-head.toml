@@ -1,0 +1,7 @@
+id = "shake-head"
+title = "Shake head"
+description = "When I press 7, the turret shakes its head no."
+trigger = "key 7"
+action = "shake"
+tested = "compile-only"
+concepts = ['servo', 'loop', 'event']

@@ -1,0 +1,7 @@
+id = "dance"
+title = "Dance"
+description = "When I press 2, the turret nods and shakes, over and over."
+trigger = "key 2"
+action = "dance"
+tested = "compile-only"
+concepts = ['loop', 'event']

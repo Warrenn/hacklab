@@ -1,0 +1,7 @@
+id = "guard-mode"
+title = "Guard mode"
+description = "Sweep and fire every 10 seconds. Press hash to go home."
+trigger = "timer"
+action = "patrol"
+tested = "compile-only"
+concepts = ['delay', 'loop', 'event']

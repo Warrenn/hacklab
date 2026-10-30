@@ -1,0 +1,7 @@
+id = "shake-numbers"
+title = "Shake head: change the numbers"
+description = "How many shakes, how far it turns and how fast, when I press 7."
+trigger = "key 7"
+action = "shake"
+tested = "compile-only"
+concepts = ['servo', 'loop', 'delay']

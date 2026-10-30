@@ -1,0 +1,4 @@
+[motor]
+title = "Motors with a speed"
+explanation = "Each wheel motor gets a direction and a speed from 0 to 255. Zero is stopped and 255 is as fast as it goes. The code works out three wheel speeds so the robot slides in the direction you asked for."
+tags = ["pwm", "speed"]

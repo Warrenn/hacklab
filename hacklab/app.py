@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shutil
 import tempfile
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -14,12 +15,13 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from hacklab import mock_data
 from hacklab.board import ArduinoCli, Board
 from hacklab.config import Config, load_config
 from hacklab.flash import Flasher
 from hacklab.jobs import FakeJobRunner, JobRunner, RealJobRunner
+from hacklab.profiles import Behaviour, load_boxes
 from hacklab.store import SketchStore
+from hacklab.templates import TemplateError, render
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 PLACEHOLDER = (
@@ -69,6 +71,11 @@ def make_runner(
     return RealJobRunner(flasher, store, cfg.data_dir / "work"), flasher, store
 
 
+def _mk(p: Path) -> Path:
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
 def create_app(
     config: Config | None = None, runner: JobRunner | None = None, board: Board | None = None
 ) -> FastAPI:
@@ -76,6 +83,7 @@ def create_app(
     flasher = store = None
     if runner is None:
         runner, flasher, store = make_runner(cfg, board)
+    boxes = load_boxes(cfg.boxes_dir)
     app = FastAPI(title="Hack Lab")
     state: dict[str, Any] = {"box": None, "versions": {}}  # mock mode only: box_id -> [version]
 
@@ -90,14 +98,25 @@ def create_app(
             return [v.id for v in store.versions(box)]
         return state["versions"].setdefault(box, [STOCK])
 
-    def ensure_baseline(box: str) -> None:
-        # P2 replaces the mock stock sketch with the box profile's stock/ dir.
-        if store and store.baseline(box) is None:
-            name = box.replace("-", "_")  # arduino-cli: <dir>/<dir>.ino
-            d = Path(tempfile.mkdtemp(prefix="stock-")) / name
-            d.mkdir()
-            (d / f"{name}.ino").write_text(mock_data.STOCK_SKETCH)
-            store.ensure_baseline(box, d)
+    def ensure_baseline(box_id: str) -> None:
+        if store and store.baseline(box_id) is None:
+            stock = boxes[box_id].stock_dir(cfg.data_dir)
+            if not stock.is_dir():
+                raise HTTPException(409, "The stock code for this box is not on the device yet.")
+            store.ensure_baseline(box_id, stock)
+
+    def rendered_sketch_dir(item: Behaviour, values: dict[str, Any] | None) -> Path:
+        """Copy the behaviour/template sketch dir and rewrite its main file with the
+        tweaked values; the copy keeps the <id>/<id>.ino name arduino-cli needs."""
+        try:
+            source = render(item.source(), values or {})
+        except TemplateError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        parent = Path(tempfile.mkdtemp(prefix="render-", dir=_mk(cfg.data_dir / "work")))
+        d = parent / item.id
+        shutil.copytree(item.sketch_dir, d)
+        (d / f"{item.id}.ino").write_text(source)
+        return d
 
     async def start(kind: str, payload: dict[str, Any]) -> dict[str, str]:
         box = box_or_409()
@@ -131,12 +150,12 @@ def create_app(
         }
 
     @app.get("/api/boxes")
-    def boxes():
-        return mock_data.BOXES
+    def list_boxes():
+        return [b.to_api() for b in boxes.values()]
 
     @app.post("/api/box")
     def select_box(body: BoxSelect):
-        if body.id not in {b["id"] for b in mock_data.BOXES}:
+        if body.id not in boxes:
             raise HTTPException(404, "No such box.")
         state["box"] = body.id
         ensure_baseline(body.id)
@@ -145,18 +164,24 @@ def create_app(
 
     @app.get("/api/behaviours")
     def behaviours():
-        return mock_data.BEHAVIOURS[box_or_409()]
+        return [b.to_api() for b in boxes[box_or_409()].behaviours.values()]
 
     @app.post("/api/flash/behaviour")
     async def flash_behaviour(body: FlashBehaviour):
-        ids = {b["id"] for b in mock_data.BEHAVIOURS[box_or_409()]}
-        if body.id not in ids:
+        item = boxes[box_or_409()].behaviours.get(body.id)
+        if item is None:
             raise HTTPException(404, "No such behaviour.")
-        return await start("flash", body.model_dump())
+        d = rendered_sketch_dir(item, body.tweakables)
+        return await start("flash", {"id": body.id, "sketch_dir": str(d), "text": item.title})
 
     @app.post("/api/flash/template")
     async def flash_template(body: FlashTemplate):
-        return await start("flash", body.model_dump())
+        item = boxes[box_or_409()].templates.get(body.template_id)
+        if item is None:
+            raise HTTPException(404, "No such template.")
+        d = rendered_sketch_dir(item, body.values)
+        payload = {"template_id": body.template_id, "sketch_dir": str(d), "text": item.title}
+        return await start("flash", payload)
 
     @app.post("/api/flash/sketch")
     async def flash_sketch(body: FlashSketch):
@@ -168,7 +193,7 @@ def create_app(
         payload = {
             "text": text,
             "fail": text.lower().startswith("fail"),  # mock-only: exercises the failure path
-            "prompts": mock_data.prompts_for(text),
+            "prompts": [],  # P4: curiosity prompts from the genie
         }
         return await start("ask", payload)
 
@@ -195,13 +220,17 @@ def create_app(
         if store:
             cur = store.current(box)
             return {"source": store.main_source(box, cur), "version": cur.id, "box": box}
-        return {"source": mock_data.STOCK_SKETCH, "version": versions()[-1], "box": box}
+        b = boxes[box]
+        stock = b.stock_dir(cfg.data_dir) / f"{b.stock_main}.ino"
+        source = stock.read_text() if stock.is_file() else ""
+        return {"source": source, "version": versions()[-1], "box": box}
 
     @app.get("/api/concepts/{concept_id}")
     def concept(concept_id: str):
-        if concept_id not in mock_data.CONCEPTS:
+        c = boxes[box_or_409()].concepts.get(concept_id)
+        if c is None:
             raise HTTPException(404, "No such concept.")
-        return mock_data.CONCEPTS[concept_id]
+        return c.to_api()
 
     @app.get("/api/events")
     async def events(request: Request):

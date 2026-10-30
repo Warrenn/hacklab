@@ -1,0 +1,15 @@
+# Box profile: Omnibot Forklift (CrunchLabs Hack Pack). Nano-class per its stock
+# sketch (pins 14-19 used as digital = A0-A5). The stock code carries no license
+# header, so it is NOT in the repo: the maintainer copies it onto the device.
+id = "omnibot-forklift"
+name = "Omnibot Forklift"
+picture = "/static/boxes/omnibot-forklift.svg"
+libraries = []
+
+[board]
+fqbn = "arduino:avr:nano"
+core = "arduino:avr"
+
+[stock]
+location = "device"         # data/boxes/omnibot-forklift/stock/StockCode/StockCode.ino (+ config.h)
+main = "StockCode"

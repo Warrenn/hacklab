@@ -1,0 +1,7 @@
+id = "fire-burst"
+title = "Fire a burst"
+description = "When I press 9, the turret fires a few darts with a pause between them."
+trigger = "key 9"
+action = "fire"
+tested = "compile-only"
+concepts = ['loop', 'delay', 'event']

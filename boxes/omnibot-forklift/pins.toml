@@ -1,0 +1,21 @@
+# From the stock sketch's #defines.
+[pins]
+rf_s1_v = 19
+rf_s1_g = 18
+rf_s2_v = 17
+rf_s2_g = 16
+rf_s3_v = 15
+rf_s3_g = 14
+rf_s4_v = 12
+rf_s4_g = 11
+m1_dir = 4
+m1_pwm = 5
+m2_dir = 7
+m2_pwm = 6
+m3_dir = 8
+m3_pwm = 9
+lift_dir = 2
+lift_pwm = 3
+
+[limits]
+motor_duty = { min = 0, max = 255 }   # maxSpeed in config.h
