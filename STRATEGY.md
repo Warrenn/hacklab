@@ -445,7 +445,7 @@ Steps:
 - [ ] Step 3 — genie, skeleton, spend, runner + app wiring green
 - [x] Step 4 — 4 goldens re-recorded live on the Pi with real compiles (both sketches compile); cache_read 7643 tokens from the 2nd call; impossible and off-mission asks answered in kid language — completed 2026-10-30
 - [x] Step 5 — Pi: live ask on the Forklift through the real app: timed lift rule generated with labelled tweak markers, compiled, flashed, serial banner, prompts, Undo; 51 s turn, $0.013 (cache hit 9384 tokens) — completed 2026-10-30. Service-level key install belongs to P5 install.sh
-- [ ] Step 6 — README, notes, PR merged
+- [x] Step 6 — README, notes, PR #8 merged — completed 2026-10-30
 
 ## Sequencing change 2026-10-30: P3 runs in parallel with P1
 
