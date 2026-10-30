@@ -348,8 +348,30 @@ touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 - Remove home WiFi profile to exercise the hotspot: `nmcli con delete <name>`.
 - Status: `comitup-cli i`, `nmcli dev status`, `rfkill list`, `nmcli radio wifi`;
   regdomain fix `sudo raspi-config nonint do_wifi_country ZA`.
-- Still to test on clean power: hotspot visible on iPad; captive-portal
-  auto-popup vs browse-to-address; switchover; fully headless run.
+- 2026-10-30 device renamed turret -> hacklab (`hostnamectl set-hostname`,
+  /etc/hosts 127.0.1.1 line, `ap_name: hacklab-setup`, stale
+  `turret-setup-0000` NM profile deleted, avahi + comitup restarted).
+  comitup-cli reports `Host hacklab-setup.local`; hostname survived a power
+  cycle.
+- 2026-10-30 clean-power fallback test: home WiFi profile deleted, reboot.
+  ~25 s after boot wlan0 is `type AP ssid hacklab-setup` (channel 11),
+  comitup `HOTSPOT state`, dnsmasq serving 10.41.0.100-150 on 10.41.0.1.
+  iPhone joined (DHCPACK 10.41.0.113), iOS probed `/hotspot-detect.html`
+  (comitup-web 302) and fetched the portal page + assets within 2 s of the
+  lease: captive-portal sheet opened automatically, no browse-to-address.
+- 2026-10-30 `hacklab.local` does NOT resolve from the dev Mac (same /24,
+  Deco mesh WiFi), before and after the rename. Not a Pi problem: avahi
+  announces hacklab.local on eth0 + wlan0, replies to the Mac's queries, no
+  firewall (`nft list ruleset` empty), rp_filter loose. Measured with raw
+  python multicast senders/listeners: Mac -> Pi on 224.0.0.251 arrives on
+  both Pi interfaces; Pi -> Mac on 239.1.2.3 arrives; Pi -> Mac on
+  224.0.0.251 (any port) never arrives. The Deco forwards the mDNS group
+  selectively -> looks like IGMP snooping with a stale/missing membership
+  for the Mac (no IGMP querier seen; capture cut short by a power loss).
+  Open: confirm by re-joining the Mac to WiFi, then check the Deco IGMP
+  snooping / IPTV setting. Matters for the iPad: if the kid's home router
+  does the same, `http://hacklab.local` fails and the PWA needs an IP /
+  QR-code fallback. Still to test: switchover back to home WiFi; headless.
 - 2026-10-30 hotspot would not start (Pi OS trixie, kernel 6.18.50+rpt,
   NM 1.52.1, wpasupplicant 2:2.10-24+rpt3, BCM43430 brcmfmac). Symptom: NM
   "Hotspot network creation took too long ... supplicant-timeout" every ~25 s.
