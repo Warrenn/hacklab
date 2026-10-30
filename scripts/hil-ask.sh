@@ -24,7 +24,7 @@ mkdir -p "$data/boxes/$box/genie" && cp "$skeleton" "$data/boxes/$box/genie/skel
 FAKE_BOARD=0 HACKLAB_DATA_DIR="$data" "$prefix/venv/bin/uvicorn" hacklab.app:app --host 127.0.0.1 --port "$port" --log-level warning &
 app_pid=$!
 trap 'kill $app_pid 2>/dev/null || true' EXIT
-for _ in $(seq 50); do curl -fs "$api/status" >/dev/null 2>&1 && break; sleep 0.2; done
+for _ in $(seq 300); do curl -fs "$api/status" >/dev/null 2>&1 && break; sleep 0.2; done  # Pi 3: the SDK import alone takes a while
 
 json() { "$py" -c 'import json,sys; d=json.load(sys.stdin); print(eval(sys.argv[1], {"d": d}))' "$1"; }
 wait_job() {
