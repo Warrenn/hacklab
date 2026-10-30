@@ -435,8 +435,8 @@ Steps:
 - [ ] Step 1 — HACKLAB_CONFIG + appliance config.toml
 - [ ] Step 2 — install.sh, unit, logrotate, journald, push-key.sh (lint + dry run)
 - [x] Step 3 — installed on the Pi (install.sh idempotent, 3 runs), app as `hacklab` on :80, PWA + API at http://hacklab.local from the Mac, real ask through the service 56 s, Undo 46 s — completed 2026-10-30
-- [ ] Step 4 — power cut verified 2026-10-30 (ssh 60 s, all 5 units active, :80 from the Mac, heartbeat at boot+44 s); hotspot hand-off pending the owner
-- [ ] Step 5 — README, notes, PR merged
+- [x] Step 4 — power cut (ssh 60 s, all 5 units active, :80 from the Mac, heartbeat at boot+44 s) and hotspot hand-off (comitup-web up, app stopped, portal served to the phone, app back on :80 59 s after rejoin) verified — completed 2026-10-30
+- [ ] Step 5 — README, notes done; PR open, merge pending
 
 ## P4 plan — Genie (the AI helper) (2026-10-30, approved incl. the fragments deviation)
 
@@ -906,6 +906,15 @@ Steps:
 - Observed from the Mac: PWA loads at `http://hacklab.local/`, ask through
   the service done in 56 s, Undo 46 s. The owner opened the PWA from the Mac
   during the install (requests visible in the journal).
+- Hand-off verified (journal): `comitup-web` started and `hacklab-app`
+  stopped when the hotspot came up; the phone's portal probes were served;
+  after the portal connect `comitup-web` stopped and `hacklab-app` started
+  (59 s from rejoin to the app answering on :80 from the Mac).
+- Remote UI over Tailscale works already: `http://hacklab/` (MagicDNS, port
+  80 on all interfaces) serves the PWA and API from the Mac; the PWA uses
+  relative URLs only. The owner's read-only-by-default / admin-toggle /
+  "helping" banner / source=tailscale logging requirements (notes above) are
+  the next plan step, not yet built.
 - Device-only content on this Pi: `/opt/hacklab/data/boxes/omnibot-forklift/
   {stock/StockCode, genie/skeleton.ino}` (owner-supplied, not in git).
 
