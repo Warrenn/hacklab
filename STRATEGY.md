@@ -102,6 +102,14 @@ Rules:
 
 ## Findings from the Hack Pack IDE (ide.crunchlabs.com, read 2026-10-28)
 
+- **The IDE flashes via Web Serial** (`navigator.serial.requestPort()` in its
+  bundle, read 2026-10-30), not the Arduino Create Agent as noted in
+  September. There is no local agent endpoint to redirect to a Pi; flashing
+  happens from the browser's own USB port. iPad Safari has no Web Serial and
+  the IDE shows a tablet warning (`isTabletDevice`). Conclusion: the Hack Pack
+  IDE cannot be used from the iPad in any configuration; Hack Lab must be the
+  IDE for the iPad. The real IDE remains the fastest USB test harness on the
+  Mac and the visual reference for the Level 3 editor.
 - **Stock code is MIT-licensed** (IR Turret: "Copyright (c) 2025 Crunchlabs LLC
   (IRTurret Control Code)" + IRremote by Armin Joachimsmeyer; Laser
   Synthesizer: "Copyright (c) 2025 Crunchlabs LLC (Laser Synthesizer Code)").
@@ -421,7 +429,7 @@ Steps:
 
 ## Progress — P2
 - [x] Step 1 — turret stock + passcode hack in (MIT headers kept; roulette did not load from the IDE, follow-up), hardware.md, pins, concepts, forklift skeleton — completed 2026-10-30
-- [ ] Step 2 — tests written (red)
+- [x] Step 2 — tests written (red) — completed 2026-10-30
 - [ ] Step 3 — profiles.py, templates.py, app wiring green, mock_data removed
 - [ ] Step 4 — ir-turret behaviours/templates/concepts compile; new-box.sh, check-box.sh, CI
 - [ ] Step 5 — Pi: check-box.sh native, Forklift HIL through the profile-backed app

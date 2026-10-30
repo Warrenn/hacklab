@@ -24,3 +24,5 @@ __pycache__/
 _to_delete/
 .claude/settings.local.json
 .DS_Store
+.claude/worktrees/
+.pw-artifacts/
