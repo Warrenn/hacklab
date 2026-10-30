@@ -1,0 +1,15 @@
+{
+  "request": "off mission",
+  "responses": [
+    {
+      "kind": "explain",
+      "params": "",
+      "cases": "",
+      "loop": "",
+      "functions": "",
+      "message_kid": "I only help with the turret. Tell me something the turret should do, like spin when you press a key.",
+      "changed": "",
+      "concepts": []
+    }
+  ]
+}

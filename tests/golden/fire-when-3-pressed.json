@@ -1,0 +1,17 @@
+{
+  "request": "fire when 3 pressed",
+  "responses": [
+    {
+      "kind": "sketch",
+      "params": "",
+      "cases": "case cmd3: fire(); break;",
+      "loop": "",
+      "functions": "",
+      "message_kid": "Done! Press 3 to fire a dart.",
+      "changed": "Added a rule: when you press 3, fire one dart.",
+      "concepts": [
+        "event"
+      ]
+    }
+  ]
+}

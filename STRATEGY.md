@@ -344,7 +344,7 @@ Deferred (recorded, not scheduled): physical reset button; points/levels;
 block-based editor; curated external links; conversational correction;
 touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 
-## P4 plan — Genie (the AI helper) (2026-10-30, awaiting approval)
+## P4 plan — Genie (the AI helper) (2026-10-30, approved incl. the fragments deviation)
 
 Goal: a plain-language request from the kid becomes a compiled, flashed
 sketch via the Anthropic API, with a compile-retry loop, a clarify-or-explain
@@ -440,7 +440,7 @@ Steps:
    nephew details, no prompts with personal data), PR, merge; Pi follows main.
 
 ## Progress — P4
-- [ ] Step 1 — skeletons, concept questions, hand-written goldens
+- [x] Step 1 — turret skeleton + [genie] profile section, concept questions, 5 hand-written goldens (forklift skeleton lands on the Pi in Step 5) — completed 2026-10-30
 - [ ] Step 2 — tests written (red)
 - [ ] Step 3 — genie, skeleton, spend, runner + app wiring green
 - [ ] Step 4 — goldens re-recorded live, cache hit verified

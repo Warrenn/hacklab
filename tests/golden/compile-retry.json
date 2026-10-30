@@ -1,0 +1,29 @@
+{
+  "request": "compile retry",
+  "responses": [
+    {
+      "kind": "sketch",
+      "params": "",
+      "cases": "case cmd5: fire() break;",
+      "loop": "",
+      "functions": "",
+      "message_kid": "Done! Press 5 to fire.",
+      "changed": "Added a rule for key 5.",
+      "concepts": [
+        "event"
+      ]
+    },
+    {
+      "kind": "sketch",
+      "params": "",
+      "cases": "case cmd5: fire(); break;",
+      "loop": "",
+      "functions": "",
+      "message_kid": "Done! Press 5 to fire.",
+      "changed": "Added a rule for key 5 (fixed a missing semicolon).",
+      "concepts": [
+        "event"
+      ]
+    }
+  ]
+}

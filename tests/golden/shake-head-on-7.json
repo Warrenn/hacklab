@@ -1,0 +1,18 @@
+{
+  "request": "shake head on 7",
+  "responses": [
+    {
+      "kind": "sketch",
+      "params": "int shakes = 3; // how many shakes -- ///{\"range\":[1,10],\"label\":\"How many shakes\"}",
+      "cases": "case cmd7: shakeNo(shakes); break;",
+      "loop": "",
+      "functions": "",
+      "message_kid": "Done! Press 7 and the turret shakes its head.",
+      "changed": "Added a rule: when you press 7, shake the head 3 times.",
+      "concepts": [
+        "event",
+        "loop"
+      ]
+    }
+  ]
+}
