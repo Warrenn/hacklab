@@ -435,7 +435,7 @@ Steps:
 - [ ] Step 1 — HACKLAB_CONFIG + appliance config.toml
 - [ ] Step 2 — install.sh, unit, logrotate, journald, push-key.sh (lint + dry run)
 - [x] Step 3 — installed on the Pi (install.sh idempotent, 3 runs), app as `hacklab` on :80, PWA + API at http://hacklab.local from the Mac, real ask through the service 56 s, Undo 46 s — completed 2026-10-30
-- [ ] Step 4 — power cut and hotspot hand-off verified
+- [ ] Step 4 — power cut verified 2026-10-30 (ssh 60 s, all 5 units active, :80 from the Mac, heartbeat at boot+44 s); hotspot hand-off pending the owner
 - [ ] Step 5 — README, notes, PR merged
 
 ## P4 plan — Genie (the AI helper) (2026-10-30, approved incl. the fragments deviation)
