@@ -345,7 +345,7 @@ are STRATEGY.md, README.md and the one-line static mount in `hacklab/app.py`,
 owned by the P1 track. Real flashing plugs in under the same API when P1/P2
 land. P2 (profiles) follows P1 as before.
 
-## P3 plan — PWA (2026-10-30, pulled forward; awaiting approval)
+## P3 plan — PWA (2026-10-30, pulled forward; approved, agent started on feat/p3-pwa)
 
 Goal: the kid-facing app, built from the six screen specs in `docs/screens/`
 against the P0 mock backend, so the owner can click through the whole loop on
