@@ -407,8 +407,8 @@ unit first); 5 release + deploy via P5c; 6 docs, PR.
 - [x] Step 2 — import-box importer with fixture tests (PR #13) — completed 2026-10-30
 - [x] Step 3 — skeleton generator (in the importer); per-box copy in profiles and PWA (Forklift suggestions are plain asks; Try it follows the last trick); board spec wired through runner/status; profile fqbn validated against the registry — completed 2026-10-30
 - [x] Step 4 — Laser Synthesizer profile via the pipeline (MIT stock, Mozzi@2.0.4, compiles on the Pi incl. the genie skeleton); turret gained roulette.ino — completed 2026-10-30
-- [ ] Step 5 — shipped as release 0.3.0 to the Pi
-- [ ] Step 6 — README, notes, PR merged
+- [x] Step 5 — shipped as release 0.3.0 to the Pi (deploy ran the release's install-toolchain.sh; Mozzi present; healthy; synth served with its copy; remote view ok) — completed 2026-10-30
+- [x] Step 6 — README, notes, PR #14 merged — completed 2026-10-30
 
 ## P6 notes (2026-10-30)
 
@@ -427,6 +427,10 @@ unit first); 5 release + deploy via P5c; 6 docs, PR.
   (idempotent: cores from the registry, libraries from the whitelist, venv pip)
   before flipping `current`, so a box with a new library or core ships as a
   release with no login. Falls back to `pip install -e` for old bundles.
+- The installed root helper `/opt/hacklab/bin/hacklab-apply` is NOT part of a
+  release (it is the sudo target); a change to it needs a one-off
+  `install -m 755 provisioning/hacklab-apply /opt/hacklab/bin/` as root (or a
+  re-run of install.sh). Done by hand for 0.3.0 before the deploy.
 - Schema gotchas met: `pins.toml` values are pin numbers 0-21 (Nano analog pins
   by number: A0=14 ... A7=21); `[copy.suggestions]` use `title`/`ask`.
 - Hardware check of the synth on the unit is still owed (box not on hand);
