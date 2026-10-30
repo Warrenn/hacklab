@@ -95,3 +95,16 @@ def test_mock_mode_still_serves_profiles(boxes_dir: Path, tmp_path: Path):
         c.post("/api/box", json={"id": "testbox"})
         assert c.get("/api/behaviours").json()[0]["id"] == "shake"
         assert c.get("/api/sketch/current").json()["version"] == "stock"
+
+
+def test_selecting_a_box_without_device_stock_does_not_leave_it_selected(boxes_dir, tmp_path):
+    """Seen on the Pi: a 409 on select left the box active with no baseline, and the PWA's next
+    /api/sketch/current crashed with a traceback."""
+    from tests.conftest import write_box
+
+    write_box(boxes_dir, "devbox", stock_location="device")
+    cfg = Config(data_dir=tmp_path / "data", fake_board=False, boxes_dir=boxes_dir)
+    with TestClient(create_app(cfg, board=FakeBoard())) as c:
+        assert c.post("/api/box", json={"id": "devbox"}).status_code == 409
+        assert c.get("/api/status").json()["box"] is None
+        assert c.get("/api/sketch/current").status_code == 409  # pick a box first, not a 500

@@ -23,7 +23,7 @@ CFG="$ARDUINO_DIR/arduino-cli.yaml"
 
 log() { printf '[toolchain] %s\n' "$*"; }
 
-mkdir -p "$PREFIX/bin" "$ARDUINO_DIR"/{data,downloads,user}
+mkdir -p "$PREFIX/bin" "$ARDUINO_DIR"/{data,downloads,user,cache}
 
 # --- arduino-cli (pinned) ---------------------------------------------------
 if [ -x "$CLI" ] && "$CLI" version 2>/dev/null | grep -q "Version: $ARDUINO_CLI_VERSION"; then
@@ -41,6 +41,8 @@ directories:
   data: $ARDUINO_DIR/data
   downloads: $ARDUINO_DIR/downloads
   user: $ARDUINO_DIR/user
+build_cache:
+  path: $ARDUINO_DIR/cache   # not ~/.cache: the service's home is read-only (ProtectSystem=strict)
 updater:
   enable_notification: false
 YAML
