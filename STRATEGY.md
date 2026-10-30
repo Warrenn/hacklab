@@ -675,6 +675,13 @@ Steps:
   type AP ssid hacklab-setup, dnsmasq serving 10.41.0.100-150. Applies to STA
   profiles too (PMF off for home WiFi) -- fine, this chip has no WPA3 anyway.
   install.sh must ship this file.
+- Device secrets backup (2026-10-30): the per-device cert, private key, CSR,
+  endpoint and root CA (2.7 KB total) are stored as SecureString parameters
+  under `/hacklab/devices/<device>/` in Parameter Store, eu-west-1, default
+  SSM KMS key, standard tier (free, 4 KB limit each). `scripts/device-secrets.sh
+  restore pi3` recreates `provisioning/local/pi3/` byte for byte (verified);
+  `provision-device.sh` backs up automatically. Not CloudFormation on purpose:
+  secret values must not live in a template or stack parameter.
 - Also noted: `iw`, `rfkill`, `comitup-cli` live in /usr/sbin (need sudo or
   full path); comitup names a bare-nmcli test profile "Hotspot" -- delete it.
 
