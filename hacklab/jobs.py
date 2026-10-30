@@ -348,8 +348,9 @@ class RealJobRunner:
             parent = Path(tempfile.mkdtemp(prefix=f"{box}-ask-", dir=self._mk(self.work_dir)))
             sketch_dir = parent / "genie"
             sketch_dir.mkdir()
-            # multi-file boxes: #include siblings (config.h ...) live in the stock dir
-            stock = genie.box.stock_dir(self.store.root)
+            # multi-file boxes: #include siblings (config.h ...) come from the baseline copy
+            base = self.store.baseline(box)
+            stock = self.store.path(box, base) if base else genie.box.stock_dir(self.store.root)
             for f in stock.iterdir() if stock.is_dir() else []:
                 if f.is_file() and f.suffix != ".ino":
                     shutil.copy2(f, sketch_dir / f.name)

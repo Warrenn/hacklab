@@ -19,7 +19,8 @@ from pathlib import Path
 from hacklab.store import SketchStore
 SketchStore(sys.argv[1]).ensure_baseline(sys.argv[2], Path(sys.argv[3]))
 PY
-mkdir -p "$data/boxes/$box/genie" && cp "$skeleton" "$data/boxes/$box/genie/skeleton.ino"
+mkdir -p "$data/boxes/$box/genie" "$data/boxes/$box/stock" && cp "$skeleton" "$data/boxes/$box/genie/skeleton.ino"
+cp -R "$stock" "$data/boxes/$box/stock/"   # device layout: data/boxes/<id>/stock/<Main>/
 
 FAKE_BOARD=0 HACKLAB_DATA_DIR="$data" "$prefix/venv/bin/uvicorn" hacklab.app:app --host 127.0.0.1 --port "$port" --log-level warning &
 app_pid=$!
