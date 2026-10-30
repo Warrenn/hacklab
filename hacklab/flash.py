@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -47,12 +48,27 @@ class Flasher:
         self.timeout, self.sleep = reenumerate_timeout, sleep
         self.clock, self.detect_ttl = clock, DETECT_TTL if detect_ttl is None else detect_ttl
         self._cached: tuple[float, Port | None] | None = None
+        self._refreshing = threading.Lock()
 
     def detect(self, fresh: bool = False) -> Port | None:
-        """The attached box, cached for detect_ttl seconds: `arduino-cli board
-        list` costs ~10 s on a Pi 3 and /api/status polls this."""
-        if not fresh and self._cached and self.clock() - self._cached[0] < self.detect_ttl:
+        """The attached box. `arduino-cli board list` costs ~10 s on a Pi 3 and
+        /api/status polls this, so a cached answer is returned at once and, when
+        stale, refreshed in a background thread; the first call blocks."""
+        if not fresh and self._cached:
+            if self.clock() - self._cached[0] >= self.detect_ttl and not self._refreshing.locked():
+                threading.Thread(target=self._refresh, daemon=True).start()
             return self._cached[1]
+        return self._refresh()
+
+    def _refresh(self) -> Port | None:
+        if not self._refreshing.acquire(blocking=False):
+            return self._cached[1] if self._cached else None
+        try:
+            return self._probe()
+        finally:
+            self._refreshing.release()
+
+    def _probe(self) -> Port | None:
         self.last_ports: list[Port] = []
         self.last_error: str | None = None
         try:

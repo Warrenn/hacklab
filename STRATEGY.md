@@ -357,6 +357,64 @@ HTTPS (see decision above); Android tablet running the CrunchLabs IDE directly
 (Chrome Android 148+ has Web Serial) if the hardware situation ever changes;
 touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 
+## Remote-UI policy plan (2026-10-30, awaiting approval)
+
+Goal: the owner's P5 notes on remote use over Tailscale, built: requests from
+the Tailscale side see the same UI read-only, an explicit admin toggle
+(gated on source, not a password) enables remote flashing, the kid's screen
+shows "Uncle is helping" while it is on, and every remote action is logged
+with `source=tailscale`.
+
+Decisions:
+- Source classification server-side from the peer address: Tailscale =
+  100.64.0.0/10 or fd7a:115c:a1e0::/48 -> `remote`; everything else
+  (home LAN, the setup hotspot 10.41.0.0/24, localhost) -> `local`. One
+  function, `hacklab/remote.py`, unit-tested on addresses. The mock backend
+  (`FAKE_BOARD=1`, no hardware) additionally honours an `X-Hacklab-Source`
+  header so the browser tests can act as a remote viewer; the real runner
+  never reads that header.
+- Write endpoints (`/api/flash/*`, `/api/ask`, `/api/undo`, `/api/reset`,
+  `/api/box` select) from a `remote` source return 403 with
+  `{"detail": "Remote view only. Turn on helping to make changes."}` unless
+  helping is on. Reads (`status`, `boxes`, `behaviours`, `jobs`, `sketch`,
+  `concepts`, `events`) are always allowed.
+- Helping toggle: `POST /api/helping {on: bool}` accepted only from a
+  `remote` source (local callers get 403: the toggle never exists on the LAN
+  side, matching "gated on the source interface"). Server-wide state with a
+  2-hour auto-off; `GET /api/status` gains `helping: bool` and `source:
+  "local"|"remote"`; a status event goes out on `/api/events` when it flips.
+- PWA: when `source == "remote"` show a "Remote view" banner with the
+  helping switch (also honour `?admin=1` on load by calling the toggle);
+  while `helping` is true every client shows the line "Uncle is helping"
+  under the header (the kid-facing copy the owner chose; no name). Write
+  buttons disabled with the banner when remote and not helping.
+- Logging: jobs record `source` in their JSONL event and ask log; the
+  helping flips are logged to `data/helping.jsonl` with the peer address.
+- No new dependencies; no password. Parallelism: API (`hacklab/`, tests)
+  and PWA (`static/`, `tests/pwa/`) are file-disjoint; small enough to
+  serialize in one branch.
+
+Steps:
+1. Tests red: `tests/test_remote.py` (classification), `tests/test_api_remote.py`
+   (403s, toggle only from remote, status fields, auto-off via injected clock,
+   events on flip, job/ask logs carry `source`, mock header honoured only in
+   mock mode).
+2. `hacklab/remote.py` + app wiring; green.
+3. PWA banner, switch, `?admin=1`, "Uncle is helping" line; `pw` tests via
+   the mock header (browser-testing skill); screenshots.
+4. Pi: deploy; from the Mac over Tailscale (`http://hacklab/`): write blocked,
+   toggle on, real ask flashes the Forklift, LAN view (`http://hacklab.local/`)
+   shows the helping line, logs show `source=tailscale`; toggle off blocks
+   again.
+5. README, notes, PR, merge; Pi follows main.
+
+## Progress — remote UI
+- [x] Step 1 — tests written (red) — completed 2026-10-30
+- [x] Step 2 — remote.py + app wiring green (149 tests) — completed 2026-10-30
+- [ ] Step 3 — PWA banner, switch, helping line, pw tests
+- [x] Step 4 — verified on the Pi from the Mac: remote writes 403, LAN cannot toggle, toggle from Tailscale, LAN status shows helping, real ask over Tailscale flashed the Forklift (57 s) and undo, off blocks again, asks.jsonl source=tailscale, helping.jsonl peers — completed 2026-10-30
+- [ ] Step 5 — README, notes done; PR open, merge pending
+
 ## P5b plan — Appliance (2026-10-30, awaiting approval)
 
 Owner's choices 2026-10-30: P5 in two halves -- (A) appliance now, verify on
@@ -881,6 +939,32 @@ Steps:
 - [x] Step 4 — iot-device.yaml CloudFormation stack + provision-device.sh + status.sh, lint clean, thing provisioned — completed 2026-10-30
 - [x] Step 5 — install-ops.sh run end-to-end over Tailscale (root@hacklab), heartbeat in the shadow incl. tailscale_ip, survives reboot — completed 2026-10-30
 - [ ] Step 6 — README/P5 notes, hygiene check, PR merged
+
+## Remote-UI notes, verified 2026-10-30
+
+- Policy lives in `hacklab/remote.py` (classification + helping switch) and
+  one `writable(request)` guard in the API. Verified from the Mac: over
+  Tailscale `source=remote`, writes 403 until helping; from the LAN the
+  switch itself is 403; with helping on, a real ask over Tailscale compiled
+  and flashed the Forklift (57 s) and the LAN status showed `helping=true`;
+  off again -> 403. `asks.jsonl` carries `"source": "tailscale"`,
+  `data/helping.jsonl` the peer address of every flip.
+- Browser suite reworked (owner's ask): the mock-only tests had drifted since
+  P2 (mock data gone) and passed only by test order. Now: `tests/pwa/pwa.spec.js`
+  (mock backend: screens, SSE stages, failure path, offline, tweak clamp,
+  remote view, helping, ?admin=1, busy Let's go) and `tests/pwa/fullstack.spec.js`
+  (real runner + store + profiles + templates + skeleton on the emulated
+  board, `HACKLAB_GENIE=golden` replays the recorded answers by request):
+  ask -> assembled real code on Done -> Undo; a shipped trick becomes a
+  version; a tweak renders the chosen number into the stored sketch; Reset
+  truncates to 0000. 43 tests on Chromium, Firefox and WebKit. Only the USB
+  cable is outside the browser suite (`scripts/hil-*.sh` on the Pi).
+- Two real bugs the suite found: a late job sync overwrote the Done
+  heading with the compiling text (Firefox timing); and the unresponsive
+  "Let's go" the owner reported (status blocked ~10 s on detection; now
+  stale-while-revalidate plus a busy state on the button).
+- Not in CI: the browser suite runs through the machine-wide `pw` harness on
+  the Mac; GitHub CI runs pytest and the compile matrix only.
 
 ## P5b notes — appliance, verified 2026-10-30
 

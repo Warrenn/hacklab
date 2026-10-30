@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import shutil
 import tempfile
 from collections.abc import AsyncIterator
@@ -21,6 +22,7 @@ from hacklab.flash import Flasher
 from hacklab.genie import Genie
 from hacklab.jobs import FakeJobRunner, JobRunner, RealJobRunner
 from hacklab.profiles import Behaviour, load_boxes
+from hacklab.remote import MSG_NO_SWITCH, MSG_REMOTE_VIEW, Helping, source_of
 from hacklab.skeleton import load_skeleton
 from hacklab.spend import SpendLedger
 from hacklab.store import SketchStore
@@ -57,6 +59,10 @@ class Ask(BaseModel):
     text: str = Field(min_length=1)
 
 
+class HelpingBody(BaseModel):
+    on: bool
+
+
 def format_sse(event: dict[str, Any]) -> str:
     return f"data: {json.dumps(event)}\n\n"
 
@@ -82,6 +88,10 @@ def make_runner(
 def make_genie_client(cfg: Config):
     if not cfg.api_key:
         return None
+    if os.environ.get("HACKLAB_GENIE") == "golden":  # full-stack tests: replay tests/golden, no API
+        from hacklab.genie import GoldenGenieClient
+
+        return GoldenGenieClient()
     import anthropic  # imported here so the mock backend never needs the SDK
 
     return anthropic.Anthropic(api_key=cfg.api_key, max_retries=1, timeout=60.0)
@@ -122,6 +132,18 @@ def create_app(
 
     if isinstance(runner, RealJobRunner):
         runner.genie = genie_for
+    helping = Helping(cfg.data_dir / "helping.jsonl")
+
+    def source(request: Request) -> str:
+        return source_of(request, allow_header=cfg.fake_board)
+
+    def writable(request: Request) -> str:
+        """Remote viewers may only change things while helping is on."""
+        src = source(request)
+        if src == "remote" and not helping.is_on():
+            raise HTTPException(403, MSG_REMOTE_VIEW)
+        return src
+
     app = FastAPI(title="Hack Lab")
     state: dict[str, Any] = {"box": None, "versions": {}}  # mock mode only: box_id -> [version]
 
@@ -156,9 +178,9 @@ def create_app(
         (d / f"{item.id}.ino").write_text(source)
         return d
 
-    async def start(kind: str, payload: dict[str, Any]) -> dict[str, str]:
+    async def start(kind: str, payload: dict[str, Any], src: str = "local") -> dict[str, str]:
         box = box_or_409()
-        payload = {**payload, "box": box}
+        payload = {**payload, "box": box, "origin": src}  # not "source": that is a sketch field
         vs = None if store else versions()
 
         def on_done(job):
@@ -175,7 +197,7 @@ def create_app(
         return {"job_id": await runner.submit(kind, payload, on_done)}
 
     @app.get("/api/status")
-    def status():
+    def status(request: Request):
         box = state["box"]
         vs = versions() if box else []
         return {
@@ -190,14 +212,25 @@ def create_app(
             "board_connected": flasher.detect() is not None if flasher else cfg.fake_board,
             "current_version": vs[-1] if vs else None,
             "versions_count": len(vs),
+            "source": source(request),
+            "helping": helping.is_on(),
         }
+
+    @app.post("/api/helping")
+    def set_helping(body: HelpingBody, request: Request):
+        if source(request) != "remote":
+            raise HTTPException(403, MSG_NO_SWITCH)
+        on = helping.set(body.on, request.client.host if request.client else None)
+        runner.broadcast({"type": "status", "helping": on})
+        return {"helping": on}
 
     @app.get("/api/boxes")
     def list_boxes():
         return [b.to_api() for b in boxes.values()]
 
     @app.post("/api/box")
-    def select_box(body: BoxSelect):
+    def select_box(body: BoxSelect, request: Request):
+        writable(request)
         if body.id not in boxes:
             raise HTTPException(404, "No such box.")
         ensure_baseline(body.id)  # may 409: the box stays unselected
@@ -210,28 +243,31 @@ def create_app(
         return [b.to_api() for b in boxes[box_or_409()].behaviours.values()]
 
     @app.post("/api/flash/behaviour")
-    async def flash_behaviour(body: FlashBehaviour):
+    async def flash_behaviour(body: FlashBehaviour, request: Request):
+        src = writable(request)
         item = boxes[box_or_409()].behaviours.get(body.id)
         if item is None:
             raise HTTPException(404, "No such behaviour.")
         d = rendered_sketch_dir(item, body.tweakables)
-        return await start("flash", {"id": body.id, "sketch_dir": str(d), "text": item.title})
+        return await start("flash", {"id": body.id, "sketch_dir": str(d), "text": item.title}, src)
 
     @app.post("/api/flash/template")
-    async def flash_template(body: FlashTemplate):
+    async def flash_template(body: FlashTemplate, request: Request):
+        src = writable(request)
         item = boxes[box_or_409()].templates.get(body.template_id)
         if item is None:
             raise HTTPException(404, "No such template.")
         d = rendered_sketch_dir(item, body.values)
         payload = {"template_id": body.template_id, "sketch_dir": str(d), "text": item.title}
-        return await start("flash", payload)
+        return await start("flash", payload, src)
 
     @app.post("/api/flash/sketch")
-    async def flash_sketch(body: FlashSketch):
-        return await start("flash", body.model_dump())
+    async def flash_sketch(body: FlashSketch, request: Request):
+        return await start("flash", body.model_dump(), writable(request))
 
     @app.post("/api/ask")
-    async def ask(body: Ask):
+    async def ask(body: Ask, request: Request):
+        src = writable(request)
         text = body.text.strip()
         box = box_or_409()
         if store and genie_for(box) is None:
@@ -241,7 +277,7 @@ def create_app(
             "fail": text.lower().startswith("fail"),  # mock-only: exercises the failure path
             "prompts": [],  # mock-only; the real runner fills prompts from the genie
         }
-        return await start("ask", payload)
+        return await start("ask", payload, src)
 
     @app.get("/api/jobs/{job_id}")
     def job(job_id: str):
@@ -251,14 +287,15 @@ def create_app(
         return j.to_dict()
 
     @app.post("/api/undo")
-    async def undo():
+    async def undo(request: Request):
+        src = writable(request)
         if len(versions()) < 2:
             raise HTTPException(409, "Nothing to undo.")
-        return await start("undo", {})
+        return await start("undo", {}, src)
 
     @app.post("/api/reset")
-    async def reset():
-        return await start("reset", {})
+    async def reset(request: Request):
+        return await start("reset", {}, writable(request))
 
     @app.get("/api/sketch/current")
     def sketch_current():

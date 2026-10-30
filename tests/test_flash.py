@@ -111,3 +111,36 @@ def test_detect_is_cached_briefly(tmp_path: Path):
     assert calls["n"] == 2  # cache expired
     fb.unplugged = True
     assert f.detect(fresh=True) is None and calls["n"] == 3  # flash() always asks for a fresh look
+
+
+def test_stale_detect_returns_at_once_and_refreshes_in_the_background(tmp_path: Path):
+    """Owner saw 'Let's go' do nothing: /api/status blocked ~10 s on `board list`
+    once the cache expired. A stale cache must answer immediately."""
+    import threading
+    import time as _time
+
+    fb = FakeBoard()
+    orig = fb.list_ports
+    gate = threading.Event()
+
+    def slow():
+        gate.wait(2)  # a slow `board list`
+        return orig()
+
+    fb.list_ports = slow
+    now = {"t": 0.0}
+    f = Flasher(fb, data_dir=tmp_path / "data", sleep=lambda s: None, clock=lambda: now["t"])
+    gate.set()
+    assert f.detect() is not None  # first call blocks (nothing cached yet)
+    gate.clear()
+    now["t"] += 60  # cache expired
+    fb.unplugged = True
+    t0 = _time.monotonic()
+    assert f.detect() is not None  # stale answer, no wait
+    assert _time.monotonic() - t0 < 0.5
+    gate.set()  # let the background refresh finish
+    for _ in range(50):
+        if f.detect() is None:
+            break
+        _time.sleep(0.02)
+    assert f.detect() is None  # refreshed value visible
