@@ -436,7 +436,7 @@ Steps:
 - [ ] Step 2 — install.sh, unit, logrotate, journald, push-key.sh (lint + dry run)
 - [x] Step 3 — installed on the Pi (install.sh idempotent, 3 runs), app as `hacklab` on :80, PWA + API at http://hacklab.local from the Mac, real ask through the service 56 s, Undo 46 s — completed 2026-10-30
 - [x] Step 4 — power cut (ssh 60 s, all 5 units active, :80 from the Mac, heartbeat at boot+44 s) and hotspot hand-off (comitup-web up, app stopped, portal served to the phone, app back on :80 59 s after rejoin) verified — completed 2026-10-30
-- [ ] Step 5 — README, notes done; PR open, merge pending
+- [x] Step 5 — README, notes, PR #9 merged — completed 2026-10-30
 
 ## P4 plan — Genie (the AI helper) (2026-10-30, approved incl. the fragments deviation)
 
