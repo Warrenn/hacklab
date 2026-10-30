@@ -9,9 +9,11 @@
 #        scripts/device-secrets.sh list <device>
 #        scripts/device-secrets.sh backup-key [env-file]     ANTHROPIC_API_KEY from .env -> /hacklab/anthropic/api-key
 #        scripts/device-secrets.sh restore-key [env-file]    parameter -> ANTHROPIC_API_KEY line in .env
+#        scripts/device-secrets.sh backup-signing-key        ~/.minisign/hacklab.key (passphrase-encrypted) -> /hacklab/minisign/secret-key
+#        scripts/device-secrets.sh restore-signing-key       parameter -> ~/.minisign/hacklab.key (mode 600)
 set -euo pipefail
 cmd=${1:?usage: device-secrets.sh backup|restore|list <device> [dir] | backup-key|restore-key [env-file]}
-case $cmd in backup-key|restore-key) device=${2:-};; *) device=${2:?usage: device-secrets.sh backup|restore|list <device> [dir]};; esac
+case $cmd in backup-key|restore-key|backup-signing-key|restore-signing-key) device=${2:-};; *) device=${2:?usage: device-secrets.sh backup|restore|list <device> [dir]};; esac
 region=${HACKLAB_AWS_REGION:-eu-west-1}
 export AWS_PROFILE=${AWS_PROFILE:-busyweb-sso}
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -59,5 +61,21 @@ case $cmd in
     grep -vE '^ANTHROPIC_API_KEY=' "$envfile" > "$envfile.tmp" || true
     printf 'ANTHROPIC_API_KEY=%s\n' "$key" >> "$envfile.tmp" && mv "$envfile.tmp" "$envfile"
     echo "restored ANTHROPIC_API_KEY into $envfile" ;;
+  backup-signing-key)
+    keyfile=${2:-$HOME/.minisign/hacklab.key}
+    # refuse to back up a key that is not passphrase-protected (kdf field "Sc" = scrypt)
+    python3 -c 'import base64,sys; raw=base64.b64decode(open(sys.argv[1]).read().splitlines()[1]); sys.exit(0 if raw[0:2]==b"Ed" and raw[2:4]==b"Sc" else 1)' "$keyfile" \
+      || { echo "$keyfile is not a passphrase-protected minisign secret key; refusing" >&2; exit 1; }
+    # the file is already passphrase-encrypted by minisign; SecureString adds the AWS layer on top
+    aws ssm put-parameter --region "$region" --name /hacklab/minisign/secret-key --type SecureString \
+      --value "file://$keyfile" --overwrite --tier Standard >/dev/null
+    echo "backed up $keyfile -> /hacklab/minisign/secret-key (passphrase still required to sign)" ;;
+  restore-signing-key)
+    keyfile=${2:-$HOME/.minisign/hacklab.key}
+    mkdir -p "$(dirname "$keyfile")" && chmod 700 "$(dirname "$keyfile")"
+    aws ssm get-parameter --region "$region" --name /hacklab/minisign/secret-key --with-decryption --output json \
+      | python3 -c 'import json,sys; sys.stdout.write(json.load(sys.stdin)["Parameter"]["Value"])' > "$keyfile.tmp"
+    mv "$keyfile.tmp" "$keyfile" && chmod 600 "$keyfile"
+    echo "restored $keyfile (you will be asked for the passphrase when signing)" ;;
   *) echo "unknown command $cmd" >&2; exit 1 ;;
 esac
