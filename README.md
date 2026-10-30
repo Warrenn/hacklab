@@ -83,6 +83,23 @@ Coming per phase: `boxes/<id>/` profiles (P2), the PWA (P3), the AI helper
 (P4), `provisioning/install.sh`, systemd units and `scripts/` for release,
 deploy, rollback, status and logs (P5).
 
+## The AI helper (P4)
+
+`ANTHROPIC_API_KEY` in the environment turns the helper on (`.env` locally; the
+Pi service gets a root-only env file in P5). Each ask is one Messages API call
+(`claude-sonnet-5-5`, structured output) that returns rule fragments for the
+box's skeleton (`boxes/<id>/genie/skeleton.ino`, or on the device for boxes
+whose stock code is not in git); the app assembles, compiles (retrying up to 3
+times with the compiler error), flashes and stores the version. Spend is
+logged per call under `data/spend/` and the helper switches off at
+`monthly_cap_usd` (config) until next month; set the same cap on the Console
+workspace. Without hardware: `HACKLAB_BOARD=fake` runs the full stack on the
+emulated board.
+
+- `scripts/record-golden.py [--compile]` re-records `tests/golden/*.json` live.
+- `scripts/hil-ask.sh <box> <stock-dir> <skeleton.ino> "<request>"` (on the Pi)
+  asks through the real app, flashes, prints the kid message, then undoes.
+
 ## Boxes
 
 Everything box-specific lives in `boxes/<id>/` (TOML + Markdown + sketch

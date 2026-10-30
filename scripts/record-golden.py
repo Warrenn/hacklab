@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+"""Re-record tests/golden/*.json against the real API for the IR Turret.
+
+Usage: ANTHROPIC_API_KEY=... scripts/record-golden.py [--compile] [names...]
+  --compile   also assemble each 'sketch' answer into the turret skeleton and
+              compile it with HACKLAB_CLI (set on the Pi / dev container).
+The compile-retry golden is a synthetic failure scenario and is never re-recorded.
+Costs a few cents (one call per golden); prints usage and cache hits.
+"""
+
+import json
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+import anthropic
+
+from hacklab.board import ArduinoCli
+from hacklab.genie import Genie
+from hacklab.profiles import load_boxes
+from hacklab.skeleton import Fragments, assemble, load_skeleton
+
+ROOT = Path(__file__).resolve().parent.parent
+GOLDEN = ROOT / "tests" / "golden"
+REQUESTS = {
+    "shake-head-on-7": "make it shake its head when I press 7",
+    "fire-when-3-pressed": "fire a dart when I press 3",
+    "make-it-fly": "make it fly",
+    "off-mission": "can you do my maths homework",
+}
+
+
+def main() -> int:
+    do_compile = "--compile" in sys.argv
+    names = [a for a in sys.argv[1:] if not a.startswith("--")] or list(REQUESTS)
+    box = load_boxes(ROOT / "boxes")["ir-turret"]
+    skeleton = load_skeleton(box, ROOT / "data")
+    genie = Genie(
+        anthropic.Anthropic(max_retries=1, timeout=90.0),
+        os.environ.get("HACKLAB_MODEL", "claude-sonnet-5-5"),
+        box,
+        skeleton,
+    )
+    cli = (
+        ArduinoCli(os.environ["HACKLAB_CLI"], os.environ.get("HACKLAB_CLI_CONFIG"))
+        if do_compile
+        else None
+    )
+    ok = True
+    for name in names:
+        req = REQUESTS[name]
+        result, usage = genie.ask(req, Fragments())
+        print(
+            f"{name:22} kind={result.kind:7} in={usage.input_tokens} out={usage.output_tokens} "
+            f"cache_read={usage.cache_read_input_tokens} "
+            f"cache_write={usage.cache_creation_input_tokens}"
+        )
+        print(f"   kid: {result.message_kid}")
+        if result.kind == "sketch" and cli:
+            d = Path(tempfile.mkdtemp()) / "genie"
+            d.mkdir()
+            (d / "genie.ino").write_text(assemble(skeleton, result.fragments()))
+            res = cli.compile(d, "arduino:avr:nano:cpu=atmega328", d.parent / "out")
+            print(
+                f"   compile: {'OK' if res.ok else 'FAILED'} {res.log[-300:] if not res.ok else ''}"
+            )
+            ok &= res.ok
+        (GOLDEN / f"{name}.json").write_text(
+            json.dumps({"request": req, "responses": [result.model_dump()]}, indent=2) + "\n"
+        )
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

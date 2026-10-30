@@ -15,11 +15,14 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from hacklab.board import ArduinoCli, Board
+from hacklab.board import ArduinoCli, Board, FakeBoard
 from hacklab.config import Config, load_config
 from hacklab.flash import Flasher
+from hacklab.genie import Genie
 from hacklab.jobs import FakeJobRunner, JobRunner, RealJobRunner
 from hacklab.profiles import Behaviour, load_boxes
+from hacklab.skeleton import load_skeleton
+from hacklab.spend import SpendLedger
 from hacklab.store import SketchStore
 from hacklab.templates import TemplateError, render
 
@@ -61,14 +64,27 @@ def format_sse(event: dict[str, Any]) -> str:
 def make_runner(
     cfg: Config, board: Board | None = None
 ) -> tuple[JobRunner, Flasher | None, SketchStore | None]:
-    """FAKE_BOARD=1 -> FakeJobRunner (mock backend). Otherwise the real runner
-    on the given board, or arduino-cli from the config/toolchain prefix."""
+    """FAKE_BOARD=1 -> FakeJobRunner (PWA mock, no compile, no API). Otherwise the
+    real runner on the given board, FakeBoard when HACKLAB_BOARD=fake, or
+    arduino-cli from the toolchain prefix."""
     if cfg.fake_board and board is None:
         return FakeJobRunner(), None, None
-    board = board or ArduinoCli(cfg.arduino_cli, cfg.arduino_config)
+    if board is None:
+        board = (
+            FakeBoard() if cfg.board == "fake" else ArduinoCli(cfg.arduino_cli, cfg.arduino_config)
+        )
     store = SketchStore(cfg.data_dir)
     flasher = Flasher(board, cfg.data_dir)
-    return RealJobRunner(flasher, store, cfg.data_dir / "work"), flasher, store
+    runner = RealJobRunner(flasher, store, cfg.data_dir / "work", ledger=SpendLedger(cfg.data_dir))
+    return runner, flasher, store
+
+
+def make_genie_client(cfg: Config):
+    if not cfg.api_key:
+        return None
+    import anthropic  # imported here so the mock backend never needs the SDK
+
+    return anthropic.Anthropic(api_key=cfg.api_key, max_retries=1, timeout=60.0)
 
 
 def _mk(p: Path) -> Path:
@@ -77,13 +93,35 @@ def _mk(p: Path) -> Path:
 
 
 def create_app(
-    config: Config | None = None, runner: JobRunner | None = None, board: Board | None = None
+    config: Config | None = None,
+    runner: JobRunner | None = None,
+    board: Board | None = None,
+    genie_client: Any = None,
 ) -> FastAPI:
     cfg = config or load_config()
     flasher = store = None
     if runner is None:
         runner, flasher, store = make_runner(cfg, board)
     boxes = load_boxes(cfg.boxes_dir)
+    client = (genie_client or make_genie_client(cfg)) if store else None
+    ledger = getattr(runner, "ledger", None)
+
+    def genie_for(box_id: str) -> Genie | None:
+        """The AI helper for a box, or None when it is away: no key, over the
+        monthly cap, backing off after an API error, or no skeleton for the box."""
+        if cfg.api_key is None or client is None or box_id not in boxes:
+            return None
+        if getattr(runner, "genie_away", lambda: False)():
+            return None
+        if ledger and ledger.over_cap(cfg.monthly_cap_usd):
+            return None
+        skeleton = load_skeleton(boxes[box_id], cfg.data_dir)
+        if skeleton is None:
+            return None
+        return Genie(client, cfg.model, boxes[box_id], skeleton)
+
+    if isinstance(runner, RealJobRunner):
+        runner.genie = genie_for
     app = FastAPI(title="Hack Lab")
     state: dict[str, Any] = {"box": None, "versions": {}}  # mock mode only: box_id -> [version]
 
@@ -143,7 +181,12 @@ def create_app(
         return {
             "box": box,
             "online": True,
-            "ai_available": cfg.api_key is not None,
+            "ai_available": (
+                cfg.api_key is not None and (store is None or genie_for(box) is not None)
+                if box
+                else cfg.api_key is not None
+                and (ledger is None or not ledger.over_cap(cfg.monthly_cap_usd))
+            ),
             "board_connected": flasher.detect() is not None if flasher else cfg.fake_board,
             "current_version": vs[-1] if vs else None,
             "versions_count": len(vs),
@@ -190,10 +233,13 @@ def create_app(
     @app.post("/api/ask")
     async def ask(body: Ask):
         text = body.text.strip()
+        box = box_or_409()
+        if store and genie_for(box) is None:
+            raise HTTPException(409, "The AI helper is away right now. Pick a trick instead.")
         payload = {
             "text": text,
             "fail": text.lower().startswith("fail"),  # mock-only: exercises the failure path
-            "prompts": [],  # P4: curiosity prompts from the genie
+            "prompts": [],  # mock-only; the real runner fills prompts from the genie
         }
         return await start("ask", payload)
 

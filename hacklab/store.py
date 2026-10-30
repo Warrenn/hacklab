@@ -57,6 +57,10 @@ class SketchStore:
     def _vdir(self, box: str, version: Version) -> Path:
         return self._versions_dir(box) / version.id
 
+    def version_dir(self, box: str, version: Version) -> Path:
+        """The version folder (meta.json, fragments.json live here, beside the sketch dir)."""
+        return self._vdir(box, version)
+
     # -- reads -----------------------------------------------------------
     def versions(self, box: str) -> list[Version]:
         d = self._versions_dir(box)

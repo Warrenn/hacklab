@@ -8,8 +8,10 @@ compile + upload) behind the same protocol.
 from __future__ import annotations
 
 import asyncio
+import json
 import shutil
 import tempfile
+import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -18,7 +20,17 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     from hacklab.flash import Flasher
+    from hacklab.genie import Genie
+    from hacklab.spend import SpendLedger
     from hacklab.store import SketchStore
+
+KID_AWAY = "The AI helper is away right now. Pick a trick instead."
+KID_DECLINED = "The AI helper can't help with that one. Pick a trick instead."
+KID_GAVE_UP = (
+    "The AI helper tried three times and the code would not build. "
+    "Try saying it another way, or pick a trick."
+)
+GenieFactory = Callable[[str], "Genie | None"]
 
 TERMINAL_STATES = {"done", "failed"}
 
@@ -137,8 +149,17 @@ class RealJobRunner:
     (ponytail: global lock -- one box, one USB cable). Blocking work runs in a
     thread so SSE keeps streaming."""
 
-    def __init__(self, flasher: Flasher, store: SketchStore, work_dir: Path | str):
+    def __init__(
+        self,
+        flasher: Flasher,
+        store: SketchStore,
+        work_dir: Path | str,
+        genie: GenieFactory | None = None,
+        ledger: SpendLedger | None = None,
+    ):
         self.flasher, self.store, self.work_dir = flasher, store, Path(work_dir)
+        self.genie, self.ledger = genie, ledger
+        self._away_until = 0.0
         self.jobs: dict[str, Job] = {}
         self._subscribers: set[asyncio.Queue] = set()
         self._tasks: set[asyncio.Task] = set()
@@ -207,7 +228,17 @@ class RealJobRunner:
                 )
                 self._set(job, "failed")
 
+    # -- genie availability ------------------------------------------------
+    def genie_away(self) -> bool:
+        return time.time() < self._away_until
+
+    def mark_away(self, minutes: float = 10) -> None:
+        self._away_until = time.time() + minutes * 60
+
     async def _run_locked(self, job: Job, box: str, on_done: OnDone | None) -> None:
+        if job.kind == "ask":
+            await self._run_ask(job, box, on_done)
+            return
         if True:
             sketch_dir = self._sketch_dir(job)
             if sketch_dir is None:
@@ -245,3 +276,116 @@ class RealJobRunner:
     def _mk(p: Path) -> Path:
         p.mkdir(parents=True, exist_ok=True)
         return p
+
+    # -- the AI helper --------------------------------------------------------
+    def _current_fragments(self, box: str):
+        from hacklab.skeleton import Fragments
+
+        cur = self.store.current(box)
+        f = self.store.version_dir(box, cur) / "fragments.json" if cur else None
+        return Fragments.from_dict(json.loads(f.read_text())) if f and f.is_file() else Fragments()
+
+    def _log_ask(self, box: str, entry: dict[str, Any]) -> None:
+        logs = self._mk(self.store.root / box / "logs")
+        with (logs / "asks.jsonl").open("a") as f:
+            f.write(json.dumps({"ts": int(time.time()), **entry}) + "\n")
+
+    async def _run_ask(self, job: Job, box: str, on_done: OnDone | None) -> None:
+        from hacklab.genie import GenieRefused, prompts_for
+        from hacklab.skeleton import assemble
+
+        text = job.payload.get("text", "")
+        t0 = time.time()
+        self._set(job, "thinking")
+        genie = self.genie(box) if self.genie else None
+        if genie is None:
+            self._set(job, "failed", KID_AWAY)
+            return
+        current = self._current_fragments(box)
+        error: str | None = None
+        log: list[str] = []
+        loop = asyncio.get_running_loop()
+        progress = lambda stage: loop.call_soon_threadsafe(self._set, job, stage)  # noqa: E731
+        for attempt in range(1, 4):
+            try:
+                result, usage = await asyncio.to_thread(genie.ask, text, current, error)
+            except GenieRefused as exc:
+                log.append(f"refused: {exc}")
+                job.log_ref = self._write_log(box, job, "\n".join(log))
+                self._log_ask(
+                    box, {"request": text, "box": box, "kind": "refusal", "attempts": attempt}
+                )
+                self._set(job, "failed", KID_DECLINED)
+                return
+            except Exception as exc:  # noqa: BLE001 - network/API trouble => helper is away
+                log.append(f"api error: {type(exc).__name__}: {exc}")
+                job.log_ref = self._write_log(box, job, "\n".join(log))
+                self._log_ask(
+                    box, {"request": text, "box": box, "kind": "error", "error": str(exc)[:300]}
+                )
+                self.mark_away()
+                self._set(job, "failed", KID_AWAY)
+                return
+            if self.ledger:
+                self.ledger.record(genie.model, usage)
+            entry = {
+                "request": text,
+                "box": box,
+                "kind": result.kind,
+                "attempts": attempt,
+                "usage": {
+                    "in": getattr(usage, "input_tokens", 0),
+                    "out": getattr(usage, "output_tokens", 0),
+                    "cache_read": getattr(usage, "cache_read_input_tokens", 0),
+                },
+            }
+            if result.kind != "sketch":
+                job.prompts = []
+                self._log_ask(box, {**entry, "duration_s": round(time.time() - t0, 1)})
+                self._set(job, "done", result.message_kid)
+                return
+            frags = result.fragments()
+            parent = Path(tempfile.mkdtemp(prefix=f"{box}-ask-", dir=self._mk(self.work_dir)))
+            sketch_dir = parent / "genie"
+            sketch_dir.mkdir()
+            # multi-file boxes: #include siblings (config.h ...) come from the baseline copy
+            base = self.store.baseline(box)
+            stock = self.store.path(box, base) if base else genie.box.stock_dir(self.store.root)
+            for f in stock.iterdir() if stock.is_dir() else []:
+                if f.is_file() and f.suffix != ".ino":
+                    shutil.copy2(f, sketch_dir / f.name)
+            (sketch_dir / "genie.ino").write_text(assemble(genie.skeleton, frags))
+            res = await asyncio.to_thread(self.flasher.flash, box, sketch_dir, progress)
+            log.append(f"[attempt {attempt}] {res.log}")
+            if res.ok:
+                v = self.store.save(box, sketch_dir, kind="ask", note=text)
+                (self.store.version_dir(box, v) / "fragments.json").write_text(
+                    json.dumps(frags.to_dict())
+                )
+                shutil.rmtree(parent, ignore_errors=True)
+                job.sketch_ref = v.id
+                job.prompts = prompts_for(result, genie.box)
+                job.log_ref = self._write_log(box, job, "\n".join(log))
+                self._log_ask(
+                    box,
+                    {
+                        **entry,
+                        "version": v.id,
+                        "changed": result.changed,
+                        "duration_s": round(time.time() - t0, 1),
+                    },
+                )
+                if on_done:
+                    on_done(job)
+                self._set(job, "done", result.message_kid)
+                return
+            shutil.rmtree(parent, ignore_errors=True)
+            if res.failed_stage != "compiling":
+                job.log_ref = self._write_log(box, job, "\n".join(log))
+                self._log_ask(box, {**entry, "failed_stage": res.failed_stage})
+                self._set(job, "failed", res.message_kid)
+                return
+            error = res.log
+        job.log_ref = self._write_log(box, job, "\n".join(log))
+        self._log_ask(box, {"request": text, "box": box, "kind": "gave-up", "attempts": 3})
+        self._set(job, "failed", KID_GAVE_UP)

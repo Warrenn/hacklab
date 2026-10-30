@@ -1,0 +1,15 @@
+{
+  "request": "can you do my maths homework",
+  "responses": [
+    {
+      "kind": "explain",
+      "params": "",
+      "cases": "",
+      "loop": "",
+      "functions": "",
+      "message_kid": "The AI helper can only help with your turret box, so maths homework is not something I can do. Want to try making a key on the remote fire a dart or nod the turret's head instead?",
+      "changed": "",
+      "concepts": []
+    }
+  ]
+}

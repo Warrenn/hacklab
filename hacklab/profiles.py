@@ -30,6 +30,10 @@ class Concept:
     title: str
     explanation: str
     tags: list[str] = field(default_factory=list)
+    question: str = ""  # curiosity prompt text; default built from the title
+
+    def prompt_question(self) -> str:
+        return self.question or f"Want to know how {self.title} works?"
 
     def to_api(self) -> dict[str, Any]:
         return {"id": self.id, "title": self.title, "explanation": self.explanation}
@@ -81,6 +85,7 @@ class Box:
     behaviours: dict[str, Behaviour]
     templates: dict[str, Behaviour]
     concepts: dict[str, Concept]
+    genie: dict[str, Any] = field(default_factory=dict)  # skeleton, helpers, keys
 
     def stock_dir(self, data_dir: Path) -> Path:
         if self.stock_location == "repo":
@@ -176,6 +181,7 @@ def load_box(box_dir: Path, whitelist: Path | None = None) -> Box:
             _need(c, "title", f"{where}/concepts.toml [{cid}]"),
             _need(c, "explanation", f"{where}/concepts.toml [{cid}]"),
             list(c.get("tags", [])),
+            str(c.get("question", "")),
         )
         for cid, c in concepts_doc.items()
     }
@@ -205,6 +211,7 @@ def load_box(box_dir: Path, whitelist: Path | None = None) -> Box:
         behaviours=behaviours,
         templates=templates,
         concepts=concepts,
+        genie=dict(prof.get("genie", {})),
     )
 
 

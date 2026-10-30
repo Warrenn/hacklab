@@ -344,6 +344,109 @@ Deferred (recorded, not scheduled): physical reset button; points/levels;
 block-based editor; curated external links; conversational correction;
 touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 
+## P4 plan — Genie (the AI helper) (2026-10-30, approved incl. the fragments deviation)
+
+Goal: a plain-language request from the kid becomes a compiled, flashed
+sketch via the Anthropic API, with a compile-retry loop, a clarify-or-explain
+path for impossible or off-mission asks, curiosity prompts from the box's
+concepts, a hard monthly spend cap, and clean degradation to offline when the
+API is unavailable or capped. Owner's choices 2026-10-30: dedicated API key
+in `.env` (live calls allowed for recording goldens), `claude-sonnet-5-5`,
+raw Messages API one call per turn (open decision 1 closed).
+
+Verified 2026-10-30 (claude-api skill, live docs): `anthropic` 2.3.0 (pure
+Python, Python >= 3.10); structured JSON via `client.messages.parse(...,
+output_format=PydanticModel)` -> `response.parsed_output`; adaptive thinking
+is the default on Sonnet 5.5 (never send `budget_tokens` or
+`thinking.disabled`), depth via `output_config.effort`; prompt caching with
+`cache_control` on the stable system block; usage fields
+`input_tokens`/`output_tokens`/`cache_read_input_tokens`/
+`cache_creation_input_tokens`; Sonnet 5.5 is $2 / $10 per MTok (cache reads
+$0.20); refusals arrive as `stop_reason == "refusal"`, not exceptions; no
+assistant prefill. Fallbacks to another model are NOT enabled: a refusal
+means "not for this app", and the kid gets the offline path.
+
+**Deviation to approve: the genie writes rule fragments, not a whole sketch.**
+The P4 line says "full-sketch output". A full turret sketch is ~4k output
+tokens, i.e. 40-60 s of generation before compile + flash even starts, which
+blows the 20-60 s turn budget. Instead each box ships a *skeleton* (its stock
+sketch with four insertion points: `//@@PARAMS`, `//@@CASES`, `//@@LOOP`,
+`//@@FUNCTIONS` -- exactly how the P2 behaviours were generated) and the
+genie returns only the fragments for those points (a few hundred tokens,
+5-10 s). Setup, pins and library includes stay fixed, which is also the
+safety property (the model cannot re-pin servos or add libraries). The
+"when <trigger> -> <action>" mental model maps 1:1 onto `//@@CASES`. Level 3
+(whole-sketch edits by the kid) is unaffected. The skeleton lives beside the
+stock code: `boxes/<id>/genie/skeleton.ino` when the license allows (turret),
+else `data/boxes/<id>/genie/skeleton.ino` on the device (forklift).
+
+Decisions:
+- `hacklab/genie.py`: `Genie(client, model, box)`; `ask(request,
+  current_fragments, compile_error=None) -> GenieResult` with a Pydantic
+  `GenieResult {kind: sketch|clarify|explain, params, cases, loop, functions,
+  message_kid, changed, concepts[]}`. System prompt = persona (the AI helper,
+  age-appropriate, kid words from hardware.md, no links, never asks for
+  personal details, declines off-mission asks with `explain`) + rules + the
+  box's hardware.md + helper function list + the skeleton, all stable ->
+  one `cache_control` block. User turn = current fragments + request (+ the
+  compiler error excerpt on a retry). `output_config.effort = "medium"`,
+  `max_tokens` 8000, non-streaming (output is small).
+- `hacklab/skeleton.py`: `assemble(skeleton, fragments) -> source`; fragments
+  of the *current* version are stored in `data/<box>/versions/NNNN/
+  fragments.json` so the next ask edits what the kid already has; Undo/Reset
+  keep working unchanged (they flash stored sketch dirs).
+- Compile-retry: the runner's `ask` job = thinking -> assemble -> flash;
+  if the flash fails at `compiling`, re-ask with the error (max 3 attempts),
+  then fail with the kid message. `clarify`/`explain` end the job as `done`
+  with no flash and the model's question/explanation as `message_kid`
+  (the PWA already shows `message_kid` on Done).
+- Curiosity prompts: `GenieResult.concepts` filtered to the box's concept
+  ids -> `prompts [{id, question}]`; `question` is a new optional field in
+  concepts.toml (default "Want to know how <title>?"). Max 3.
+- Spend cap: `hacklab/spend.py` appends every call's usage + cost (price
+  table for the configured model) to `data/spend/YYYY-MM.jsonl`; month total
+  >= `monthly_cap_usd` -> genie disabled until next month. `ai_available` =
+  key present AND under cap AND not in a 10-minute "away" backoff after an
+  API/network error. `/api/ask` returns 409 with the kid message when away.
+- Every ask writes one JSONL event (request, box, result kind, sketch hash,
+  attempts, usage, duration) to `data/<box>/logs/asks.jsonl` -- the
+  maintainer's remote log (uploaded by the P5 `upload-logs` job later).
+- Dev without hardware: `HACKLAB_BOARD=fake` runs the real runner + store +
+  genie on `FakeBoard` (compiles are faked). `FAKE_BOARD=1` stays the PWA
+  mock (FakeJobRunner, no API).
+- Parallelism: content (turret skeleton, concept questions) vs code are
+  file-disjoint but tiny; serialized.
+
+Steps:
+1. Content: `boxes/ir-turret/genie/skeleton.ino` (+ `profile.toml [genie]`
+   helpers list), `question` per concept; forklift skeleton written on the
+   Pi from its stock code (untracked). Hand-written golden responses in
+   `tests/golden/*.json` for: shake on 7, fire when 3 pressed, an impossible
+   ask ("make it fly"), an off-mission ask, a compile-error retry.
+2. Tests red: skeleton assembly; GenieResult parsing from goldens via a
+   fake client; system prompt contains the safety rules and hardware;
+   spend ledger + cap; runner `ask` (retry on compile error, clarify ends
+   without flash, API error -> away); `/api/status.ai_available`,
+   `/api/ask` 409 when away/capped, prompts in the job.
+3. `genie.py`, `skeleton.py`, `spend.py`, runner + app wiring; green, ruff.
+4. Live: `scripts/record-golden.py` re-records the goldens with the real
+   key (5 calls, cents); tests green on real responses; check
+   `cache_read_input_tokens > 0` on the second call.
+5. Pi: pull, install `anthropic` in the venv, key via a root-only
+   `/etc/default/hacklab` (never in git), forklift skeleton on the device;
+   HIL: `scripts/hil-ask.sh omnibot-forklift "lift the fork every 5 seconds"`
+   through the real app -> compiled, flashed, serial banner; then Undo.
+6. README (AI helper, spend cap, goldens), P4 notes, hygiene (no key, no
+   nephew details, no prompts with personal data), PR, merge; Pi follows main.
+
+## Progress — P4
+- [x] Step 1 — turret skeleton + [genie] profile section, concept questions, 5 hand-written goldens (forklift skeleton lands on the Pi in Step 5) — completed 2026-10-30
+- [x] Step 2 — tests written (red) — completed 2026-10-30
+- [ ] Step 3 — genie, skeleton, spend, runner + app wiring green
+- [x] Step 4 — 4 goldens re-recorded live on the Pi with real compiles (both sketches compile); cache_read 7643 tokens from the 2nd call; impossible and off-mission asks answered in kid language — completed 2026-10-30
+- [x] Step 5 — Pi: live ask on the Forklift through the real app: timed lift rule generated with labelled tweak markers, compiled, flashed, serial banner, prompts, Undo; 51 s turn, $0.013 (cache hit 9384 tokens) — completed 2026-10-30. Service-level key install belongs to P5 install.sh
+- [ ] Step 6 — README, notes, PR merged
+
 ## Sequencing change 2026-10-30: P3 runs in parallel with P1
 
 Owner's call after asking whether the UI was being neglected: the PWA (P3)
@@ -685,6 +788,32 @@ Steps:
 - [x] Step 5 — install-ops.sh run end-to-end over Tailscale (root@hacklab), heartbeat in the shadow incl. tailscale_ip, survives reboot — completed 2026-10-30
 - [ ] Step 6 — README/P5 notes, hygiene check, PR merged
 
+## P4 notes — the AI helper, verified 2026-10-30
+
+- Live on the Pi with the Forklift (`scripts/hil-ask.sh`): "lift the fork up
+  for one second then put it down, every five seconds" -> one call (79 in /
+  1117 out, 9384 cached), a millis()-based loop rule with two tweakables and
+  kid labels, compiled and flashed first try, Undo back to stock. Turn 51 s
+  of which compile+flash ~36 s. Cost $0.013. Goldens for the turret recorded
+  live: both sketches compile; impossible ("make it fly") and off-mission
+  (homework) asks come back as `explain` in kid language.
+- Two things the HIL found: (1) multi-file boxes need the stock sketch's
+  sibling files (`config.h`) copied next to the genie sketch -- taken from
+  the baseline version now; (2) the `anthropic` import takes ~15 s on a Pi 3
+  and app start ~18 s (hil scripts wait 60 s; the P5 service starts once).
+- Retry path exercised for real: three failed compiles end as `failed` with
+  the kid message and the full compiler log in the job log.
+- Persona tweak after the run: the model said "press upload" -- the app
+  flashes by itself, so the rules now forbid mentioning upload/app buttons.
+- Spend: `data/spend/YYYY-MM.jsonl`, price table in `hacklab/spend.py`
+  (Sonnet 5.5 $2/$10 per MTok, cache read $0.20); cap from `monthly_cap_usd`;
+  the Console workspace limit is the second, independent cap.
+- Key handling: `.env` on the Mac (git-ignored, backed up to Parameter Store
+  `/hacklab/anthropic/api-key`); on the Pi passed per run for now, root-only
+  `/etc/default/hacklab` when P5's install.sh creates the service.
+- Forklift skeleton lives only on the device (`/root/hil/forklift-skeleton.ino`
+  for HIL; `data/boxes/omnibot-forklift/genie/skeleton.ino` in production).
+
 ## P2 notes — box profiles, verified 2026-10-30
 
 - Profiles are TOML (stdlib). `scripts/check-box.sh ir-turret` on the Pi: 7
@@ -850,11 +979,11 @@ Steps:
 
 ## Open decisions
 
-1. Raw API loop vs Claude Agent SDK for P4 (raw loop is the low-risk default)
-   [VERIFY SDK footprint on Pi 3 arm64].
+1. Raw API loop vs Claude Agent SDK for P4: raw Messages API, one call per
+   turn (closed 2026-10-30).
 2. Laser Synthesizer: Nano-class per its pin usage (A6/A7); confirm by
    plugging it in and checking the USB chip/bootloader before P6.
-3. AWS account for IoT Core (Busyweb vs new).
+3. AWS account for IoT Core: Busyweb (closed 2026-10-30).
 
 ## Testing policy
 

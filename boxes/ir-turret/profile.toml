@@ -11,3 +11,16 @@ core = "arduino:avr"
 [stock]
 location = "repo"           # MIT-licensed stock code lives in stock/ (headers kept)
 main = "stock"              # sketch directory name under stock/: stock/stock/stock.ino
+
+[genie]
+skeleton = "genie/skeleton.ino"   # relative to the box dir (or data/boxes/<id>/ when stock.location = "device")
+# Helper functions the AI helper may call in rules (all defined in the skeleton):
+helpers = [
+  "leftMove(n) / rightMove(n): turn left/right n steps (each step = yawPrecision ms at yawMoveSpeed)",
+  "upMove(n) / downMove(n): tilt up/down n steps of pitchMoveSpeed degrees, clamped to pitchMin..pitchMax",
+  "fire(): fire one dart; fireAll(): fire all six",
+  "homeServos(): stop turning and tilt back to the middle",
+  "shakeHeadYes(n): nod n times; shakeNo(n): shake head n times",
+]
+# Remote key constants usable in `case` labels:
+keys = ["ok", "star", "hashtag", "cmd0", "cmd1", "cmd2", "cmd3", "cmd4", "cmd5", "cmd6", "cmd7", "cmd8", "cmd9"]
