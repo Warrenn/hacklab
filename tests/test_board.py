@@ -149,3 +149,17 @@ def test_fake_board_scripts_failures(tmp_path: Path):
     assert fb.upload(tmp_path, "arduino:avr:nano:cpu=atmega328old", "/dev/ttyFAKE0", tmp_path).ok
     fb.unplugged = True
     assert fb.list_ports() == []
+
+
+def test_fake_board_enforces_arduino_cli_sketch_naming(tmp_path: Path):
+    """arduino-cli: the main .ino must be named after its directory (found on the Pi)."""
+    fb = FakeBoard()
+    bad = tmp_path / "0001"
+    bad.mkdir()
+    (bad / "other.ino").write_text("")
+    r = fb.compile(bad, "arduino:avr:nano:cpu=atmega328", tmp_path / "o")
+    assert not r.ok and "main file missing" in r.log
+    good = tmp_path / "blink"
+    good.mkdir()
+    (good / "blink.ino").write_text("")
+    assert fb.compile(good, "arduino:avr:nano:cpu=atmega328", tmp_path / "o2").ok

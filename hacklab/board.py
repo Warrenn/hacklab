@@ -146,6 +146,9 @@ class FakeBoard:
         self.compiles += 1
         if self.compile_error:
             return Result(False, self.compile_error)
+        main = Path(sketch_dir) / f"{Path(sketch_dir).name}.ino"
+        if not main.is_file():  # arduino-cli rule, seen on the Pi
+            return Result(False, f"Can't open sketch: main file missing from sketch: {main}")
         out_dir.mkdir(parents=True, exist_ok=True)
         ino = sorted(Path(sketch_dir).glob("*.ino"))
         (out_dir / "sketch.ino.hex").write_text(ino[0].read_text() if ino else "")

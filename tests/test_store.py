@@ -99,3 +99,12 @@ def test_main_source(store: SketchStore, tmp_path: Path):
 def test_unknown_box_has_no_current(store: SketchStore):
     assert store.current("nope") is None
     assert store.versions("nope") == []
+
+
+def test_stored_sketch_dir_keeps_its_name_for_arduino_cli(store: SketchStore, tmp_path: Path):
+    v = store.ensure_baseline("b", sketch(tmp_path, "StockCode", "x", {"config.h": "y"}))
+    d = store.path("b", v)
+    assert d.name == "StockCode" and (d / "StockCode.ino").is_file() and (d / "config.h").is_file()
+    assert not (d / "meta.json").exists()  # meta lives beside the sketch dir, not inside it
+    v1 = store.save("b", sketch(tmp_path, "blink", "z"), kind="flash")
+    assert store.path("b", v1).name == "blink"

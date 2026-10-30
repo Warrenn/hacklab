@@ -8,7 +8,11 @@ The real stock sketch lands in boxes/ir-turret/stock/ in P2.
 BOXES = [
     {"id": "ir-turret", "name": "IR Turret", "picture": "/static/boxes/ir-turret.png"},
     {"id": "laser-synth", "name": "Laser Synthesizer", "picture": "/static/boxes/laser-synth.png"},
-    {"id": "omnibot-forklift", "name": "Omnibot Forklift", "picture": "/static/boxes/omnibot-forklift.png"},
+    {
+        "id": "omnibot-forklift",
+        "name": "Omnibot Forklift",
+        "picture": "/static/boxes/omnibot-forklift.png",
+    },
 ]
 
 BEHAVIOURS: dict[str, list] = {

@@ -186,8 +186,10 @@ class RealJobRunner:
         else:
             if job.payload.get("sketch_dir"):
                 return Path(job.payload["sketch_dir"])
-            d = Path(tempfile.mkdtemp(prefix=f"{box}-", dir=self._mk(self.work_dir)))
-            (d / f"{box.replace('-', '_')}.ino").write_text(job.payload.get("source", ""))
+            # arduino-cli needs <dir>/<dir>.ino; the temp parent carries the random name.
+            d = Path(tempfile.mkdtemp(prefix=f"{box}-", dir=self._mk(self.work_dir))) / "sketch"
+            d.mkdir()
+            (d / "sketch.ino").write_text(job.payload.get("source", ""))
             return d
         if v is None:
             return None
@@ -218,7 +220,7 @@ class RealJobRunner:
                 )
                 job.sketch_ref = v.id
                 if not job.payload.get("sketch_dir"):
-                    shutil.rmtree(sketch_dir, ignore_errors=True)
+                    shutil.rmtree(sketch_dir.parent, ignore_errors=True)
             job.prompts = job.payload.get("prompts", [])
             if on_done:
                 on_done(job)

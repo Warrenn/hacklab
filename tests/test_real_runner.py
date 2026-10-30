@@ -111,3 +111,18 @@ async def test_jobs_run_one_at_a_time(env):
         await wait_done(runner, i)
     assert fb.max_concurrent == 1
     assert [v.id for v in store.versions("b")] == ["0000", "0001", "0002", "0003"]
+
+
+async def test_source_payload_becomes_a_validly_named_sketch_dir(env):
+    fb, store, runner = env
+    job = await wait_done(
+        runner, await runner.submit("flash", {"box": "omnibot-forklift", "source": "void loop(){}"})
+    )
+    assert job.state == "failed"  # no baseline for this box yet -> clean failure, no crash
+    store.ensure_baseline("omnibot-forklift", store.path("b", store.baseline("b")))
+    job = await wait_done(
+        runner, await runner.submit("flash", {"box": "omnibot-forklift", "source": "void loop(){}"})
+    )
+    assert job.state == "done"
+    d = store.path("omnibot-forklift", store.current("omnibot-forklift"))
+    assert (d / f"{d.name}.ino").read_text() == "void loop(){}"
