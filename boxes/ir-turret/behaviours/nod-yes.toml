@@ -1,0 +1,7 @@
+id = "nod-yes"
+title = "Nod yes"
+description = "When I press 1, the turret nods up and down."
+trigger = "key 1"
+action = "nod"
+tested = "compile-only"
+concepts = ['servo', 'loop', 'event']

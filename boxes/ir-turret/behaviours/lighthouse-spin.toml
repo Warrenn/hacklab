@@ -1,0 +1,7 @@
+id = "lighthouse-spin"
+title = "Lighthouse spin"
+description = "Slow sweep, all the time. The remote still works."
+trigger = "always"
+action = "sweep"
+tested = "compile-only"
+concepts = ['loop', 'servo']

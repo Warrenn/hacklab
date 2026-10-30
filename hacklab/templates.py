@@ -33,9 +33,12 @@ class Tweakable:
     range: tuple[float, float] | None = None
     step: float | None = None
     options: list[str] | None = None
+    label: str | None = None  # our extension: kid-facing slider label
 
     def to_api(self) -> dict[str, Any]:
         d: dict[str, Any] = {"name": self.name, "value": self.value}
+        if self.label:
+            d["label"] = self.label
         if self.range:
             d["range"] = [_num(self.range[0]), _num(self.range[1])]
         if self.step is not None:
@@ -94,6 +97,7 @@ def find_tweakables(source: str) -> list[Tweakable]:
                 range=rng,
                 step=float(marker["step"]) if "step" in marker else None,
                 options=[str(o) for o in marker["options"]] if "options" in marker else None,
+                label=marker.get("label"),
             )
         )
     return out

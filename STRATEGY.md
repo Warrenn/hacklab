@@ -479,10 +479,10 @@ Steps:
    (deploy gate for this unit is the owner's review; Pi deploy comes with P1).
 
 ## Progress — P3
-- [ ] Step 1 — PWA tests written (red)
-- [ ] Step 2 — screens, manifest, service worker, placeholders
-- [ ] Step 3 — green on the mock backend, iPad viewport, screenshots
-- [ ] Step 4 — README, PR merged, owner click-through
+- [x] Step 1 — PWA tests written (red) — completed 2026-10-30 (P3 agent)
+- [x] Step 2 — screens, manifest, service worker, placeholders — completed 2026-10-30 (P3 agent)
+- [x] Step 3 — green on the mock backend (19 pw tests, 3 browsers), iPad viewport, screenshots in tests/pwa/screenshots — completed 2026-10-30 (P3 agent, PR #4)
+- [ ] Step 4 — README paragraph (on feat/p2-box-profiles), PR #4 merged, owner click-through
 
 ## Parallel Decomposition (P1 ∥ P3)
 

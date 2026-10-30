@@ -1,0 +1,4 @@
+# Pin map (0-21 on a Nano) and the safe ranges the code must respect.
+[pins]
+
+[limits]

@@ -55,6 +55,12 @@ curl -N localhost:8000/api/events        # live job progress (SSE)
 An ask whose text starts with "fail" exercises the failure path. Every route is
 in the API contract in `STRATEGY.md`.
 
+**Try the PWA.** With the mock backend running (`FAKE_BOARD=1 ANTHROPIC_API_KEY=dummy
+uvicorn hacklab.app:app`), open `http://localhost:8000/` on a Mac or an iPad on the
+same network. Unset `ANTHROPIC_API_KEY` to see the Offline screen. Browser tests:
+`pw test tests/pwa` (machine-wide Playwright harness; set `HACKLAB_PYTHON` if the
+venv is not at `.venv`). Screenshots of every screen are in `tests/pwa/screenshots/`.
+
 ## Configuration
 
 Copy `config.example.toml` to `config.toml` (untracked). The Anthropic API key
