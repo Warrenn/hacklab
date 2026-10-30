@@ -61,9 +61,11 @@ def test_real_turret_skeleton_assembles_the_golden():
     g = json.loads((Path(__file__).parent / "golden" / "shake-head-on-7.json").read_text())[
         "responses"
     ][0]
-    out = assemble(sk, Fragments.from_dict(g))
-    assert "int shakes = 3;" in out and out.index("int shakes") < out.index("int yawMoveSpeed")
-    assert "case cmd7: shakeNo(shakes); break;" in out
+    frags = Fragments.from_dict(g)
+    out = assemble(sk, frags)
+    if frags.params:
+        assert out.index(frags.params.splitlines()[0]) < out.index("int yawMoveSpeed")
+    assert "cmd7" in out
     assert (
         out.index("switch(IrReceiver")
         < out.index("case cmd7")

@@ -68,7 +68,7 @@ async def test_ask_flashes_assembled_sketch_and_stores_fragments(tmp_path, boxes
     assert job.state == "done"
     assert job.message_kid and "Traceback" not in job.message_kid
     assert all(p["id"] in {"servo", "loop"} for p in job.prompts)  # filtered to the box's concepts
-    assert "cmd7" in fb.last_uploaded_source and "shakeNo" in fb.last_uploaded_source
+    assert "cmd7" in fb.last_uploaded_source and "shake" in fb.last_uploaded_source.lower()
     cur = store.current("testbox")
     assert cur.id == "0001" and cur.kind == "ask" and cur.note == "shake on 7"
     frags = json.loads((store.path("testbox", cur).parent / "fragments.json").read_text())

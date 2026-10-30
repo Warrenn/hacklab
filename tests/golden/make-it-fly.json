@@ -7,7 +7,7 @@
       "cases": "",
       "loop": "",
       "functions": "",
-      "message_kid": "The turret has no wings or propellers, so it can't fly. It can turn, tilt and fire darts. Want it to spin around instead?",
+      "message_kid": "The box can't fly because it has no wings or propellers, but it can turn, tilt and fire darts. Try asking the AI helper to make it spin around when you press a key, or to nod and shake its head.",
       "changed": "",
       "concepts": []
     }

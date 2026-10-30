@@ -53,7 +53,8 @@ def main() -> int:
         result, usage = genie.ask(req, Fragments())
         print(
             f"{name:22} kind={result.kind:7} in={usage.input_tokens} out={usage.output_tokens} "
-            f"cache_read={usage.cache_read_input_tokens} cache_write={usage.cache_creation_input_tokens}"
+            f"cache_read={usage.cache_read_input_tokens} "
+            f"cache_write={usage.cache_creation_input_tokens}"
         )
         print(f"   kid: {result.message_kid}")
         if result.kind == "sketch" and cli:

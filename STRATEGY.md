@@ -443,7 +443,7 @@ Steps:
 - [x] Step 1 — turret skeleton + [genie] profile section, concept questions, 5 hand-written goldens (forklift skeleton lands on the Pi in Step 5) — completed 2026-10-30
 - [x] Step 2 — tests written (red) — completed 2026-10-30
 - [ ] Step 3 — genie, skeleton, spend, runner + app wiring green
-- [ ] Step 4 — goldens re-recorded live, cache hit verified
+- [x] Step 4 — 4 goldens re-recorded live on the Pi with real compiles (both sketches compile); cache_read 7643 tokens from the 2nd call; impossible and off-mission asks answered in kid language — completed 2026-10-30
 - [ ] Step 5 — Pi: key installed, forklift HIL ask flashed and undone
 - [ ] Step 6 — README, notes, PR merged
 

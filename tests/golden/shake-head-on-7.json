@@ -1,17 +1,17 @@
 {
-  "request": "shake head on 7",
+  "request": "make it shake its head when I press 7",
   "responses": [
     {
       "kind": "sketch",
-      "params": "int shakes = 3; // how many shakes -- ///{\"range\":[1,10],\"label\":\"How many shakes\"}",
-      "cases": "case cmd7: shakeNo(shakes); break;",
+      "params": "",
+      "cases": "case cmd7: shakeHeadNo(3); break;",
       "loop": "",
       "functions": "",
-      "message_kid": "Done! Press 7 and the turret shakes its head.",
-      "changed": "Added a rule: when you press 7, shake the head 3 times.",
+      "message_kid": "Press 7 on the remote and watch the turret turn its head left and right three times, like it is saying no.",
+      "changed": "Added a rule so pressing 7 makes the turret shake its head three times.",
       "concepts": [
         "event",
-        "loop"
+        "servo"
       ]
     }
   ]

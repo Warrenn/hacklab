@@ -1,5 +1,5 @@
 {
-  "request": "fire when 3 pressed",
+  "request": "fire a dart when I press 3",
   "responses": [
     {
       "kind": "sketch",
@@ -7,10 +7,11 @@
       "cases": "case cmd3: fire(); break;",
       "loop": "",
       "functions": "",
-      "message_kid": "Done! Press 3 to fire a dart.",
-      "changed": "Added a rule: when you press 3, fire one dart.",
+      "message_kid": "Press 3 on the remote and watch the turret fire one dart. Press it again to fire the next dart.",
+      "changed": "Added a rule so that pressing 3 fires one dart.",
       "concepts": [
-        "event"
+        "event",
+        "servo"
       ]
     }
   ]

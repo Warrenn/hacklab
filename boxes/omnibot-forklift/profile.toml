@@ -13,3 +13,14 @@ core = "arduino:avr"
 [stock]
 location = "device"         # data/boxes/omnibot-forklift/stock/StockCode/StockCode.ino (+ config.h)
 main = "StockCode"
+
+[genie]
+skeleton = "genie/skeleton.ino"   # on the device: data/boxes/omnibot-forklift/genie/skeleton.ino (stock-derived, not in git)
+notes = "This box has no remote-key switch: put every rule in the loop fragment (it runs after the stock drive code each loop, use millis() for timing) and leave cases empty. Keep it short: one or two rules."
+helpers = [
+  "moveFork = 1 raises the fork, -1 lowers it, 0 stops it; call driveLift() after setting it",
+  "driveLift(): applies moveFork to the lift motor",
+  "driveWheels(speeds, maxSpeed): drive the three wheels from a float[3] of -1..1 speeds",
+  "Serial.println(...): prints to the serial monitor at 115200",
+]
+keys = []
