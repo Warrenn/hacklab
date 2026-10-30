@@ -433,7 +433,7 @@ Steps:
 - [ ] Step 3 — profiles.py, templates.py, app wiring green, mock_data removed
 - [ ] Step 4 — ir-turret behaviours/templates/concepts compile; new-box.sh, check-box.sh, CI
 - [x] Step 5 — Pi: check-box.sh ir-turret (11 compile tests, 3 min) and omnibot-forklift, Forklift HIL flash/undo/flash/reset through the profile-backed app — completed 2026-10-30
-- [ ] Step 6 — README, notes, PR merged
+- [x] Step 6 — README, notes, PR #5 merged — completed 2026-10-30
 
 ## P3 plan — PWA (2026-10-30, pulled forward; approved, agent started on feat/p3-pwa)
 
@@ -482,7 +482,7 @@ Steps:
 - [x] Step 1 — PWA tests written (red) — completed 2026-10-30 (P3 agent)
 - [x] Step 2 — screens, manifest, service worker, placeholders — completed 2026-10-30 (P3 agent)
 - [x] Step 3 — green on the mock backend (19 pw tests, 3 browsers), iPad viewport, screenshots in tests/pwa/screenshots — completed 2026-10-30 (P3 agent, PR #4)
-- [ ] Step 4 — README paragraph (on feat/p2-box-profiles), PR #4 merged, owner click-through
+- [x] Step 4 — README paragraph merged with PR #5, PR #4 merged 2026-10-30; owner click-through pending on the Mac
 
 ## Parallel Decomposition (P1 ∥ P3)
 
