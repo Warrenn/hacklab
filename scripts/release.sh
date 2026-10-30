@@ -20,6 +20,8 @@ work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
 git -C "$root" archive --format=tar HEAD hacklab boxes static provisioning scripts ops pyproject.toml README.md LICENSE \
   | tar -x -C "$work"
 rm -rf "$work/tests" "$work/provisioning/local"
+# test hook for the rollback path: --break ships a build that cannot start
+if [ "${2:-}" = "--break" ]; then printf 'this is not python (\n' >> "$work/hacklab/app.py"; echo "injected a syntax error (rollback test build)"; fi
 # 2. manifest with per-file hashes
 python3 - "$work" "$version" "$(git -C "$root" rev-parse HEAD)" <<'PY'
 import hashlib, json, sys, time

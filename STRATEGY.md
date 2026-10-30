@@ -412,6 +412,14 @@ Decisions:
   `aws sso login`, `device-secrets.sh restore pi3`, `restore-key`,
   `restore-signing-key`, `brew install minisign awscli` (or apt), done --
   nothing in the workflow is tied to this Mac.
+- **Key custody revised again (owner, 2026-10-30, while stepping away):** the
+  passphrase was removed (`minisign -C -W`) so releases can be signed
+  unattended by the maintainer's tooling; the unencrypted key file is the
+  Parameter Store backup. Consequence, recorded deliberately: anyone with
+  read access to `/hacklab/minisign/secret-key` in the Busyweb account can
+  sign a release, so the AWS login (SSO + MFA) is now the single root of
+  trust for both creating jobs and authoring code. Re-adding a passphrase
+  later is `minisign -C -s ~/.minisign/hacklab.key` + `backup-signing-key`.
 - **Downgrade guard:** `hacklab-apply deploy` refuses a signed manifest whose
   version is lower than the running release; `rollback` only steps to the
   previous release already on disk.

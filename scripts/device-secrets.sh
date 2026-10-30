@@ -63,9 +63,11 @@ case $cmd in
     echo "restored ANTHROPIC_API_KEY into $envfile" ;;
   backup-signing-key)
     keyfile=${2:-$HOME/.minisign/hacklab.key}
-    # refuse to back up a key that is not passphrase-protected (kdf field "Sc" = scrypt)
-    python3 -c 'import base64,sys; raw=base64.b64decode(open(sys.argv[1]).read().splitlines()[1]); sys.exit(0 if raw[0:2]==b"Ed" and raw[2:4]==b"Sc" else 1)' "$keyfile" \
-      || { echo "$keyfile is not a passphrase-protected minisign secret key; refusing" >&2; exit 1; }
+    # kdf field "Sc" = passphrase-protected. Owner's decision 2026-10-30: the key is kept WITHOUT a
+    # passphrase so releases can be signed unattended; warn, since AWS access + this backup can sign.
+    if ! python3 -c 'import base64,sys; raw=base64.b64decode(open(sys.argv[1]).read().splitlines()[1]); sys.exit(0 if raw[0:2]==b"Ed" and raw[2:4]==b"Sc" else 1)' "$keyfile"; then
+      echo "warning: $keyfile has no passphrase; anyone who can read /hacklab/minisign/secret-key can sign releases" >&2
+    fi
     # the file is already passphrase-encrypted by minisign; SecureString adds the AWS layer on top
     aws ssm put-parameter --region "$region" --name /hacklab/minisign/secret-key --type SecureString \
       --value "file://$keyfile" --overwrite --tier Standard >/dev/null
