@@ -135,6 +135,7 @@ class FakeBoard:
         self.vanish_after_upload = False
         self.compiles = self.uploads = 0
         self.last_uploaded_source: str | None = None
+        self.last_sketch_files: list[str] = []
         self.max_concurrent = 0
         self._active = 0
         self._lock = threading.Lock()
@@ -146,6 +147,7 @@ class FakeBoard:
         self.compiles += 1
         if self.compile_error:
             return Result(False, self.compile_error)
+        self.last_sketch_files = sorted(p.name for p in Path(sketch_dir).iterdir())
         main = Path(sketch_dir) / f"{Path(sketch_dir).name}.ino"
         if not main.is_file():  # arduino-cli rule, seen on the Pi
             return Result(False, f"Can't open sketch: main file missing from sketch: {main}")

@@ -141,3 +141,16 @@ async def test_no_genie_configured(tmp_path, boxes_dir):
 
 def test_genie_refused_is_an_exception():
     assert issubclass(GenieRefused, Exception)
+
+
+async def test_ask_sketch_dir_carries_the_stock_sketch_siblings(tmp_path, boxes_dir):
+    box_dir = boxes_dir / "testbox" / "stock" / "stock"
+    (box_dir / "config.h").write_text("int maxSpeed = 255;\n")
+    fb, store, runner, client = make(tmp_path, boxes_dir, golden("fire-when-3-pressed"))
+    job = await wait_done(
+        runner, await runner.submit("ask", {"box": "testbox", "text": "fire on 3"})
+    )
+    assert job.state == "done"
+    assert "config.h" in fb.last_sketch_files and "genie.ino" in fb.last_sketch_files
+    cur = store.current("testbox")
+    assert (store.path("testbox", cur) / "config.h").is_file()  # stored version keeps it too
