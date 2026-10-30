@@ -405,11 +405,11 @@ Steps:
    over Tailscale from the Mac.
 
 ## Progress — P5a
-- [ ] Step 1 — Tailscale SSH on the Pi and the Mac, verified over the tailnet
+- [x] Step 1 — Tailscale SSH on the Pi and the Mac, `ssh root@hacklab` verified over the tailnet — completed 2026-10-30 (key expiry still to disable in the admin console)
 - [x] Step 2 — ops agent tests written (red) — completed 2026-10-30
 - [x] Step 3 — ops/agent.py green, ruff clean — completed 2026-10-30
 - [x] Step 4 — iot-device.yaml CloudFormation stack + provision-device.sh + status.sh, lint clean, thing provisioned — completed 2026-10-30
-- [x] Step 5 — agent installed on the Pi (LAN + sudo path), heartbeat in the shadow, survives reboot — completed 2026-10-30. install-ops.sh end-to-end run over Tailscale still pending Step 1
+- [x] Step 5 — install-ops.sh run end-to-end over Tailscale (root@hacklab), heartbeat in the shadow incl. tailscale_ip, survives reboot — completed 2026-10-30
 - [ ] Step 6 — README/P5 notes, hygiene check, PR merged
 
 ## P5 notes — WiFi fallback (comitup), verified 2026-10-27
@@ -490,6 +490,14 @@ Steps:
   --hostname hacklab` leaves the node waiting at a login URL until the owner
   signs in (that first sign-in creates the tailnet). Mac client is a cask
   that needs the Mac admin password (`brew install --cask tailscale-app`).
+- Tailscale verified: Pi node `hacklab` online, `ssh root@hacklab` from the
+  Mac works with no key setup (Tailscale SSH, owner's default policy),
+  `install-ops.sh pi3 root@hacklab` re-ran idempotently and the shadow now
+  carries `tailscale_ip`. Gotcha: do not reboot the Pi while a `tailscale up`
+  login is pending -- the owner's sign-in then registers a node the restarted
+  daemon knows nothing about (stale offline entry, Pi still "Logged out");
+  re-run `tailscale up` for a fresh URL. Node key expiry (6 months) must be
+  disabled in the admin console for a headless device -- OPEN.
 - Gotcha: `printf pw | sudo -S tee FILE` feeds the password to tee, not the
   piped content -- write files with `sudo -S bash -c 'curl ... -o FILE'`.
   Both affected files were rewritten before anything was installed.
