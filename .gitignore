@@ -21,6 +21,7 @@ __pycache__/
 .ruff_cache/
 
 # Local tooling
+.pw-artifacts/
 _to_delete/
 .claude/settings.local.json
 .DS_Store
