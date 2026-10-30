@@ -11,7 +11,7 @@ local_dir="$root/provisioning/local/$device"
 [ -f "$local_dir/cert.pem" ] || { echo "run scripts/provision-device.sh $device first" >&2; exit 1; }
 
 tmp=$(ssh "$target" 'mktemp -d')
-scp -q "$root/ops/agent.py" "$root/ops/requirements.txt" "$root/provisioning/install-ops-local.sh" \
+scp -q "$root"/ops/*.py "$root/ops/requirements.txt" "$root/provisioning/install-ops-local.sh" \
     "$local_dir/cert.pem" "$local_dir/private.key" "$local_dir/AmazonRootCA1.pem" "$target:$tmp/"
 # shellcheck disable=SC2029  # the env assignments are meant to expand here
 ssh "$target" "sudo=; [ \"\$(id -u)\" = 0 ] || sudo=sudo; \
