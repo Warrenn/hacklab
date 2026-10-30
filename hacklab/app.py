@@ -4,16 +4,25 @@ from __future__ import annotations
 
 import asyncio
 import json
+import tempfile
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from hacklab import mock_data
+from hacklab.board import ArduinoCli, Board
 from hacklab.config import Config, load_config
-from hacklab.jobs import FakeJobRunner, JobRunner
+from hacklab.flash import Flasher
+from hacklab.jobs import FakeJobRunner, JobRunner, RealJobRunner
+from hacklab.store import SketchStore
+
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+PLACEHOLDER = "<!doctype html><title>Hack Lab</title><p>Hack Lab is starting up. The app screen arrives with P3.</p>"
 
 STOCK = "stock"
 
@@ -44,11 +53,28 @@ def format_sse(event: dict[str, Any]) -> str:
     return f"data: {json.dumps(event)}\n\n"
 
 
-def create_app(config: Config | None = None, runner: JobRunner | None = None) -> FastAPI:
+def make_runner(
+    cfg: Config, board: Board | None = None
+) -> tuple[JobRunner, Flasher | None, SketchStore | None]:
+    """FAKE_BOARD=1 -> FakeJobRunner (mock backend). Otherwise the real runner
+    on the given board, or arduino-cli from the config/toolchain prefix."""
+    if cfg.fake_board and board is None:
+        return FakeJobRunner(), None, None
+    board = board or ArduinoCli(cfg.arduino_cli, cfg.arduino_config)
+    store = SketchStore(cfg.data_dir)
+    flasher = Flasher(board, cfg.data_dir)
+    return RealJobRunner(flasher, store, cfg.data_dir / "work"), flasher, store
+
+
+def create_app(
+    config: Config | None = None, runner: JobRunner | None = None, board: Board | None = None
+) -> FastAPI:
     cfg = config or load_config()
-    runner = runner or FakeJobRunner()
+    flasher = store = None
+    if runner is None:
+        runner, flasher, store = make_runner(cfg, board)
     app = FastAPI(title="Hack Lab")
-    state: dict[str, Any] = {"box": None, "versions": {}}  # versions: box_id -> [version, ...]
+    state: dict[str, Any] = {"box": None, "versions": {}}  # mock mode only: box_id -> [version]
 
     def box_or_409() -> str:
         if not state["box"]:
@@ -56,15 +82,26 @@ def create_app(config: Config | None = None, runner: JobRunner | None = None) ->
         return state["box"]
 
     def versions() -> list[str]:
-        return state["versions"].setdefault(box_or_409(), [STOCK])
+        box = box_or_409()
+        if store:
+            return [v.id for v in store.versions(box)]
+        return state["versions"].setdefault(box, [STOCK])
+
+    def ensure_baseline(box: str) -> None:
+        # P2 replaces the mock stock sketch with the box profile's stock/ dir.
+        if store and store.baseline(box) is None:
+            d = Path(tempfile.mkdtemp(prefix="stock-"))
+            (d / f"{box.replace('-', '_')}.ino").write_text(mock_data.STOCK_SKETCH)
+            store.ensure_baseline(box, d)
 
     async def start(kind: str, payload: dict[str, Any]) -> dict[str, str]:
         box = box_or_409()
-        vs = versions()
+        payload = {**payload, "box": box}
+        vs = None if store else versions()
 
         def on_done(job):
-            # Never record a version for a box other than the one the job was for.
-            if state["box"] != box:
+            # Mock mode keeps versions in memory; never record for another box.
+            if vs is None or state["box"] != box:
                 return
             if kind == "undo":
                 vs.pop()
@@ -78,12 +115,12 @@ def create_app(config: Config | None = None, runner: JobRunner | None = None) ->
     @app.get("/api/status")
     def status():
         box = state["box"]
-        vs = state["versions"].get(box, []) if box else []
+        vs = versions() if box else []
         return {
             "box": box,
             "online": True,
             "ai_available": cfg.api_key is not None,
-            "board_connected": cfg.fake_board,  # P1: real port detection
+            "board_connected": flasher.detect() is not None if flasher else cfg.fake_board,
             "current_version": vs[-1] if vs else None,
             "versions_count": len(vs),
         }
@@ -97,6 +134,7 @@ def create_app(config: Config | None = None, runner: JobRunner | None = None) ->
         if body.id not in {b["id"] for b in mock_data.BOXES}:
             raise HTTPException(404, "No such box.")
         state["box"] = body.id
+        ensure_baseline(body.id)
         state["versions"].setdefault(body.id, [STOCK])
         return {"box": body.id}
 
@@ -149,6 +187,9 @@ def create_app(config: Config | None = None, runner: JobRunner | None = None) ->
     @app.get("/api/sketch/current")
     def sketch_current():
         box = box_or_409()
+        if store:
+            cur = store.current(box)
+            return {"source": store.main_source(box, cur), "version": cur.id, "box": box}
         return {"source": mock_data.STOCK_SKETCH, "version": versions()[-1], "box": box}
 
     @app.get("/api/concepts/{concept_id}")
@@ -171,6 +212,15 @@ def create_app(config: Config | None = None, runner: JobRunner | None = None) ->
                 runner.unsubscribe(q)
 
         return StreamingResponse(stream(), media_type="text/event-stream")
+
+    # The PWA (P3): static/index.html at /, assets under /static.
+    @app.get("/", response_class=HTMLResponse)
+    def index():
+        page = STATIC_DIR / "index.html"
+        return page.read_text() if page.is_file() else PLACEHOLDER
+
+    if STATIC_DIR.is_dir():
+        app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     return app
 

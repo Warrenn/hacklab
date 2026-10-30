@@ -31,7 +31,7 @@ WiFi, open `http://<mac-ip>:8000`.
 Inside the container the Pi toolchain is on `PATH`:
 
 ```sh
-docker compose exec app arduino-cli --config-file /opt/turret-lab/arduino/arduino-cli.yaml board list
+docker compose exec app arduino-cli --config-file /opt/hacklab/arduino/arduino-cli.yaml board list
 docker compose exec app pytest -q
 ```
 

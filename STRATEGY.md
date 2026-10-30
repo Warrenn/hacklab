@@ -336,6 +336,189 @@ Deferred (recorded, not scheduled): physical reset button; points/levels;
 block-based editor; curated external links; conversational correction;
 touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 
+## Sequencing change 2026-10-30: P3 runs in parallel with P1
+
+Owner's call after asking whether the UI was being neglected: the PWA (P3)
+is pulled forward and built against the P0 mock backend while P1 proceeds.
+The two are file-disjoint (`static/` vs `hacklab/` + `tests/`); shared files
+are STRATEGY.md, README.md and the one-line static mount in `hacklab/app.py`,
+owned by the P1 track. Real flashing plugs in under the same API when P1/P2
+land. P2 (profiles) follows P1 as before.
+
+## P3 plan — PWA (2026-10-30, pulled forward; awaiting approval)
+
+Goal: the kid-facing app, built from the six screen specs in `docs/screens/`
+against the P0 mock backend, so the owner can click through the whole loop on
+the Mac before real flashing exists. Single-file `static/index.html` (HTML +
+CSS + JS, no build step, no framework, no external links), served by FastAPI
+at `/`; installable PWA (manifest + minimal service worker for the app shell
+only; API calls are never cached). iPad Safari is the target.
+
+Decisions:
+- One file, one screen router keyed on app state (`picker`, `home`, `offline`,
+  `working`, `done`, `tweak`); state comes only from the API contract:
+  `/api/status`, `/api/boxes`, `/api/behaviours`, `/api/jobs/{id}`, SSE
+  `/api/events`. The PWA invents no copy of its own: stage text and
+  kid messages arrive from the server (`message_kid`); screen chrome copy is
+  copied verbatim from the `.dc.html` specs.
+- Offline screen is chosen by `ai_available=false`; Box Picker by
+  `box=null`; Working by a non-terminal job; Done by a `done` job.
+- Tweak sliders are bound to `tweakables[]` from `/api/behaviours` (name,
+  value, range, step) and post to `/api/flash/behaviour`; the `options` form
+  seen on the Forklift's config.h renders as a toggle. Live code panel shows
+  `/api/sketch/current` with the tweakable numbers highlighted.
+- Mic = iPad keyboard dictation into the textarea (design decision); no Web
+  Speech API.
+- Hygiene: no emoji, "the AI helper", "Level 1/2/3", no external links,
+  no tracking. Box pictures come from `/static/boxes/<id>.png` (placeholder
+  SVGs for now).
+- Tests: Playwright through the machine-wide `pw` harness (browser-testing
+  skill) against `uvicorn hacklab.app:app` with the mock runner: picker ->
+  home -> ask -> working stages via SSE -> done -> undo; offline screen when
+  `ANTHROPIC_API_KEY` is unset; tweak slider clamps to range; iPad viewport.
+  No project-local Playwright install.
+- Parallelism: see Parallel Decomposition below; this unit owns `static/*`
+  and `tests/pwa/*` only.
+
+Steps:
+1. Tests red (pw harness): route-by-state, ask flow with SSE, offline, tweak.
+2. `static/index.html` screens with spec copy; `manifest.webmanifest`,
+   `sw.js`, placeholder box pictures.
+3. Green on the mock backend; iPad viewport check; screenshots for review.
+4. README "Try the PWA" section; PR into main; owner click-through on the Mac
+   (deploy gate for this unit is the owner's review; Pi deploy comes with P1).
+
+## Progress — P3
+- [ ] Step 1 — PWA tests written (red)
+- [ ] Step 2 — screens, manifest, service worker, placeholders
+- [ ] Step 3 — green on the mock backend, iPad viewport, screenshots
+- [ ] Step 4 — README, PR merged, owner click-through
+
+## Parallel Decomposition (P1 ∥ P3)
+
+### Work Units
+
+| Unit | Agent | Files Owned | Shared Files Owned | Depends On |
+|------|-------|-------------|-------------------|------------|
+| A — P1 flash core | main session | `hacklab/store.py`, `hacklab/board.py`, `hacklab/flash.py`, `hacklab/jobs.py`, `hacklab/app.py`, `tests/test_store.py`, `tests/test_board.py`, `tests/test_flash.py`, `tests/test_real_runner.py`, `tests/test_api.py`, `scripts/hil-flash.sh`, `provisioning/*`, `Dockerfile.dev` | `STRATEGY.md`, `README.md`, `hacklab/app.py` (adds the `/static` mount + `/` route) | — |
+| B — P3 PWA | fork agent, worktree `feat/p3-pwa` | `static/*`, `tests/pwa/*` | — | assumes `/static` is mounted at `/static` and `/` serves `static/index.html` (Unit A adds it; until merged the agent serves via its own uvicorn `--app-dir` shim in tests only) |
+
+### Shared File Registry
+
+| File | Owner | Other units assume |
+|------|-------|--------------------|
+| `hacklab/app.py` | Unit A | Static mount exists after merge |
+| `STRATEGY.md` | Unit A (main session) | Unit B reports progress in its PR body; main session ticks P3 boxes |
+| `README.md` | Unit A | Unit B hands a "Try the PWA" paragraph in its PR body; main session pastes it |
+| `pyproject.toml` | Unit A | Unit B adds no dependencies |
+
+### Merge Order
+
+1. Unit A (P1) merges first — it owns the shared files.
+2. Unit B (P3) rebases onto main, then merges.
+3. Serial final pass (main session): README paragraph, STRATEGY P3 ticks, run the full suite + pw tests on main.
+
+## P1 plan — Flash core (2026-10-30, approved)
+
+Goal: compile + flash a sketch folder to the attached Nano-class box from the
+Pi, with port detection, bootloader auto-detect (remembered per box),
+re-enumeration check and a persistent per-box version store with Undo and
+Reset-to-baseline. Real runner behind the existing `JobRunner` protocol,
+selected by `FAKE_BOARD`. Unit tests on `FakeBoard`; one HIL smoke script run
+on the Pi with the **Omnibot Forklift** (the turret is not at hand; owner's
+choice 2026-10-30: hardware on the Pi, auto-detect bootloader, persist
+versions now). Verified in the Hack Pack IDE 2026-10-30: the Forklift is a
+classic `StockCode.ino` + `config.h` sketch (not PlatformIO), Serial 115200,
+uses pins 14-19 as digital inputs = A0-A5 on an ATmega328 Nano -> Nano-class,
+same flash path as the turret. Hacks: AdvancedSwagDrive, Gyro. Its stock
+sketch is the HIL payload (flashing it restores normal behaviour). Unlike the
+turret's, the Forklift stock code carries NO license header, so it stays
+user-supplied and untracked (`_to_delete/omnibot-stock/`, git-ignored) until
+CrunchLabs' terms are checked. Its `config.h` uses the same `///{...}` Level 2
+markers (`{"min":0,"max":255}`, `{"options":["true","false"]}`) -- note the
+`options` form for P2's Tweak parser.
+
+Decisions:
+- `arduino-cli` is driven as a subprocess with `--json`; no Python Arduino
+  library. One wrapper class, one command per method (board list, compile,
+  upload). Toolchain lives under `/opt/hacklab` (install-toolchain.sh default
+  PREFIX fixed from the stale `/opt/turret-lab`; Dockerfile.dev follows).
+- A sketch is a directory (multi-file boxes), never a lone string; the API's
+  `source` string becomes `<box>.ino` in a temp sketch dir.
+- Board detection: `board list --json`, take the first serial port whose
+  matching boards include `arduino:avr:nano` or whose VID:PID is a known
+  Nano clone (CH340 1a86:7523, FTDI 0403:6001, 2341:0043); none -> job fails
+  with the "is it plugged in?" kid message, no state change.
+- Bootloader: upload with `cpu=atmega328` (new) first; on failure retry with
+  `cpu=atmega328old`; the working value is cached in
+  `data/<box>/board.json` and tried first next time. Verified on the Omnibot
+  Forklift 2026-10-30: CH340 clone (1a86:7523, no USB serial number,
+  `matching_boards` empty), NEW bootloader worked first try: compile 7838 B
+  text / 491 B data, `upload --verify` 10.6 s, sketch banner `OMNIB V0.9.1`
+  on serial at 115200 afterwards.
+- Verification after upload: a CH340 is a separate chip, so the port never
+  disappears on MCU reset (present 0.13 s after upload). "Re-enumeration"
+  therefore = `upload --verify` succeeded AND the same port address is still
+  listed within 10 s; a native-USB board (none on hand) would re-enumerate
+  and is matched by serial number when present, else address. Failure ->
+  "the box did not wake up" message and Reset is offered.
+- Version store `data/<box>/versions/<NNNN>/` (sketch dir copy +
+  `meta.json`: created, kind, parent, sha256, note). `baseline` = version
+  0000, written on first use from the box's stock sketch; `current` symlink.
+  Undo = flash previous, pop; Reset = flash 0000, drop everything after it.
+  App state moves from the in-memory `versions` dict to the store.
+- Compile and upload run in a worker thread (`asyncio.to_thread`) so SSE keeps
+  streaming; one job at a time (global lock -- `ponytail:` one box, one USB).
+- The runner emits the same stages/messages as `FakeJobRunner`; `log_ref`
+  points at `data/<box>/logs/<job>.log` with full compiler/avrdude output.
+- Parallelism: store (`store.py`) and board/flasher (`board.py`,
+  `flash.py`) are file-disjoint but ~1 h each; serialized, merge overhead
+  exceeds the saving. Runner + app wiring depend on both.
+
+Verified live 2026-10-30: `arduino-cli` 1.5 flags `board list --json
+--discovery-timeout`, `compile --fqbn --output-dir --json`, `upload --fqbn
+--port --input-dir --verify --json`, `--board-options`. Captured from the Pi's own
+install (arduino-cli 1.5.1, arduino:avr 1.8.8): `board details -b
+arduino:avr:nano --json` -> `config_options[cpu].values` = `atmega328`
+(ATmega328P), `atmega328old` (Old Bootloader), `atmega168`; so the fqbn is
+`arduino:avr:nano:cpu=atmega328` / `...:cpu=atmega328old`. `board list --json`
+-> `{"detected_ports": [...]}` (each: `port.address`, `port.protocol`,
+`port.properties.{vid,pid,serialNumber}`, `matching_boards[].fqbn`). `compile
+--json` -> keys `success`, `compiler_out`, `compiler_err`,
+`builder_result.{build_path, executable_sections_size[{name,size,max_size}],
+used_libraries}`; `--output-dir` yields `<sketch>.ino.hex` (+ .elf, .eep,
+.with_bootloader.hex). Smoke sketch: text 1868/30720, data 328/2048.
+
+Steps:
+1. Toolchain on the Pi (`install-toolchain.sh` PREFIX=/opt/hacklab from a
+   clone at `/opt/hacklab/src`); record arduino-cli JSON shapes + Nano
+   options; fix the stale `/opt/turret-lab` defaults in install-toolchain.sh
+   and Dockerfile.dev. (no app code)
+2. Tests red: `tests/test_store.py` (save/current/undo/reset persist across
+   instances, baseline pinned, multi-file dirs), `tests/test_board.py`
+   (`ArduinoCli` parsing of recorded JSON via an injected runner; `FakeBoard`
+   scripted failures), `tests/test_flash.py` (port missing, bootloader
+   fallback + cache, re-enumeration timeout, happy path),
+   `tests/test_real_runner.py` (stages, failure -> log_ref, undo/reset
+   payloads), app tests for `FAKE_BOARD=0` wiring with `FakeBoard`.
+3. `hacklab/store.py`, `hacklab/board.py` (ArduinoCli, FakeBoard, Port),
+   `hacklab/flash.py` (Flasher), `RealJobRunner` in `jobs.py`; green, ruff.
+4. App wiring: runner chosen by `cfg.fake_board`; `board_connected` from
+   detection; versions from the store; `log_ref` served read-only to the
+   maintainer (not the kid). Green.
+5. HIL on the Pi: `scripts/hil-flash.sh` (compile + flash the stock-shaped
+   mock sketch, undo, reset; prints bootloader used and re-enumeration time)
+   run with the turret attached; record results. This is the deploy gate.
+6. README (flash core, HIL), P1 notes, hygiene, PR, merge.
+
+## Progress — P1
+- [x] Step 1 — toolchain on the Pi (/opt/hacklab), JSON shapes + Forklift bootloader recorded, stale prefix fixed — completed 2026-10-30
+- [x] Step 2 — tests written (red) — completed 2026-10-30
+- [x] Step 3 — store, board, flash, RealJobRunner green — completed 2026-10-30
+- [x] Step 4 — app wiring behind FAKE_BOARD green (static mount + / placeholder included for P3) — completed 2026-10-30
+- [ ] Step 5 — HIL smoke on the Pi with the turret recorded
+- [ ] Step 6 — README/notes, PR merged
+
 ## P5a — Remote access + device provisioning (plan, 2026-10-30)
 
 Pulled forward from P5 on request: the Pi must be reachable and updatable
