@@ -28,11 +28,11 @@ keys = []
 [copy]
 ask_placeholder = "Make it play a minor scale instead of a major one"
 [[copy.suggestions]]
-label = "Play a minor scale"
+title = "Play a minor scale"
 ask = "Change the default scale to Minor so it sounds a bit spooky"
 [[copy.suggestions]]
-label = "Start one octave higher"
+title = "Start one octave higher"
 ask = "Make the default root note one octave higher"
 [[copy.suggestions]]
-label = "Square wave by default"
+title = "Square wave by default"
 ask = "Start up on the Square wave instead of Triangle"

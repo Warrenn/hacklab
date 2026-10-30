@@ -58,7 +58,8 @@ in the API contract in `STRATEGY.md`.
 **Try the PWA.** With the mock backend running (`FAKE_BOARD=1 ANTHROPIC_API_KEY=dummy
 uvicorn hacklab.app:app`), open `http://localhost:8000/` on a Mac or an iPad on the
 same network. Unset `ANTHROPIC_API_KEY` to see the Offline screen. Browser tests:
-`pw test tests/pwa` (machine-wide Playwright harness; set `HACKLAB_PYTHON` if the
+`pw test "hacklab/tests/pwa/"` (machine-wide Playwright harness; the path filter keeps
+agent worktrees under `.claude/worktrees` out of the run; set `HACKLAB_PYTHON` if the
 venv is not at `.venv`). Screenshots of every screen are in `tests/pwa/screenshots/`.
 
 ## Configuration
@@ -121,7 +122,7 @@ after two hours. The switch does not exist on the LAN side (gated on the
 source address, not a password). Remote asks and flashes are logged with
 `source=tailscale`; flips go to `data/helping.jsonl`.
 
-Browser tests: `pw test tests/pwa` runs the mock-backend UI suite and the
+Browser tests: `pw test "hacklab/tests/pwa/"` runs the mock-backend UI suite and the
 full-stack suite (real runner on the emulated board, recorded AI answers) on
 Chromium, Firefox and WebKit.
 
@@ -180,10 +181,31 @@ allows; otherwise the stock code is copied to `data/boxes/<id>/stock/` on the
 device). Tweakable numbers use the Hack Pack IDE's trailing-comment markers,
 e.g. `int shakes = 3; ///{"range":[1,10],"label":"How many shakes"}`.
 
-- `scripts/new-box.sh <id> "<Name>"` scaffolds a box from `boxes/_template`.
+- `scripts/import-box.sh <ide-slug> [--fqbn ...] [--name "..."]` (P6) turns a
+  box in the Hack Pack IDE into a profile in one command: Playwright (the
+  machine-wide `pw` harness, nothing installed in the repo) dumps every file of
+  `ide.crunchlabs.com/editor/<slug>` to the git-ignored
+  `provisioning/local/ide/<slug>.json`; `hacklab.importer` then commits a
+  sketch verbatim under `boxes/<id>/stock/<Dir>/` when its main `.ino` carries
+  an MIT header, and stages anything else under `provisioning/local/boxes/<id>/`
+  for the device only (`location = "device"`). It scaffolds `profile.toml`,
+  `pins.toml` (pins and `///{}` limits found in the sketch), `hardware.md`,
+  `concepts.toml` and `genie/skeleton.ino` with the four `//@@` markers; re-runs
+  refresh the stock and keep hand-edited files. Then edit the kid copy, add
+  `[copy]` suggestions and any library to `provisioning/libraries.txt`, and run
+  `check-box.sh`.
+- `scripts/new-box.sh <id> "<Name>"` scaffolds an empty box from `boxes/_template`.
 - `scripts/check-box.sh <id>` validates the profile and kid copy, then compiles
   every behaviour, template and stock sketch (local toolchain, the Pi, or the
   dev container).
+- Boards: `profile.toml [board].fqbn` must be a key of
+  `provisioning/boards.toml` (the board registry: core to install, USB ids to
+  detect by, bootloader/cpu variants to try, whether the port re-enumerates
+  after upload). Detection, flashing and the toolchain installer read it, so a
+  box on a new board is a registry entry plus a profile, not a code change.
+  `arduino:avr:nano` is verified on real boards; `esp32:esp32:esp32` is a
+  best-effort entry awaiting a board. Deploys run the release's
+  `install-toolchain.sh`, so new cores and libraries arrive with the release.
 
 ## Hardware-in-the-loop
 

@@ -357,7 +357,7 @@ HTTPS (see decision above); Android tablet running the CrunchLabs IDE directly
 (Chrome Android 148+ has Web Serial) if the hardware situation ever changes;
 touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 
-## P6 plan — Every Hack Pack box, zero maintenance on arrival (draft 2026-10-30, awaiting approval)
+## P6 plan — Every Hack Pack box, zero maintenance on arrival (approved 2026-10-30)
 
 Replaces the single Laser Synthesizer profile with the general pipeline
 (roadmap item above); the Laser Synth is its first proof once its hardware
@@ -403,12 +403,37 @@ per-box copy; 4 Laser Synth through the pipeline (hardware check on the
 unit first); 5 release + deploy via P5c; 6 docs, PR.
 
 ## Progress — P6
-- [ ] Step 1 — board registry, cores in the toolchain
-- [ ] Step 2 — import-box importer with fixture tests
-- [ ] Step 3 — skeleton generator (unit B, in progress); per-box copy in profiles and PWA done 2026-10-30 (Forklift suggestions are plain asks; Try it follows the last trick)
-- [ ] Step 4 — Laser Synthesizer profile via the pipeline
-- [ ] Step 5 — shipped as a release to the Pi
+- [x] Step 1 — board registry, cores in the toolchain (PR #12) — completed 2026-10-30
+- [x] Step 2 — import-box importer with fixture tests (PR #13) — completed 2026-10-30
+- [x] Step 3 — skeleton generator (in the importer); per-box copy in profiles and PWA (Forklift suggestions are plain asks; Try it follows the last trick); board spec wired through runner/status; profile fqbn validated against the registry — completed 2026-10-30
+- [x] Step 4 — Laser Synthesizer profile via the pipeline (MIT stock, Mozzi@2.0.4, compiles on the Pi incl. the genie skeleton); turret gained roulette.ino — completed 2026-10-30
+- [ ] Step 5 — shipped as release 0.3.0 to the Pi
 - [ ] Step 6 — README, notes, PR merged
+
+## P6 notes (2026-10-30)
+
+- Pipeline proven end to end on `synthesizer`: `import-box.sh synthesizer --name
+  "Laser Synthesizer"` wrote the MIT stock (StockCode + 4 headers), profile,
+  pins/limits (33 `///{}` limits from config.h), skeleton with the four markers.
+  Hand-edited after: pins (the importer only scans the main `.ino`, the synth's
+  `#define`s live in `system_config.h`), kid hardware notes, 4 concepts, genie
+  helpers, `[copy]`. Compiles on the Pi: StockCode and the skeleton (49% flash,
+  71% RAM; Mozzi leaves little room, fragments must stay small).
+- Re-running the importer on `ir-turret` refreshed the two stock sketches
+  (whitespace only) and added the MIT `roulette.ino` as third stock sketch.
+- Mozzi@2.0.4 (latest in the Library Manager index on the Pi, 2026-10-30) is
+  whitelisted; `lib install` pulls its FixMath dependency itself.
+- `hacklab-apply deploy` now runs the release's `install-toolchain.sh`
+  (idempotent: cores from the registry, libraries from the whitelist, venv pip)
+  before flipping `current`, so a box with a new library or core ships as a
+  release with no login. Falls back to `pip install -e` for old bundles.
+- Schema gotchas met: `pins.toml` values are pin numbers 0-21 (Nano analog pins
+  by number: A0=14 ... A7=21); `[copy.suggestions]` use `title`/`ask`.
+- Hardware check of the synth on the unit is still owed (box not on hand);
+  the profile's safe ranges come from CrunchLabs' own `config.h` comments.
+- Still open from the plan: ESP32 registry entry unverified until a board
+  arrives; `pw test` needs the `"hacklab/tests/pwa/"` filter while agent
+  worktrees exist.
 
 ## P5c plan — Signed updates via IoT Jobs (2026-10-30, approved: option B, signing key outside AWS)
 
