@@ -7,9 +7,11 @@
 # Usage: scripts/device-secrets.sh backup <device>
 #        scripts/device-secrets.sh restore <device> [dir]   (default provisioning/local/<device>)
 #        scripts/device-secrets.sh list <device>
+#        scripts/device-secrets.sh backup-key [env-file]     ANTHROPIC_API_KEY from .env -> /hacklab/anthropic/api-key
+#        scripts/device-secrets.sh restore-key [env-file]    parameter -> ANTHROPIC_API_KEY line in .env
 set -euo pipefail
-cmd=${1:?usage: device-secrets.sh backup|restore|list <device> [dir]}
-device=${2:?usage: device-secrets.sh backup|restore|list <device> [dir]}
+cmd=${1:?usage: device-secrets.sh backup|restore|list <device> [dir] | backup-key|restore-key [env-file]}
+case $cmd in backup-key|restore-key) device=${2:-};; *) device=${2:?usage: device-secrets.sh backup|restore|list <device> [dir]};; esac
 region=${HACKLAB_AWS_REGION:-eu-west-1}
 export AWS_PROFILE=${AWS_PROFILE:-busyweb-sso}
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -42,5 +44,20 @@ case $cmd in
   list)
     aws ssm get-parameters-by-path --region "$region" --path "$prefix" \
       --query 'Parameters[].[Name,Type,LastModifiedDate]' --output table ;;
+  backup-key)
+    envfile=${2:-$root/.env}
+    key=$(grep -E '^ANTHROPIC_API_KEY=' "$envfile" | head -1 | cut -d= -f2-)
+    [ -n "$key" ] || { echo "no ANTHROPIC_API_KEY in $envfile" >&2; exit 1; }
+    aws ssm put-parameter --region "$region" --name /hacklab/anthropic/api-key --type SecureString \
+      --value "$key" --overwrite --tier Standard >/dev/null
+    echo "backed up ANTHROPIC_API_KEY -> /hacklab/anthropic/api-key" ;;
+  restore-key)
+    envfile=${2:-$root/.env}
+    key=$(aws ssm get-parameter --region "$region" --name /hacklab/anthropic/api-key --with-decryption --output json \
+      | python3 -c 'import json,sys; sys.stdout.write(json.load(sys.stdin)["Parameter"]["Value"])')
+    touch "$envfile"; chmod 600 "$envfile"
+    grep -vE '^ANTHROPIC_API_KEY=' "$envfile" > "$envfile.tmp" || true
+    printf 'ANTHROPIC_API_KEY=%s\n' "$key" >> "$envfile.tmp" && mv "$envfile.tmp" "$envfile"
+    echo "restored ANTHROPIC_API_KEY into $envfile" ;;
   *) echo "unknown command $cmd" >&2; exit 1 ;;
 esac
