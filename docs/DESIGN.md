@@ -2,7 +2,7 @@
 
 As of 2026-10-28. Maintainer: the uncle. Living doc; source of truth for the *why*. STRATEGY.md is the *what* and *in what order*.
 
-Living design doc for Hack Lab (repo turret-lab): the principles we commit to, the questions we are working through, and the decisions they produce. Companion to STRATEGY.md in the repo.
+Living design doc for Hack Lab (repo hacklab): the principles we commit to, the questions we are working through, and the decisions they produce. Companion to STRATEGY.md in the repo.
 
 ## Draft principles
 
@@ -25,7 +25,7 @@ As stated on 2026-10-28, before any challenge. Each will be sharpened or split i
 
 ## Robustness and recovery
 
-The rule that falls out of every scenario below: **there are no irreversible states, and "back to a known-good turret" must always be one action away, with no AI and no internet.**
+The rule that falls out of every scenario below: **there are no irreversible states, and "back to a known-good box" must always be one action away, with no AI and no internet.**
 
 | Scenario | Must work? | Required behaviour |
 | --- | --- | --- |
@@ -105,7 +105,7 @@ The Pi cannot tell boxes apart over USB (same chip), so the app needs a "which b
 | 2026-10-28 | No status page for mom; consent for logging already given; all content child-friendly; some videos may need her approval. |  |
 | 2026-10-28 | The lab already has a name; the name is for the lab, not one box. |  |
 | 2026-10-28 | Curiosity prompts stay in the MVP, but open in-app explanations only. No external links of any kind. | A YouTube link is a side door to content he is not supposed to watch. |
-| 2026-10-28 | Product name: Hack Lab (repo stays turret-lab). The nephew's name never appears in the public repo. The AI is called "the AI helper" with a visible here/away status. | Box-agnostic; privacy; a mental model that matches reality (sometimes away, he and the box always there). |
+| 2026-10-28 | Product name: Hack Lab (repo is hacklab). The nephew's name never appears in the public repo. The AI is called "the AI helper" with a visible here/away status. | Box-agnostic; privacy; a mental model that matches reality (sometimes away, he and the box always there). |
 | 2026-10-28 | Borrow the Hack Pack IDE's levels: Level 1 AI does it (default), Level 2 change the numbers, Level 3 edit all the code (always available, never default). Adopt their ///{"range":\[a,b\]} trailing-comment markers for tweakables. | Vocabulary he already knows from the kit; stock sketches become Level 2 templates with no editing. |
 | 2026-10-28 | Stock sketches are committed: CrunchLabs code is MIT-licensed (verified in the IDE for IR Turret and Laser Synthesizer). | Removes the user-supplied-at-install step; official hacks seed the behaviour library. |
 | 2026-10-28 | Docker is dev-only (arm64 Debian on the Mac, FAKE\_BOARD). No Docker on the Pi. Deploys are signed release tarballs applied by the ops agent via IoT Jobs, with health check and auto-rollback. A set of maintainer scripts covers new box, check, release, deploy, rollback, status, logs. | Same toolchain on Mac and Pi; nothing hand-edited on the device; new boxes are content, not code. |

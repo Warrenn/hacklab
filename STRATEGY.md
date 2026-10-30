@@ -1,4 +1,4 @@
-# STRATEGY.md — Hack Lab (repo: turret-lab)
+# STRATEGY.md — Hack Lab (repo: hacklab)
 
 Kid-facing "program your robot" system for CrunchLabs Hack Pack boxes. An
 11-year-old with only an iPad asks in plain language for a behaviour ("make it
@@ -7,7 +7,7 @@ that into code, compiles it, flashes the box over USB, and reports back in kid
 language. When the AI is unavailable he can still pick, tweak, and flash
 behaviours himself. Public GitHub repository.
 
-Design rationale (the *why*) lives in the Claude doc "Turret Lab Design
+Design rationale (the *why*) lives in the Claude doc "Hack Lab Design
 Principles" (2026-10-28). This file is the *what* and *in what order*.
 
 Scope change 2026-10-28: not only the IR Turret. Any Hack Pack box. The kid
@@ -39,7 +39,7 @@ currently owns the **IR Turret** and the **Laser Synthesizer** ("laser DJ").
 1. **End user is a minor (11).** No Claude app / consumer account. Custom app
    on the Anthropic API with content filtering, logging (consent obtained),
    age-appropriate persona, hard monthly spend cap.
-2. **iPad is his only device.** PWA at `http://turret.local`, no login, no
+2. **iPad is his only device.** PWA at `http://hacklab.local`, no login, no
    installs. Dictation via the iPad keyboard mic (v1).
 3. **Pi is headless at his home**, different city. Everything auto-starts and
    survives power cuts. Remote admin = AWS IoT Core (state, logs, updates) +
@@ -54,7 +54,7 @@ currently owns the **IR Turret** and the **Laser Synthesizer** ("laser DJ").
 ## Hardware on hand
 
 - Raspberry Pi 3 Model B v1.2, Raspberry Pi OS (64-bit) re-imaged 2026-10-27,
-  hostname `turret`, user `admin`, keyboard us, SSH enabled.
+  hostname `hacklab`, user `admin`, keyboard us, SSH enabled.
 - Official 2.5 A micro-USB supply ordered 2026-10-27. Earlier supplies gave
   `vcgencmd get_throttled` = 0x50005 and reboot loops once the WiFi radio came
   up. **Nothing else gets debugged until get_throttled reads 0x0.**
@@ -169,25 +169,25 @@ Mac (M4, arm64):
 
 Pi layout:
 ```
-/opt/turret-lab/
+/opt/hacklab/
   releases/<version>/   immutable deployed versions
   current -> releases/… symlink the services run from
   venv/                 from install-toolchain.sh
   data/                 writable partition: sketch versions, logs, config.toml
-systemd: turret-app.service, turret-ops.service (separate venv; app deploys
+systemd: hacklab-app.service, hacklab-ops.service (separate venv; app deploys
 never restart it)
 ```
 First install: clone + `provisioning/install.sh` (idempotent) on a visit or
 over Tailscale. After that, no logins to deploy.
 
 Release → signed job → agent:
-1. CI on tag: `turret-lab-<version>.tar.gz` (app, profiles, PWA,
+1. CI on tag: `hacklab-<version>.tar.gz` (app, profiles, PWA,
    `manifest.json` with sha256 per file), signed with **minisign** (private key
    in GitHub secrets, public key baked onto the Pi), uploaded to private S3.
 2. Maintainer creates an IoT Job: `{op: deploy, version, url (presigned S3),
    sig}`.
 3. Ops agent: download to `releases/<version>/`, verify signature + checksums,
-   `install.sh --release`, swap `current`, restart `turret-app`, poll
+   `install.sh --release`, swap `current`, restart `hacklab-app`, poll
    `/api/status` 30 s.
 4. Health fails → automatic rollback (symlink back, restart), job reports
    `failed` with log. Succeeds → `succeeded`, shadow updated with version.
@@ -340,7 +340,7 @@ touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 
 - `sudo apt install comitup` (one binary package, v1.43; `comitup-watch` is
   not in Debian and not needed).
-- `/etc/comitup.conf`: `ap_name: turret-setup`, `ap_password: <sticker>`,
+- `/etc/comitup.conf`: `ap_name: hacklab-setup`, `ap_password: <sticker>`,
   `enable_appliance_mode: true`.
 - DO NOT mask `wpa_supplicant` on NetworkManager-based OS (NM drives it; masking
   leaves `wlan0 unavailable` + DBusException in comitup). `systemd-resolved`
@@ -365,9 +365,9 @@ touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 - Fix (survives comitup upgrades): `/etc/NetworkManager/conf.d/10-wifi-no-pmf.conf`
   containing `[connection]` / `wifi-sec.pmf=1` (1 = disable; documented default
   key in `man NetworkManager.conf`). `systemctl reload NetworkManager`, delete
-  the stale `turret-setup-0000` profile, `systemctl restart comitup`. Verified:
-  `nmcli dev status` wlan0 connected on turret-setup-0000, `iw dev wlan0 info`
-  type AP ssid turret-setup, dnsmasq serving 10.41.0.100-150. Applies to STA
+  the stale `hacklab-setup-0000` profile, `systemctl restart comitup`. Verified:
+  `nmcli dev status` wlan0 connected on hacklab-setup-0000, `iw dev wlan0 info`
+  type AP ssid hacklab-setup, dnsmasq serving 10.41.0.100-150. Applies to STA
   profiles too (PMF off for home WiFi) -- fine, this chip has no WPA3 anyway.
   install.sh must ship this file.
 - Also noted: `iw`, `rfkill`, `comitup-cli` live in /usr/sbin (need sudo or
@@ -458,7 +458,7 @@ Design:
   no box is selected — the "never flash box A while the picker says B" rule
   lives here from day one.
 - `provisioning/install-toolchain.sh`: idempotent; `PREFIX` (default
-  `/opt/turret-lab`); venv + `pip install -e .`; arduino-cli 1.5.1 into
+  `/opt/hacklab`); venv + `pip install -e .`; arduino-cli 1.5.1 into
   `$PREFIX/bin`; `ARDUINO_DIRECTORIES_*` under `$PREFIX/arduino`; `arduino:avr`
   core; libraries from `provisioning/libraries.txt` (IRremote pinned; exact
   version checked against `arduino-cli lib search` during this phase).

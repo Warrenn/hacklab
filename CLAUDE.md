@@ -1,4 +1,4 @@
-# CLAUDE.md — Hack Lab (repo: turret-lab)
+# CLAUDE.md — Hack Lab (repo: hacklab)
 
 Read, in this order, before any work:
 1. STRATEGY.md — the WHAT and the ORDER: scope, constraints, architecture, box
