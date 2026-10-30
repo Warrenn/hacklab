@@ -516,7 +516,7 @@ Steps:
 - [x] Step 2 — tests written (red) — completed 2026-10-30
 - [x] Step 3 — store, board, flash, RealJobRunner green — completed 2026-10-30
 - [x] Step 4 — app wiring behind FAKE_BOARD green (static mount + / placeholder included for P3) — completed 2026-10-30
-- [ ] Step 5 — HIL smoke on the Pi with the turret recorded
+- [x] Step 5 — HIL smoke on the Pi with the Omnibot Forklift: flash/undo/flash/reset all done, ~36 s per turn — completed 2026-10-30
 - [ ] Step 6 — README/notes, PR merged
 
 ## P5a — Remote access + device provisioning (plan, 2026-10-30)
@@ -594,6 +594,28 @@ Steps:
 - [x] Step 4 — iot-device.yaml CloudFormation stack + provision-device.sh + status.sh, lint clean, thing provisioned — completed 2026-10-30
 - [x] Step 5 — install-ops.sh run end-to-end over Tailscale (root@hacklab), heartbeat in the shadow incl. tailscale_ip, survives reboot — completed 2026-10-30
 - [ ] Step 6 — README/P5 notes, hygiene check, PR merged
+
+## P1 notes — flash core, verified on the Pi 2026-10-30
+
+- HIL (`scripts/hil-flash.sh omnibot-forklift /root/hil/StockCode`, real app
+  via HTTP, FAKE_BOARD=0): select box -> flash serial sketch (36 s, banner
+  `hacklab hil`) -> undo (36 s, banner `OMNIB V0.9.1`) -> flash (35 s) ->
+  reset (36 s, stock banner). Versions back to `0000` only. Bootloader cache
+  `{"cpu": "atmega328"}` (new bootloader; no fallback needed).
+- Turn anatomy on a Pi 3: `arduino-cli board list` ~10 s (Go binary + serial
+  discovery, even with `--discovery-timeout 2s`), compile ~9 s, upload with
+  verify ~8 s, verification `board list` ~10 s. Detection is 20 of the 36 s.
+  ponytail: replace both `board list` calls with a pyserial/`/dev/serial/by-id`
+  scan if turns need to get shorter; keep `board list` for the first detect.
+- Bugs the real board found that FakeBoard had let through: arduino-cli
+  requires `<dir>/<dir>.ino`; temp dirs, store versions and the mock baseline
+  all violated it. FakeBoard now enforces the rule. One job failed once with
+  an empty port list right after a successful status detect (not reproduced;
+  the job log now records the raw port list and any CLI exception).
+- Internal exceptions in a job now end it as `failed` with the error in its
+  log instead of leaving the job in `queued` forever.
+- Forklift stock sketch lives only in `_to_delete/omnibot-stock/` (no license
+  header) and on the Pi at `/root/hil/StockCode`.
 
 ## P5 notes — WiFi fallback (comitup), verified 2026-10-27
 
