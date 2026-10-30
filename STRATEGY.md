@@ -1077,6 +1077,24 @@ Steps:
   piped content -- write files with `sudo -S bash -c 'curl ... -o FILE'`.
   Both affected files were rewritten before anything was installed.
 
+## P5 notes — remote use of the UI over Tailscale
+
+- The maintainer reaches the same UI the nephew uses: `http://hacklab:<port>`
+  via MagicDNS, or `tailscale serve --bg <port>` for a tailnet-only HTTPS name.
+  `hacklab.local` never works remotely (mDNS is link-local), so the PWA and
+  API use **relative URLs only** — never a hard-coded hostname.
+- Requests arriving from the Tailscale interface (100.64.0.0/10) are
+  **read-only by default**: the UI shows status, current sketch, log tail,
+  and the box picker, but flash/undo/reset buttons are disabled with a clear
+  "remote view" banner.
+- **Remote flashing is allowed on purpose** — the maintainer may need to fix
+  things or do what the nephew asks for over the phone. Enable it per session
+  with an explicit `?admin=1` (or an "I'm here to help" toggle); while it is
+  on, the kid-facing screen shows "Uncle is helping" so a flash from afar is
+  never a surprise, and every remote action is logged with source=tailscale.
+- Never expose the admin toggle on the LAN side; it is gated on the source
+  interface, not on a password.
+
 ## P5 notes — security
 
 - Setup hotspot WPA2 + sticker passphrase; portal is HTTP but only over that
