@@ -28,7 +28,7 @@ run chown -R hacklab:hacklab "$PREFIX/data" "$PREFIX/arduino"
 run ln -sfn "$SRC" "$PREFIX/current"
 
 log "4/9 config + env file (key never in git)"
-[ -f /etc/hacklab/config.toml ] || run install -m 644 "$SRC/provisioning/config.toml" /etc/hacklab/config.toml
+[ -f /etc/hacklab/config.toml ] || run install -m 644 "$SRC/provisioning/appliance.toml" /etc/hacklab/config.toml
 if [ ! -f /etc/default/hacklab ]; then
   run install -m 600 /dev/null /etc/default/hacklab
   if [ "$DRY" = 0 ]; then

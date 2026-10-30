@@ -1,0 +1,16 @@
+# Appliance configuration (named appliance.toml because .gitignore hides any
+# config.toml), installed by provisioning/install.sh to
+# /etc/hacklab/config.toml (HACKLAB_CONFIG). The API key is NOT here: it is in
+# /etc/default/hacklab (root-only), pushed by scripts/push-key.sh.
+[app]
+host = "0.0.0.0"
+port = 80
+data_dir = "/opt/hacklab/data"
+boxes_dir = "/opt/hacklab/current/boxes"
+fake_board = false
+arduino_cli = "/opt/hacklab/bin/arduino-cli"
+arduino_config = "/opt/hacklab/arduino/arduino-cli.yaml"
+
+[ai]
+model = "claude-sonnet-5-5"
+monthly_cap_usd = 10
