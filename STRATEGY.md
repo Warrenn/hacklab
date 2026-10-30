@@ -357,6 +357,59 @@ HTTPS (see decision above); Android tablet running the CrunchLabs IDE directly
 (Chrome Android 148+ has Web Serial) if the hardware situation ever changes;
 touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 
+## P6 plan — Every Hack Pack box, zero maintenance on arrival (draft 2026-10-30, awaiting approval)
+
+Replaces the single Laser Synthesizer profile with the general pipeline
+(roadmap item above); the Laser Synth is its first proof once its hardware
+is checked on the unit.
+
+Goal: a new box becomes a content-only PR and a signed release, with no
+login to the Pi: `scripts/import-box.sh <ide-slug>` pulls the stock code and
+hacks from the Hack Pack IDE, scaffolds the profile, derives pins and
+tweakables, builds the genie skeleton, and `check-box.sh` compiles it all;
+boards other than the Nano get their core pre-installed and their upload
+quirks handled by a board registry.
+
+Decisions (to confirm):
+- **Importer** = Playwright through the machine-wide `pw` harness driving
+  `ide.crunchlabs.com/editor/<slug>` exactly as done by hand on 2026-10-30
+  (Monaco editor models), writing `boxes/<id>/stock/<name>/` when a file
+  carries an MIT header, else `provisioning/local/boxes/<id>/stock/` for the
+  device. Deterministic: re-running updates in place and reports a diff.
+- **Board registry** `provisioning/boards.toml`: per fqbn the core to
+  install, the bootloader/cpu options to try, USB VID:PID list, whether the
+  port re-enumerates on reset, upload timeout. `install-toolchain.sh`
+  installs every core referenced by `boxes/*/profile.toml`; `board.py`
+  reads the registry instead of `KNOWN_NANO` / `CPUS`. ESP32-class boxes
+  are expected: `esp32:esp32` core, `esptool` upload, native-USB
+  re-enumeration -- verified on a board when one arrives, not guessed.
+- **Skeleton generation** from the stock sketch: markers after the last
+  global declaration, at the top of `loop()`, before the first function
+  after `loop()`; a box with an unusual layout gets its skeleton hand-tuned
+  in the same PR.
+- **Per-box UI copy** (`[copy]` in profile.toml: ask placeholder,
+  suggestions) closes the first UI-backlog item as part of this phase.
+- **CI matrix** compiles every box on every push (exists); cores cached in
+  the dev image.
+- Tests: importer against a saved IDE page fixture; registry-driven
+  detection/upload option tests on FakeBoard; skeleton-marker placement on
+  the two stock sketches on hand; Laser Synth profile end to end.
+- Parallelism: importer (`scripts/import-box.*`, tests) vs board registry
+  (`provisioning/boards.toml`, `hacklab/board.py`, `flash.py`) are
+  file-disjoint -> two agents in worktrees, registry owner merges first.
+
+Steps: 1 registry + toolchain cores; 2 importer; 3 skeleton generator +
+per-box copy; 4 Laser Synth through the pipeline (hardware check on the
+unit first); 5 release + deploy via P5c; 6 docs, PR.
+
+## Progress — P6
+- [ ] Step 1 — board registry, cores in the toolchain
+- [ ] Step 2 — import-box importer with fixture tests
+- [ ] Step 3 — skeleton generator, per-box copy in profiles and PWA
+- [ ] Step 4 — Laser Synthesizer profile via the pipeline
+- [ ] Step 5 — shipped as a release to the Pi
+- [ ] Step 6 — README, notes, PR merged
+
 ## P5c plan — Signed updates via IoT Jobs (2026-10-30, approved: option B, signing key outside AWS)
 
 Goal: the maintainer ships a new version with two commands and no login:
