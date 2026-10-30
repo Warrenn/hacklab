@@ -350,6 +350,28 @@ touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
   regdomain fix `sudo raspi-config nonint do_wifi_country ZA`.
 - Still to test on clean power: hotspot visible on iPad; captive-portal
   auto-popup vs browse-to-address; switchover; fully headless run.
+- 2026-10-30 hotspot would not start (Pi OS trixie, kernel 6.18.50+rpt,
+  NM 1.52.1, wpasupplicant 2:2.10-24+rpt3, BCM43430 brcmfmac). Symptom: NM
+  "Hotspot network creation took too long ... supplicant-timeout" every ~25 s.
+  Root cause (from `journalctl -u wpa_supplicant -b`): "nl80211: kernel reports:
+  key setting validation failed" -> "Could not connect to kernel driver" ->
+  "Failed to initialize AP interface". NM 1.52 enables PMF (802.11w) on the AP
+  and brcmfmac has no BIP cipher (only WEP/TKIP/CCMP-128), so the kernel
+  rejects the management key. Confirmed: bare `nmcli dev wifi hotspot` fails
+  identically; `wifi-sec.pmf disable` on the same profile -> AP-ENABLED in <2 s.
+  Channel/band and regdomain were red herrings (channel 6 patch to comitup's
+  nm.py tried and reverted; file restored from nm.py.orig, which is still
+  there).
+- Fix (survives comitup upgrades): `/etc/NetworkManager/conf.d/10-wifi-no-pmf.conf`
+  containing `[connection]` / `wifi-sec.pmf=1` (1 = disable; documented default
+  key in `man NetworkManager.conf`). `systemctl reload NetworkManager`, delete
+  the stale `turret-setup-0000` profile, `systemctl restart comitup`. Verified:
+  `nmcli dev status` wlan0 connected on turret-setup-0000, `iw dev wlan0 info`
+  type AP ssid turret-setup, dnsmasq serving 10.41.0.100-150. Applies to STA
+  profiles too (PMF off for home WiFi) -- fine, this chip has no WPA3 anyway.
+  install.sh must ship this file.
+- Also noted: `iw`, `rfkill`, `comitup-cli` live in /usr/sbin (need sudo or
+  full path); comitup names a bare-nmcli test profile "Hotspot" -- delete it.
 
 ## P5 notes — security
 
