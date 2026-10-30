@@ -357,6 +357,113 @@ HTTPS (see decision above); Android tablet running the CrunchLabs IDE directly
 (Chrome Android 148+ has Web Serial) if the hardware situation ever changes;
 touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 
+## P5c plan — Signed updates via IoT Jobs (2026-10-30, awaiting approval)
+
+Goal: the maintainer ships a new version with two commands and no login:
+`scripts/release.sh` builds and signs a tarball and uploads it to S3;
+`scripts/deploy.sh <device> <version>` creates an IoT Job; the ops agent on
+the Pi downloads, verifies the minisign signature, installs into
+`releases/<version>/`, swaps `current`, restarts the app, health-checks it
+and rolls back on failure, then reports the job result. `rollback.sh`,
+`logs.sh` and the job allowlist (`deploy`, `rollback`, `restart`,
+`upload-logs`, `report-state`, `apt-upgrade`) complete the design in "Dev &
+deploy". Read-only root stays deferred.
+
+Verified 2026-10-30: `awsiot.iotjobs.IotJobsClient` is in the Pi's ops venv
+(`subscribe_to_next_job_execution_changed_events`,
+`publish_start_next_pending_job_execution`, `publish_update_job_execution`,
+`UpdateJobExecutionRequest(thing_name, job_id, status, status_details,
+expected_version)`, `JobStatus.IN_PROGRESS/SUCCEEDED/FAILED`); `aws iot
+create-job --targets <thing arn> --document '<json>' --target-selection
+SNAPSHOT --timeout-config inProgressTimeoutInMinutes=30`; `minisign -G -W`
+(key without password), `-S -s key -m file -t comment` -> `file.minisig`,
+`-V -p minisign.pub -m file`; minisign 0.12 in Pi OS apt, Homebrew on the
+Mac. IoT Jobs: $0.0045 per remote action -- negligible.
+
+Decisions:
+- **CloudFormation** (owner's rule) `provisioning/releases.yaml`: a private
+  S3 bucket `hacklab-releases-<account>` (versioning on, public access
+  blocked, 90-day expiry for log bundles under `logs/`), and the device
+  policy in `iot-device.yaml` gains the jobs topics
+  (`$aws/things/<thing>/jobs/*` publish/subscribe/receive). No IAM role for
+  presigned URLs: `deploy.sh` presigns the S3 GET itself (1 h) and puts the
+  URLs in the job document; `logs.sh` presigns a PUT the same way.
+- **Signing:** one minisign key pair generated on the Mac (`minisign -G -W`
+  into `~/.minisign/hacklab.key`), public key committed as
+  `provisioning/minisign.pub` and installed to `/opt/hacklab/minisign.pub`
+  by `install.sh`; secret key backed up to Parameter Store
+  (`/hacklab/minisign/secret-key`, `device-secrets.sh` gains it). CI
+  signing later (decision already in STRATEGY).
+- **Release = `git archive` of a tag** (`hacklab/`, `boxes/`, `static/`,
+  `provisioning/`, `scripts/`, `ops/`, `pyproject.toml`, `README.md`) +
+  `manifest.json` (version, git sha, built-at, sha256 per file) ->
+  `hacklab-<version>.tar.gz` + `.minisig`, uploaded to
+  `s3://<bucket>/releases/<version>/`. Version = the tag (`v0.1.0` ->
+  `0.1.0`) or an explicit argument for untagged test builds.
+- **Job document:** `{"op": "deploy", "version": "...", "url": "<presigned
+  tar>", "sig_url": "<presigned minisig>"}`; `rollback` (no payload),
+  `restart`, `upload-logs` (`{"put_url": ...}`), `report-state`,
+  `apt-upgrade`. Anything else -> job REJECTED. The op allowlist is a dict
+  in the agent; there is no command field.
+- **Privilege split on the Pi:** the agent (user `hacklab-ops`) downloads to
+  `/opt/hacklab/releases/<version>.tar.gz` (it owns `releases/`) and
+  verifies the signature; the privileged part is one root helper
+  `/opt/hacklab/bin/hacklab-apply` (installed by `install.sh`, allowed via
+  `/etc/sudoers.d/hacklab-ops` NOPASSWD for exactly `hacklab-apply *`):
+  `apply <version>` re-verifies the signature, extracts, `pip install -e
+  releases/<version>` into the app venv, points `current` at it, restarts
+  `hacklab-app`, polls `/api/status` on :80 for 60 s and on failure rolls
+  back (previous `current`, reinstall, restart) and exits non-zero with the
+  reason; `rollback` and `restart` likewise; `apt-upgrade` runs
+  `apt-get upgrade -y`. Nothing in the job document is ever executed.
+- **Agent:** on connect subscribes to next-job-changed, starts the next
+  pending job, reports IN_PROGRESS with step details, runs the op in a
+  thread, reports SUCCEEDED/FAILED with `status_details` (reason, release,
+  health), updates the shadow (`release` now reads the `current` target,
+  `last_job`). Heartbeat unchanged.
+- **Maintainer scripts** (`scripts/`): `release.sh [version]`, `deploy.sh
+  <device> <version>` (creates the job, waits, prints the execution status
+  and details), `rollback.sh <device>`, `logs.sh <device>` (job + download
+  the bundle to `provisioning/local/<device>/logs/`), `restart.sh`
+  folded into `deploy.sh --restart`. `status.sh` shows `release` and
+  `last_job`.
+- Tests: agent job dispatch with a fake jobs client and fake downloader
+  (allowlist, rejection, progress/terminal updates, signature failure never
+  calls the helper); minisign wrapper against real `minisign` when present
+  (skip otherwise); `release.sh` builds a tarball + manifest in a temp dir
+  and its signature verifies; `hacklab-apply --dry-run`; shellcheck on all;
+  cfn-lint; `tests/test_boxes_compile.py` unchanged. HIL: the real loop on
+  the Pi (below).
+- Parallelism: AWS/scripts (`provisioning/*.yaml`, `scripts/*.sh`) vs
+  agent (`ops/agent.py`, tests) are file-disjoint; serialized, same session.
+
+Steps:
+1. Keys + AWS: minisign key pair, public key committed, secret key backed
+   up; `releases.yaml` stack + jobs topics in the device policy
+   (CloudFormation deploy); `install.sh` installs the public key, the
+   `hacklab-apply` helper, the sudoers rule and `minisign` from apt.
+2. Tests red: `tests/test_ops_jobs.py` (dispatch, allowlist, progress,
+   signature failure, rollback result), `tests/test_release.py`
+   (`release.sh --dry-run` tarball + manifest + signature verify).
+3. `ops/agent.py` jobs handling + `ops/minisign.py` wrapper;
+   `provisioning/hacklab-apply`; `scripts/release.sh`, `deploy.sh`,
+   `rollback.sh`, `logs.sh`; green, shellcheck, cfn-lint.
+4. Pi: `install.sh` re-run (helper, sudoers, pubkey); `release.sh 0.1.0`
+   from the Mac; `deploy.sh pi3 0.1.0` -> job SUCCEEDED, app serving from
+   `releases/0.1.0`, `status.sh` shows it; deploy a deliberately broken
+   build (`release.sh 0.1.1-bad` with a syntax error) -> health fails ->
+   automatic rollback -> job FAILED with the reason, app still up;
+   `rollback.sh` / `logs.sh` exercised; bogus job op -> REJECTED.
+5. README (release flow), P5 notes, hygiene (no bucket account id, no key
+   material), PR, merge; Pi follows main and from then on only releases.
+
+## Progress — P5c
+- [ ] Step 1 — keys, releases stack, jobs policy, install.sh additions
+- [ ] Step 2 — tests written (red)
+- [ ] Step 3 — agent jobs, apply helper, maintainer scripts green
+- [ ] Step 4 — Pi: deploy 0.1.0, broken build rolls back, rollback/logs/rejected
+- [ ] Step 5 — README, notes, PR merged
+
 ## Remote-UI policy plan (2026-10-30, awaiting approval)
 
 Goal: the owner's P5 notes on remote use over Tailscale, built: requests from
