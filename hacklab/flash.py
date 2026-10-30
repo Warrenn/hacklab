@@ -13,6 +13,7 @@ from hacklab.board import Board, Port, find_board
 
 FQBN = "arduino:avr:nano:cpu={cpu}"
 CPUS = ["atmega328", "atmega328old"]  # new bootloader first; order rotates per cached box
+DETECT_TTL = 10.0  # seconds a detect() result is reused by /api/status
 
 KID = {
     "detecting": "I can't find the box. Is the USB cable plugged in?",
@@ -39,27 +40,33 @@ class Flasher:
         data_dir: Path,
         reenumerate_timeout: float = 10.0,
         sleep: Callable[[float], None] = time.sleep,
+        clock: Callable[[], float] = time.monotonic,
+        detect_ttl: float | None = None,
     ):
-        self.board, self.data_dir, self.timeout, self.sleep = (
-            board,
-            Path(data_dir),
-            reenumerate_timeout,
-            sleep,
-        )
+        self.board, self.data_dir = board, Path(data_dir)
+        self.timeout, self.sleep = reenumerate_timeout, sleep
+        self.clock, self.detect_ttl = clock, DETECT_TTL if detect_ttl is None else detect_ttl
+        self._cached: tuple[float, Port | None] | None = None
 
-    def detect(self) -> Port | None:
+    def detect(self, fresh: bool = False) -> Port | None:
+        """The attached box, cached for detect_ttl seconds: `arduino-cli board
+        list` costs ~10 s on a Pi 3 and /api/status polls this."""
+        if not fresh and self._cached and self.clock() - self._cached[0] < self.detect_ttl:
+            return self._cached[1]
         self.last_ports: list[Port] = []
         self.last_error: str | None = None
         try:
             self.last_ports = self.board.list_ports()
-            return find_board(self.last_ports)
+            port = find_board(self.last_ports)
         except Exception as exc:  # noqa: BLE001 - a flaky CLI call means "not connected", not a crash
             self.last_error = f"{type(exc).__name__}: {exc}"
-            return None
+            port = None
+        self._cached = (self.clock(), port)
+        return port
 
     def flash(self, box: str, sketch_dir: Path, progress: Callable[[str], None]) -> FlashResult:
         log: list[str] = []
-        port = self.detect()
+        port = self.detect(fresh=True)
         if port is None:
             log.append(f"[detect] ports={self.last_ports} error={self.last_error}")
             return self._fail("detecting", log)
@@ -94,7 +101,7 @@ class Flasher:
     def _still_there(self, port: Port) -> bool:
         deadline = time.monotonic() + self.timeout
         while True:
-            self.detect()  # one CLI call (~10 s on a Pi 3); ports land in last_ports
+            self.detect(fresh=True)  # one CLI call (~10 s on a Pi 3); ports land in last_ports
             same = [
                 p
                 for p in self.last_ports
