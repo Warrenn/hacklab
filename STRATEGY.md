@@ -344,6 +344,87 @@ Deferred (recorded, not scheduled): physical reset button; points/levels;
 block-based editor; curated external links; conversational correction;
 touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 
+## P5b plan — Appliance (2026-10-30, awaiting approval)
+
+Owner's choices 2026-10-30: P5 in two halves -- (A) appliance now, verify on
+the Pi, then (B) signed updates via IoT Jobs; read-only root filesystem
+deferred to a re-image with physical access (install.sh stays ready for the
+two-partition layout; procedure documented).
+
+Goal: a fresh Pi becomes the appliance with one script: the app runs as a
+service on port 80 (`http://hacklab.local` from the iPad, no port), survives
+reboots and power cuts, logs rotate, the API key lives in a root-only env
+file, the ops agent keeps reporting, and the captive-portal fallback hands
+port 80 back and forth cleanly.
+
+Verified on the Pi 2026-10-30: `comitup-web` is inactive while connected;
+comitup's `web_service:` option disables the named unit in hotspot mode and
+enables it when WiFi is up (the unit must be left disabled in systemctl so
+comitup owns it) -- that is the port-80 hand-off. `logrotate` is installed;
+`minisign` 0.12 is in apt (for B). No `hacklab` user yet; `/opt/hacklab/*`
+is root-owned.
+
+Decisions:
+- Layout (unchanged from Dev & deploy): `/opt/hacklab/{bin,arduino,venv,
+  ops,data,src}`; `current -> src` for now (B swaps it to `releases/<v>`).
+  Everything the services write goes under `/opt/hacklab/data` (sketch
+  versions, logs, spend, device stock/skeletons, work dir) so a future
+  writable partition mounts there.
+- Service user `hacklab` (system, groups `dialout` for USB, owns
+  `/opt/hacklab/arduino` and `/opt/hacklab/data`; `src`/`venv` root-owned,
+  world-readable). The ops agent stays as `hacklab-ops`.
+- `hacklab-app.service`: `uvicorn hacklab.app:app --host 0.0.0.0 --port 80`
+  from `/opt/hacklab/venv`, `WorkingDirectory=/opt/hacklab/current`,
+  `AmbientCapabilities=CAP_NET_BIND_SERVICE`, `EnvironmentFile=
+  /etc/default/hacklab` (root:root 0600: `ANTHROPIC_API_KEY`,
+  `HACKLAB_DATA_DIR`, `HACKLAB_BOXES_DIR`), `Restart=always`, `After=
+  network-online.target`, hardening (`NoNewPrivileges`, `ProtectSystem=
+  strict` with `ReadWritePaths` = data + arduino, `PrivateTmp`). NOT enabled
+  in systemctl: comitup starts/stops it via `web_service`.
+- `config.toml` for the appliance at `/etc/hacklab/config.toml` (port 80,
+  data_dir, boxes_dir); `load_config` gains `HACKLAB_CONFIG` env.
+- Logging: app stdout -> journald (`SystemMaxUse=200M`); JSONL logs under
+  data rotated weekly by `/etc/logrotate.d/hacklab` (keep 8, compress).
+- `provisioning/install.sh` (idempotent, root, run from a clone at
+  `/opt/hacklab/src`): apt deps (git, python3-venv, logrotate, avahi),
+  `install-toolchain.sh`, users, dirs + ownership, device stock/skeleton
+  dirs, `/etc/default/hacklab` (created 0600 if absent; key filled from
+  `HACKLAB_API_KEY` env or left for `scripts/push-key.sh`), config, units,
+  logrotate, journald limit, comitup `web_service`, NM PMF fix file,
+  `install-ops.sh` remote block folded in. Prints a health summary.
+- `scripts/push-key.sh <ssh-target>`: pushes `ANTHROPIC_API_KEY` from `.env`
+  into `/etc/default/hacklab` over Tailscale (never through git).
+- Health: `GET /api/status` on :80 from the Mac at `http://hacklab.local`,
+  the PWA loads, ask works (real genie), Forklift HIL via the service, power
+  cut -> both services back, hotspot test -> comitup takes :80, home WiFi ->
+  app takes :80 again.
+- Tests: `install.sh` via shellcheck + a `--dry-run` that prints the plan
+  (no root needed); unit files validated with `systemd-analyze verify` on
+  the Pi; `load_config` HACKLAB_CONFIG test; `tests/test_api.py` unchanged.
+- Parallelism: single track (shell + one config test); serialized.
+
+Steps:
+1. Config: `HACKLAB_CONFIG` env in `load_config` (test first); appliance
+   `provisioning/config.toml`.
+2. `provisioning/install.sh` + `hacklab-app.service` + logrotate + journald
+   drop-in + `scripts/push-key.sh`; shellcheck; `--dry-run` locally.
+3. Pi: run `install.sh` over Tailscale, push the key, verify
+   `systemd-analyze verify`, service active on :80, `http://hacklab.local`
+   from the Mac (status, PWA), real ask through the service with the
+   Forklift (`hil-ask.sh` variant against :80), Undo.
+4. Resilience on the Pi: power cut (owner pulls the plug) -> services back,
+   heartbeat resumes; hotspot fallback -> comitup on :80 -> rejoin -> app
+   back on :80 (comitup `web_service`).
+5. README (fresh-Pi install, key push, re-image procedure for the
+   two-partition layout), P5 notes, hygiene, PR, merge; Pi follows main.
+
+## Progress — P5b
+- [ ] Step 1 — HACKLAB_CONFIG + appliance config.toml
+- [ ] Step 2 — install.sh, unit, logrotate, journald, push-key.sh (lint + dry run)
+- [ ] Step 3 — installed on the Pi: :80, hacklab.local from the Mac, ask via the service, Undo
+- [ ] Step 4 — power cut and hotspot hand-off verified
+- [ ] Step 5 — README, notes, PR merged
+
 ## P4 plan — Genie (the AI helper) (2026-10-30, approved incl. the fragments deviation)
 
 Goal: a plain-language request from the kid becomes a compiled, flashed
