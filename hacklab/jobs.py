@@ -160,9 +160,10 @@ class RealJobRunner:
         work_dir: Path | str,
         genie: GenieFactory | None = None,
         ledger: SpendLedger | None = None,
+        spec_for: Callable[[str], Any] | None = None,
     ):
         self.flasher, self.store, self.work_dir = flasher, store, Path(work_dir)
-        self.genie, self.ledger = genie, ledger
+        self.genie, self.ledger, self.spec_for = genie, ledger, spec_for
         self._away_until = 0.0
         self.jobs: dict[str, Job] = {}
         self._subscribers: set[asyncio.Queue] = set()
@@ -236,6 +237,9 @@ class RealJobRunner:
                 )
                 self._set(job, "failed")
 
+    def _spec(self, box: str):
+        return self.spec_for(box) if self.spec_for else None
+
     # -- genie availability ------------------------------------------------
     def genie_away(self) -> bool:
         return time.time() < self._away_until
@@ -254,7 +258,9 @@ class RealJobRunner:
                 return
             loop = asyncio.get_running_loop()
             progress = lambda stage: loop.call_soon_threadsafe(self._set, job, stage)  # noqa: E731
-            res = await asyncio.to_thread(self.flasher.flash, box, sketch_dir, progress)
+            res = await asyncio.to_thread(
+                self.flasher.flash, box, sketch_dir, progress, self._spec(box)
+            )
             job.log_ref = self._write_log(box, job, res.log)
             if not res.ok:
                 self._set(job, "failed", res.message_kid or MESSAGES["failed"])
@@ -367,7 +373,9 @@ class RealJobRunner:
                 if f.is_file() and f.suffix != ".ino":
                     shutil.copy2(f, sketch_dir / f.name)
             (sketch_dir / "genie.ino").write_text(assemble(genie.skeleton, frags))
-            res = await asyncio.to_thread(self.flasher.flash, box, sketch_dir, progress)
+            res = await asyncio.to_thread(
+                self.flasher.flash, box, sketch_dir, progress, self._spec(box)
+            )
             log.append(f"[attempt {attempt}] {res.log}")
             if res.ok:
                 v = self.store.save(box, sketch_dir, kind="ask", note=text)

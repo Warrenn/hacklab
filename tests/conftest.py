@@ -35,7 +35,12 @@ void loop() { for (int i = 0; i < shakes; i++) { s.write(speed); delay(200); } }
 
 
 def write_box(
-    root: Path, box_id: str = "testbox", *, stock_location: str = "repo", copy: bool = True
+    root: Path,
+    box_id: str = "testbox",
+    *,
+    stock_location: str = "repo",
+    copy: bool = True,
+    fqbn: str = "arduino:avr:nano",
 ) -> Path:
     b = root / box_id
     (b / "behaviours" / "shake").mkdir(parents=True)
@@ -45,7 +50,8 @@ def write_box(
     (b / "genie" / "skeleton.ino").write_text(SKELETON)
     (b / "profile.toml").write_text(
         f'id = "{box_id}"\nname = "Test Box"\npicture = "/static/boxes/{box_id}.svg"\n'
-        'libraries = ["Servo@1.3.0"]\n[board]\nfqbn = "arduino:avr:nano"\ncore = "arduino:avr"\n'
+        'libraries = ["Servo@1.3.0"]\n[board]\n'
+        f'fqbn = "{fqbn}"\ncore = "{fqbn.rsplit(":", 1)[0]}"\n'
         f'[stock]\nlocation = "{stock_location}"\nmain = "stock"\n'
         '[genie]\nskeleton = "genie/skeleton.ino"\n'
         'helpers = ["wave(n): wave n times"]\nkeys = ["ok", "cmd1"]\n'

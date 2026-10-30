@@ -194,6 +194,13 @@ def load_box(box_dir: Path, whitelist: Path | None = None) -> Box:
             f"{where}/profile.toml: id {bid!r} does not match directory {box_dir.name!r}"
         )
     board = _need(prof, "board", where + "/profile.toml")
+    from hacklab.board import load_registry  # registry keys are the only valid fqbns
+
+    fqbn = _need(board, "fqbn", where + "/profile.toml [board]")
+    if load_registry().get(fqbn) is None:
+        raise ProfileError(
+            f"{where}/profile.toml [board]: fqbn {fqbn!r} is not in provisioning/boards.toml"
+        )
     stock = _need(prof, "stock", where + "/profile.toml")
     if stock.get("location") not in ("repo", "device"):
         raise ProfileError(f"{where}/profile.toml: stock.location must be 'repo' or 'device'")
