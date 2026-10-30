@@ -1,0 +1,26 @@
+# Hack Lab app: PWA + API on port 80. Installed by provisioning/install.sh.
+# Not enabled in systemctl on purpose: comitup's web_service option starts it
+# when home WiFi is up and stops it while the setup hotspot owns port 80.
+[Unit]
+Description=Hack Lab app (PWA + API)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=hacklab
+Group=hacklab
+WorkingDirectory=/opt/hacklab/current
+EnvironmentFile=/etc/default/hacklab
+ExecStart=/opt/hacklab/venv/bin/uvicorn hacklab.app:app --host 0.0.0.0 --port 80
+Restart=always
+RestartSec=5
+TimeoutStartSec=120
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/hacklab/data /opt/hacklab/arduino
+
+[Install]
+WantedBy=multi-user.target

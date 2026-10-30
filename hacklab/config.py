@@ -36,7 +36,7 @@ class Config:
 
 def load_config(path: Path | str = "config.toml", env: Mapping[str, str] | None = None) -> Config:
     env = os.environ if env is None else env
-    path = Path(path)
+    path = Path(env.get("HACKLAB_CONFIG") or path)  # the appliance points this at /etc/hacklab/config.toml
     raw = tomllib.loads(path.read_text()) if path.is_file() else {}
     app, ai = raw.get("app", {}), raw.get("ai", {})
     cfg = Config(
