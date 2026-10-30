@@ -27,3 +27,4 @@ _to_delete/
 .DS_Store
 .claude/worktrees/
 .pw-artifacts/
+dist/
