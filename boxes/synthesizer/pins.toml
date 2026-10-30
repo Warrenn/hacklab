@@ -1,12 +1,13 @@
 # Pin map and safe ranges (from stock/StockCode/system_config.h and config.h).
 [pins]
-pot_bottom = "A5"     # wave selection (0-3: Triangle, Square, Saw, Noise)
-pot_middle = "A6"     # second note
-pot_top = "A7"        # master volume
+# Nano analog pins by number: A0=14 A1=15 A5=19 A6=20 A7=21.
+pot_bottom = 19       # A5: wave selection (0-3: Triangle, Square, Saw, Noise)
+pot_middle = 20       # A6: second note
+pot_top = 21          # A7: master volume
 proximity = 6         # digital; HIGH while a hand (or the spinner) is over it
-touch_x1 = "A0"       # resistive touchpad: X = A0 / D7
+touch_x1 = 14         # A0: resistive touchpad X = A0 / D7
 touch_x2 = 7
-touch_y1 = "A1"       # Y = A1 / D8
+touch_y1 = 15         # A1: touchpad Y = A1 / D8
 touch_y2 = 8
 # Audio out is Mozzi's fixed PWM pin on a Nano (D9); do not use it for anything else.
 
