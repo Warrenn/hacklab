@@ -14,7 +14,7 @@ run() { if [ "$DRY" = 1 ]; then printf '  would: %s\n' "$*"; else "$@"; fi; }
 if [ "$DRY" = 0 ] && [ "$(id -u)" != 0 ]; then echo "run as root (or --dry-run)" >&2; exit 1; fi
 
 log "1/9 apt packages"
-run apt-get install -y -qq git python3-venv logrotate avahi-daemon curl
+run apt-get install -y -qq git python3-venv logrotate avahi-daemon curl minisign
 
 log "2/9 toolchain + venv (provisioning/install-toolchain.sh)"
 run env PREFIX="$PREFIX" REPO_DIR="$SRC" "$SRC/provisioning/install-toolchain.sh"
@@ -22,6 +22,9 @@ run env PREFIX="$PREFIX" REPO_DIR="$SRC" "$SRC/provisioning/install-toolchain.sh
 log "3/9 users, directories, current -> src"
 if ! id -u hacklab >/dev/null 2>&1; then
   run useradd --system --home "$PREFIX" --shell /usr/sbin/nologin --groups dialout hacklab
+fi
+if ! id -u hacklab-ops >/dev/null 2>&1; then
+  run useradd --system --home "$PREFIX/ops" --shell /usr/sbin/nologin hacklab-ops
 fi
 run mkdir -p "$PREFIX/data/boxes" "$PREFIX/data/work" /etc/hacklab
 run chown -R hacklab:hacklab "$PREFIX/data" "$PREFIX/arduino"
@@ -59,6 +62,19 @@ if [ -f /etc/comitup.conf ] && ! grep -q '^web_service: hacklab-app.service' /et
 fi
 run systemctl disable hacklab-app.service   # comitup owns enable/disable; start it now
 run systemctl restart hacklab-app.service
+
+log "6b/9 signed updates: public key, apply helper, sudoers, releases dir"
+run install -m 644 "$SRC/provisioning/minisign.pub" "$PREFIX/minisign.pub"
+run install -m 755 "$SRC/provisioning/hacklab-apply" "$PREFIX/bin/hacklab-apply"
+run install -m 440 "$SRC/provisioning/hacklab-ops.sudoers" /etc/sudoers.d/hacklab-ops
+run install -d -o hacklab-ops -g hacklab-ops -m 755 "$PREFIX/releases"
+if [ -f /etc/default/hacklab-ops ] && [ "$DRY" = 0 ]; then   # agent settings for jobs (option B credentials)
+  for kv in "HACKLAB_ROLE_ALIAS=hacklab-device" "HACKLAB_BUCKET=${HACKLAB_BUCKET:-}" "HACKLAB_CRED_ENDPOINT=${HACKLAB_CRED_ENDPOINT:-}"; do
+    k=${kv%%=*}; v=${kv#*=}; [ -n "$v" ] || continue
+    { grep -v "^$k=" /etc/default/hacklab-ops || true; printf '%s=%s\n' "$k" "$v"; } > /etc/default/hacklab-ops.tmp
+    mv /etc/default/hacklab-ops.tmp /etc/default/hacklab-ops
+  done
+fi
 
 log "7/9 ops agent (only if the device certs are already in place)"
 if [ -f "$PREFIX/data/iot/cert.pem" ] && [ -f /etc/default/hacklab-ops ]; then

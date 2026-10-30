@@ -69,7 +69,9 @@ def collect_state(run: Runner = run_cmd, root: Path = Path("/")) -> dict:
             )
         ),
         "disk_free_mb": _try(lambda: shutil.disk_usage(root).free // 2**20),
-        "release": current.resolve().name if current.is_symlink() else "none",
+        "release": current.resolve().name
+        if current.is_symlink()
+        else "none",  # "src" or the release version
         "wifi": _try(lambda: _wifi(run)),
         "tailscale_ip": _try(lambda: run(["tailscale", "ip", "-4"]).split()[0]),
     }
@@ -124,16 +126,125 @@ class MqttClient:
         self.conn.publish(topic=topic, payload=payload, qos=self.qos)[0].result(timeout=30)
 
 
+class JobsWorker:
+    """IoT Jobs (P5c): take the next pending job, run it through the allowlisted
+    executor in a thread, report progress and the result. One job at a time."""
+
+    def __init__(self, conn, thing: str, executor):
+        import threading
+
+        from awsiot import iotjobs
+
+        self.jobs = iotjobs.IotJobsClient(conn)
+        self.thing, self.executor = thing, executor
+        self.iotjobs = iotjobs
+        self._busy = threading.Lock()
+        self.last: dict | None = None
+
+    def start(self) -> None:
+        j = self.iotjobs
+        self.jobs.subscribe_to_next_job_execution_changed_events(
+            j.NextJobExecutionChangedSubscriptionRequest(thing_name=self.thing),
+            qos=1,
+            callback=self._on_changed,
+        )[0].result(timeout=30)
+        self.jobs.subscribe_to_start_next_pending_job_execution_accepted(
+            j.StartNextPendingJobExecutionSubscriptionRequest(thing_name=self.thing),
+            qos=1,
+            callback=self._on_started,
+        )[0].result(timeout=30)
+        self._ask_next()
+
+    def _ask_next(self) -> None:
+        self.jobs.publish_start_next_pending_job_execution(
+            self.iotjobs.StartNextPendingJobExecutionRequest(thing_name=self.thing), qos=1
+        )
+
+    def _on_changed(self, event) -> None:
+        if getattr(event, "execution", None) and not self._busy.locked():
+            self._ask_next()
+
+    def _on_started(self, response) -> None:
+        ex = getattr(response, "execution", None)
+        if ex is None or ex.job_id is None:
+            return
+        import threading
+
+        threading.Thread(target=self._run, args=(ex,), daemon=True).start()
+
+    def _report(
+        self, job_id: str, status, details: dict[str, str], version: int | None = None
+    ) -> None:
+        req = self.iotjobs.UpdateJobExecutionRequest(
+            thing_name=self.thing,
+            job_id=job_id,
+            status=status,
+            status_details=details,
+        )
+        self.jobs.publish_update_job_execution(req, qos=1)
+
+    def _run(self, ex) -> None:
+        with self._busy:
+            job_id, doc = ex.job_id, ex.job_document or {}
+            JS = self.iotjobs.JobStatus
+            log.info("job %s: %s", job_id, doc)
+            self._report(job_id, JS.IN_PROGRESS, {"step": "starting", "op": str(doc.get("op"))})
+            op = str(doc.get("op"))
+            result = self.executor.run(
+                doc,
+                progress=lambda step: self._report(
+                    job_id, JS.IN_PROGRESS, {"step": step, "op": op}
+                ),
+            )
+            status = JS.SUCCEEDED if result.ok else (JS.REJECTED if result.rejected else JS.FAILED)
+            details = {k: str(v)[:1000] for k, v in result.details.items()}
+            self._report(job_id, status, details)
+            self.last = {"job": job_id, "op": doc.get("op"), "status": status.name, **details}
+            log.info("job %s -> %s %s", job_id, status.name, details.get("reason", ""))
+        self._ask_next()
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s", stream=sys.stdout)
     thing = os.environ["HACKLAB_THING"]
+    iot_dir = Path(os.environ.get("HACKLAB_IOT_DIR", "/opt/hacklab/data/iot"))
     client = MqttClient(
         endpoint=os.environ["HACKLAB_IOT_ENDPOINT"],
-        iot_dir=Path(os.environ.get("HACKLAB_IOT_DIR", "/opt/hacklab/data/iot")),
+        iot_dir=iot_dir,
         client_id=thing or socket.gethostname(),
     )
     log.info("connected as %s", thing)
-    Heartbeat(client, thing).run(float(os.environ.get("HACKLAB_OPS_INTERVAL", "300")))
+    worker = None
+    if os.environ.get("HACKLAB_BUCKET") and os.environ.get("HACKLAB_CRED_ENDPOINT"):
+        from awsio import S3, IotCredentials, minisign_verify, sudo_apply
+        from jobs import JobExecutor
+
+        alias = os.environ.get("HACKLAB_ROLE_ALIAS", "hacklab-device")
+        creds = IotCredentials(os.environ["HACKLAB_CRED_ENDPOINT"], thing, alias, iot_dir)
+        executor = JobExecutor(
+            thing=thing,
+            releases_dir=Path("/opt/hacklab/releases"),
+            logs_dir=Path(os.environ.get("HACKLAB_DATA_DIR", "/opt/hacklab/data")),
+            pubkey=Path("/opt/hacklab/minisign.pub"),
+            s3=S3(
+                os.environ["HACKLAB_BUCKET"],
+                os.environ.get("HACKLAB_AWS_REGION", "eu-west-1"),
+                creds,
+            ),
+            apply=sudo_apply,
+            verify=minisign_verify,
+        )
+        worker = JobsWorker(client.conn, thing, executor)
+        worker.start()
+        log.info("jobs: listening (bucket %s)", os.environ["HACKLAB_BUCKET"])
+    else:
+        log.info("jobs: disabled (HACKLAB_BUCKET / HACKLAB_CRED_ENDPOINT not set)")
+    hb = Heartbeat(
+        client,
+        thing,
+        collect=lambda: {**collect_state(), "last_job": worker.last if worker else None},
+    )
+    hb.run(float(os.environ.get("HACKLAB_OPS_INTERVAL", "300")))
 
 
 if __name__ == "__main__":

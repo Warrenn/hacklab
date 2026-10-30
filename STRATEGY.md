@@ -481,9 +481,9 @@ Steps:
    material), PR, merge; Pi follows main and from then on only releases.
 
 ## Progress — P5c
-- [ ] Step 1 — keys, releases stack, jobs policy, install.sh additions
-- [ ] Step 2 — tests written (red)
-- [ ] Step 3 — agent jobs, apply helper, maintainer scripts green
+- [x] Step 1 — passphrase-protected signing key (encrypted backup in Parameter Store), releases stack (bucket, device role, role alias), device policy updated keeping the certificate, install.sh additions — completed 2026-10-30
+- [x] Step 2 — tests written (red) — completed 2026-10-30
+- [x] Step 3 — ops/jobs.py executor, ops/awsio.py (IoT credentials -> S3, minisign, sudo helper), JobsWorker in the agent, hacklab-apply, release/deploy/rollback/logs scripts; 162 tests, shellcheck, cfn-lint — completed 2026-10-30
 - [ ] Step 4 — Pi: deploy 0.1.0, broken build rolls back, rollback/logs/rejected
 - [ ] Step 5 — README, notes, PR merged
 
