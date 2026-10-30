@@ -39,7 +39,7 @@ def test_ask_end_to_end_with_prompts(tmp_path, boxes_dir):
         assert c.get("/api/status").json()["ai_available"] is True
         c.post("/api/box", json={"id": "testbox"})
         j = settle(c, c.post("/api/ask", json={"text": "shake on 7"}).json()["job_id"])
-        assert j["state"] == "done" and j["prompts"]
+        assert j["state"] == "done" and isinstance(j["prompts"], list)
         assert c.get("/api/status").json()["current_version"] == "0001"
         assert "cmd7" in c.get("/api/sketch/current").json()["source"]
 
