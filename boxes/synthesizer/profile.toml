@@ -1,0 +1,38 @@
+# Box profile: Laser Synthesizer (CrunchLabs Hack Pack). Imported by
+# scripts/import-box.sh from the Hack Pack IDE (synthesizer); hand-edited after.
+id = "synthesizer"
+name = "Laser Synthesizer"
+picture = "/static/boxes/laser-synth.svg"
+libraries = ["Mozzi@2.0.4"]
+
+[board]
+fqbn = "arduino:avr:nano"   # the flasher appends cpu=atmega328 / atmega328old itself
+core = "arduino:avr"
+
+[stock]
+location = "repo"           # MIT-licensed stock code lives in stock/StockCode/ (headers kept)
+main = "StockCode"
+
+[genie]
+skeleton = "genie/skeleton.ino"   # stock sketch with //@@ markers; config.h & co. ride along
+# Helper functions and variables the AI helper may use (all defined in the skeleton):
+helpers = [
+  "readInputs(): already called every control tick; fills waveSet (0-3), noteSet1, noteSet2, gainSet (0-1023), volumeSet2",
+  "generateScale(scaleIndex, rootNote): rebuild the note table; scaleIndex 0-11 (0 Major, 1 Minor, ...), rootNote is a MIDI note 24-108",
+  "setFrequencies(): push noteSet1 / noteSet2 to the two oscillators after changing them",
+  "proxTriggered: true while a hand is over the proximity sensor; getLFOModulation(): 0.0-1.0 wobble from the spinner",
+  "Never put delay() or slow code in loop(): Mozzi makes the sound there and it will crackle",
+]
+keys = []
+
+[copy]
+ask_placeholder = "Make it play a minor scale instead of a major one"
+[[copy.suggestions]]
+title = "Play a minor scale"
+ask = "Change the default scale to Minor so it sounds a bit spooky"
+[[copy.suggestions]]
+title = "Start one octave higher"
+ask = "Make the default root note one octave higher"
+[[copy.suggestions]]
+title = "Square wave by default"
+ask = "Start up on the Square wave instead of Triangle"

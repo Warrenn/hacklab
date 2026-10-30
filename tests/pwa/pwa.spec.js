@@ -219,3 +219,18 @@ test("Let's go shows a busy state while the box is being selected", async ({ pag
   await expect(page.getByRole('button', { name: 'Getting ready' })).toBeDisabled();
   await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 10000 });
 });
+
+
+test('the Home placeholder and "Try one of these" come from the box profile', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  await expect(page.getByPlaceholder('Make it shake its head when I press 7')).toBeVisible();
+  for (const name of ['Shake its head no', 'Nod yes', 'Fire a burst']) await expect(page.getByRole('button', { name })).toBeVisible();
+  // a box without shipped tricks suggests plain asks instead
+  await openPicker(page, homeUrl);
+  await page.getByRole('button', { name: 'Omnibot Forklift', exact: true }).click();
+  await page.getByRole('button', { name: "Let's go" }).click();
+  await expect(page.getByPlaceholder('Lift the fork up and down every five seconds')).toBeVisible();
+  await page.getByRole('button', { name: 'Say hello on the serial monitor' }).click();
+  await expect(page.getByText('“print the word hello on the serial monitor every two seconds”')).toBeVisible();
+  await expect(page.getByText('Turning the code into robot language.')).toBeVisible({ timeout: 10000 });
+});

@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from hacklab.board import ArduinoCli, Board, FakeBoard
+from hacklab.board import ArduinoCli, Board, FakeBoard, board_spec
 from hacklab.config import Config, load_config
 from hacklab.flash import Flasher
 from hacklab.genie import Genie
@@ -130,8 +130,12 @@ def create_app(
             return None
         return Genie(client, cfg.model, boxes[box_id], skeleton)
 
+    def spec_for(box_id: str):
+        return board_spec(boxes[box_id].fqbn) if box_id in boxes else None
+
     if isinstance(runner, RealJobRunner):
         runner.genie = genie_for
+        runner.spec_for = spec_for
     helping = Helping(cfg.data_dir / "helping.jsonl")
 
     def source(request: Request) -> str:
@@ -209,7 +213,11 @@ def create_app(
                 else cfg.api_key is not None
                 and (ledger is None or not ledger.over_cap(cfg.monthly_cap_usd))
             ),
-            "board_connected": flasher.detect() is not None if flasher else cfg.fake_board,
+            "board_connected": (
+                flasher.detect(spec=spec_for(box) if box else None) is not None
+                if flasher
+                else cfg.fake_board
+            ),
             "current_version": vs[-1] if vs else None,
             "versions_count": len(vs),
             "source": source(request),

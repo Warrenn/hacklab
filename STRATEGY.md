@@ -357,6 +357,84 @@ HTTPS (see decision above); Android tablet running the CrunchLabs IDE directly
 (Chrome Android 148+ has Web Serial) if the hardware situation ever changes;
 touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 
+## P6 plan — Every Hack Pack box, zero maintenance on arrival (approved 2026-10-30)
+
+Replaces the single Laser Synthesizer profile with the general pipeline
+(roadmap item above); the Laser Synth is its first proof once its hardware
+is checked on the unit.
+
+Goal: a new box becomes a content-only PR and a signed release, with no
+login to the Pi: `scripts/import-box.sh <ide-slug>` pulls the stock code and
+hacks from the Hack Pack IDE, scaffolds the profile, derives pins and
+tweakables, builds the genie skeleton, and `check-box.sh` compiles it all;
+boards other than the Nano get their core pre-installed and their upload
+quirks handled by a board registry.
+
+Decisions (to confirm):
+- **Importer** = Playwright through the machine-wide `pw` harness driving
+  `ide.crunchlabs.com/editor/<slug>` exactly as done by hand on 2026-10-30
+  (Monaco editor models), writing `boxes/<id>/stock/<name>/` when a file
+  carries an MIT header, else `provisioning/local/boxes/<id>/stock/` for the
+  device. Deterministic: re-running updates in place and reports a diff.
+- **Board registry** `provisioning/boards.toml`: per fqbn the core to
+  install, the bootloader/cpu options to try, USB VID:PID list, whether the
+  port re-enumerates on reset, upload timeout. `install-toolchain.sh`
+  installs every core referenced by `boxes/*/profile.toml`; `board.py`
+  reads the registry instead of `KNOWN_NANO` / `CPUS`. ESP32-class boxes
+  are expected: `esp32:esp32` core, `esptool` upload, native-USB
+  re-enumeration -- verified on a board when one arrives, not guessed.
+- **Skeleton generation** from the stock sketch: markers after the last
+  global declaration, at the top of `loop()`, before the first function
+  after `loop()`; a box with an unusual layout gets its skeleton hand-tuned
+  in the same PR.
+- **Per-box UI copy** (`[copy]` in profile.toml: ask placeholder,
+  suggestions) closes the first UI-backlog item as part of this phase.
+- **CI matrix** compiles every box on every push (exists); cores cached in
+  the dev image.
+- Tests: importer against a saved IDE page fixture; registry-driven
+  detection/upload option tests on FakeBoard; skeleton-marker placement on
+  the two stock sketches on hand; Laser Synth profile end to end.
+- Parallelism: importer (`scripts/import-box.*`, tests) vs board registry
+  (`provisioning/boards.toml`, `hacklab/board.py`, `flash.py`) are
+  file-disjoint -> two agents in worktrees, registry owner merges first.
+
+Steps: 1 registry + toolchain cores; 2 importer; 3 skeleton generator +
+per-box copy; 4 Laser Synth through the pipeline (hardware check on the
+unit first); 5 release + deploy via P5c; 6 docs, PR.
+
+## Progress — P6
+- [x] Step 1 — board registry, cores in the toolchain (PR #12) — completed 2026-10-30
+- [x] Step 2 — import-box importer with fixture tests (PR #13) — completed 2026-10-30
+- [x] Step 3 — skeleton generator (in the importer); per-box copy in profiles and PWA (Forklift suggestions are plain asks; Try it follows the last trick); board spec wired through runner/status; profile fqbn validated against the registry — completed 2026-10-30
+- [x] Step 4 — Laser Synthesizer profile via the pipeline (MIT stock, Mozzi@2.0.4, compiles on the Pi incl. the genie skeleton); turret gained roulette.ino — completed 2026-10-30
+- [ ] Step 5 — shipped as release 0.3.0 to the Pi
+- [ ] Step 6 — README, notes, PR merged
+
+## P6 notes (2026-10-30)
+
+- Pipeline proven end to end on `synthesizer`: `import-box.sh synthesizer --name
+  "Laser Synthesizer"` wrote the MIT stock (StockCode + 4 headers), profile,
+  pins/limits (33 `///{}` limits from config.h), skeleton with the four markers.
+  Hand-edited after: pins (the importer only scans the main `.ino`, the synth's
+  `#define`s live in `system_config.h`), kid hardware notes, 4 concepts, genie
+  helpers, `[copy]`. Compiles on the Pi: StockCode and the skeleton (49% flash,
+  71% RAM; Mozzi leaves little room, fragments must stay small).
+- Re-running the importer on `ir-turret` refreshed the two stock sketches
+  (whitespace only) and added the MIT `roulette.ino` as third stock sketch.
+- Mozzi@2.0.4 (latest in the Library Manager index on the Pi, 2026-10-30) is
+  whitelisted; `lib install` pulls its FixMath dependency itself.
+- `hacklab-apply deploy` now runs the release's `install-toolchain.sh`
+  (idempotent: cores from the registry, libraries from the whitelist, venv pip)
+  before flipping `current`, so a box with a new library or core ships as a
+  release with no login. Falls back to `pip install -e` for old bundles.
+- Schema gotchas met: `pins.toml` values are pin numbers 0-21 (Nano analog pins
+  by number: A0=14 ... A7=21); `[copy.suggestions]` use `title`/`ask`.
+- Hardware check of the synth on the unit is still owed (box not on hand);
+  the profile's safe ranges come from CrunchLabs' own `config.h` comments.
+- Still open from the plan: ESP32 registry entry unverified until a board
+  arrives; `pw test` needs the `"hacklab/tests/pwa/"` filter while agent
+  worktrees exist.
+
 ## P5c plan — Signed updates via IoT Jobs (2026-10-30, approved: option B, signing key outside AWS)
 
 Goal: the maintainer ships a new version with two commands and no login:

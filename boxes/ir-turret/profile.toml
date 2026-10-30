@@ -12,6 +12,18 @@ core = "arduino:avr"
 location = "repo"           # MIT-licensed stock code lives in stock/ (headers kept)
 main = "stock"              # sketch directory name under stock/: stock/stock/stock.ino
 
+[copy]
+ask_placeholder = "Make it shake its head when I press 7"
+[[copy.suggestions]]
+title = "Shake its head no"
+behaviour = "shake-head"
+[[copy.suggestions]]
+title = "Nod yes"
+behaviour = "nod-yes"
+[[copy.suggestions]]
+title = "Fire a burst"
+behaviour = "fire-burst"
+
 [genie]
 skeleton = "genie/skeleton.ino"   # relative to the box dir (or data/boxes/<id>/ when stock.location = "device")
 # Helper functions the AI helper may call in rules (all defined in the skeleton):

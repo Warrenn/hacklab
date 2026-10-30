@@ -35,9 +35,12 @@ def settle(client: TestClient, job_id: str, timeout: float = 5.0) -> dict:
 
 
 def test_boxes_behaviours_concepts_come_from_disk(client):
-    assert client.get("/api/boxes").json() == [
-        {"id": "testbox", "name": "Test Box", "picture": "/static/boxes/testbox.svg"}
-    ]
+    (box,) = client.get("/api/boxes").json()
+    assert {k: box[k] for k in ("id", "name", "picture")} == {
+        "id": "testbox",
+        "name": "Test Box",
+        "picture": "/static/boxes/testbox.svg",
+    }
     assert client.get("/api/behaviours").status_code == 409  # no box picked
     client.post("/api/box", json={"id": "testbox"})
     bh = client.get("/api/behaviours").json()
@@ -108,3 +111,10 @@ def test_selecting_a_box_without_device_stock_does_not_leave_it_selected(boxes_d
         assert c.post("/api/box", json={"id": "devbox"}).status_code == 409
         assert c.get("/api/status").json()["box"] is None
         assert c.get("/api/sketch/current").status_code == 409  # pick a box first, not a 500
+
+
+def test_boxes_carry_their_ui_copy(client):
+    (box,) = client.get("/api/boxes").json()
+    assert box["ask_placeholder"] == "Wave when I press OK"
+    assert box["suggestions"][0] == {"title": "Wave", "behaviour": "shake"}
+    assert box["suggestions"][1]["ask"].startswith("wave two times")

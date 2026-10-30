@@ -86,6 +86,7 @@ class Box:
     templates: dict[str, Behaviour]
     concepts: dict[str, Concept]
     genie: dict[str, Any] = field(default_factory=dict)  # skeleton, helpers, keys
+    copy: dict[str, Any] = field(default_factory=dict)  # ask_placeholder, suggestions (UI copy)
 
     def stock_dir(self, data_dir: Path) -> Path:
         if self.stock_location == "repo":
@@ -93,7 +94,46 @@ class Box:
         return Path(data_dir) / "boxes" / self.id / "stock" / self.stock_main
 
     def to_api(self) -> dict[str, Any]:
-        return {"id": self.id, "name": self.name, "picture": self.picture}
+        return {
+            "id": self.id,
+            "name": self.name,
+            "picture": self.picture,
+            "ask_placeholder": self.copy["ask_placeholder"],
+            "suggestions": self.copy["suggestions"],
+        }
+
+
+def _copy_section(prof: dict, name: str, behaviours: dict, where: str) -> dict[str, Any]:
+    """[copy]: the kid-facing placeholder and up to 3 'Try one of these'. Defaults
+    to the first behaviours so a box never shows an empty list or turret copy."""
+    c = dict(prof.get("copy", {}))
+    out: dict[str, Any] = {
+        "ask_placeholder": c.get("ask_placeholder") or f"What should the {name} do?"
+    }
+    raw = c.get("suggestions")
+    if raw is None:
+        raw = [{"title": b.title, "behaviour": b.id} for b in list(behaviours.values())[:3]]
+    sugg = []
+    for i, item in enumerate(raw[:3]):
+        if "behaviour" in item:
+            if item["behaviour"] not in behaviours:
+                raise ProfileError(
+                    f"{where}/profile.toml [copy]: unknown behaviour {item['behaviour']!r}"
+                )
+            sugg.append(
+                {
+                    "title": item.get("title") or behaviours[item["behaviour"]].title,
+                    "behaviour": item["behaviour"],
+                }
+            )
+        elif "ask" in item:
+            sugg.append({"title": item.get("title") or item["ask"], "ask": item["ask"]})
+        else:
+            raise ProfileError(
+                f"{where}/profile.toml [copy]: suggestion {i} needs 'behaviour' or 'ask'"
+            )
+    out["suggestions"] = sugg
+    return out
 
 
 def _toml(path: Path, where: str) -> dict:
@@ -154,6 +194,13 @@ def load_box(box_dir: Path, whitelist: Path | None = None) -> Box:
             f"{where}/profile.toml: id {bid!r} does not match directory {box_dir.name!r}"
         )
     board = _need(prof, "board", where + "/profile.toml")
+    from hacklab.board import load_registry  # registry keys are the only valid fqbns
+
+    fqbn = _need(board, "fqbn", where + "/profile.toml [board]")
+    if load_registry().get(fqbn) is None:
+        raise ProfileError(
+            f"{where}/profile.toml [board]: fqbn {fqbn!r} is not in provisioning/boards.toml"
+        )
     stock = _need(prof, "stock", where + "/profile.toml")
     if stock.get("location") not in ("repo", "device"):
         raise ProfileError(f"{where}/profile.toml: stock.location must be 'repo' or 'device'")
@@ -212,6 +259,7 @@ def load_box(box_dir: Path, whitelist: Path | None = None) -> Box:
         templates=templates,
         concepts=concepts,
         genie=dict(prof.get("genie", {})),
+        copy=_copy_section(prof, _need(prof, "name", where + "/profile.toml"), behaviours, where),
     )
 
 
