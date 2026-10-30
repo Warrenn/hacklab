@@ -133,11 +133,12 @@ class JobsWorker:
     def __init__(self, conn, thing: str, executor):
         import threading
 
+        from awscrt import mqtt
         from awsiot import iotjobs
 
         self.jobs = iotjobs.IotJobsClient(conn)
         self.thing, self.executor = thing, executor
-        self.iotjobs = iotjobs
+        self.iotjobs, self.qos = iotjobs, mqtt.QoS.AT_LEAST_ONCE  # the SDK asserts a QoS enum
         self._busy = threading.Lock()
         self.last: dict | None = None
 
@@ -145,19 +146,19 @@ class JobsWorker:
         j = self.iotjobs
         self.jobs.subscribe_to_next_job_execution_changed_events(
             j.NextJobExecutionChangedSubscriptionRequest(thing_name=self.thing),
-            qos=1,
+            qos=self.qos,
             callback=self._on_changed,
         )[0].result(timeout=30)
         self.jobs.subscribe_to_start_next_pending_job_execution_accepted(
             j.StartNextPendingJobExecutionSubscriptionRequest(thing_name=self.thing),
-            qos=1,
+            qos=self.qos,
             callback=self._on_started,
         )[0].result(timeout=30)
         self._ask_next()
 
     def _ask_next(self) -> None:
         self.jobs.publish_start_next_pending_job_execution(
-            self.iotjobs.StartNextPendingJobExecutionRequest(thing_name=self.thing), qos=1
+            self.iotjobs.StartNextPendingJobExecutionRequest(thing_name=self.thing), qos=self.qos
         )
 
     def _on_changed(self, event) -> None:
@@ -181,7 +182,7 @@ class JobsWorker:
             status=status,
             status_details=details,
         )
-        self.jobs.publish_update_job_execution(req, qos=1)
+        self.jobs.publish_update_job_execution(req, qos=self.qos)
 
     def _run(self, ex) -> None:
         with self._busy:
