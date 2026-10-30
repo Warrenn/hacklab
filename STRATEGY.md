@@ -434,7 +434,7 @@ Steps:
 ## Progress — P5b
 - [ ] Step 1 — HACKLAB_CONFIG + appliance config.toml
 - [ ] Step 2 — install.sh, unit, logrotate, journald, push-key.sh (lint + dry run)
-- [ ] Step 3 — installed on the Pi: :80, hacklab.local from the Mac, ask via the service, Undo
+- [x] Step 3 — installed on the Pi (install.sh idempotent, 3 runs), app as `hacklab` on :80, PWA + API at http://hacklab.local from the Mac, real ask through the service 56 s, Undo 46 s — completed 2026-10-30
 - [ ] Step 4 — power cut and hotspot hand-off verified
 - [ ] Step 5 — README, notes, PR merged
 
@@ -881,6 +881,33 @@ Steps:
 - [x] Step 4 — iot-device.yaml CloudFormation stack + provision-device.sh + status.sh, lint clean, thing provisioned — completed 2026-10-30
 - [x] Step 5 — install-ops.sh run end-to-end over Tailscale (root@hacklab), heartbeat in the shadow incl. tailscale_ip, survives reboot — completed 2026-10-30
 - [ ] Step 6 — README/P5 notes, hygiene check, PR merged
+
+## P5b notes — appliance, verified 2026-10-30
+
+- `install.sh` ran three times on the Pi (first two aborted on real bugs,
+  third clean): `/etc/default/hacklab` is now merged variable by variable so
+  a pushed key survives re-runs; `config.toml` is git-ignored by pattern, so
+  the appliance config is `provisioning/appliance.toml`.
+- Hardening found two silent failures: (1) arduino-cli's build cache defaults
+  to `~/.cache` and the service home is read-only under `ProtectSystem=
+  strict` -> `build_cache.path` under `/opt/hacklab/arduino/cache` in the
+  generated `arduino-cli.yaml`; (2) arduino-cli reports that kind of failure
+  in a top-level `error` field with empty `compiler_err` -> now in the log.
+- `/api/status` cost 10 s per call (one `board list` each; the PWA polls it)
+  -> detection cached 10 s (`DETECT_TTL`), flash still looks fresh. Under
+  load the 2 s discovery window missed the board once -> 5 s.
+- A 409 on box select used to leave the box half-selected and the next
+  `/api/sketch/current` crashed (seen from the PWA) -> select only after the
+  baseline exists.
+- The service ignored SIGTERM while a worker thread compiled (90 s then
+  SIGKILL) -> `TimeoutStopSec=20`, `KillMode=mixed`.
+- comitup `web_service: hacklab-app.service` set; the unit stays disabled in
+  systemctl so comitup owns it (hotspot takes :80, home WiFi gives it back).
+- Observed from the Mac: PWA loads at `http://hacklab.local/`, ask through
+  the service done in 56 s, Undo 46 s. The owner opened the PWA from the Mac
+  during the install (requests visible in the journal).
+- Device-only content on this Pi: `/opt/hacklab/data/boxes/omnibot-forklift/
+  {stock/StockCode, genie/skeleton.ino}` (owner-supplied, not in git).
 
 ## P4 notes — the AI helper, verified 2026-10-30
 
