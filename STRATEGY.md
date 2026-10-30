@@ -345,6 +345,88 @@ are STRATEGY.md, README.md and the one-line static mount in `hacklab/app.py`,
 owned by the P1 track. Real flashing plugs in under the same API when P1/P2
 land. P2 (profiles) follows P1 as before.
 
+## P2 plan — Box profiles + offline path (2026-10-30, approved in advance by the owner; one deviation flagged)
+
+Goal: everything box-specific moves out of code into `boxes/<id>/`; the
+offline path (pick a trick / change the numbers -> compile -> flash -> version)
+works end to end on the Pi with the real flash core. Ships `ir-turret`
+complete (stock + official hacks, >=6 behaviours, >=2 templates, concepts) and
+a minimal `omnibot-forklift` profile (board + pins + hardware notes; stock
+sketch stays user-supplied and untracked because it carries no license).
+`laser-synth` waits for its hardware check (unchanged).
+
+Decisions:
+- **Deviation: TOML, not YAML.** Python has `tomllib` in the stdlib and the
+  repo already uses TOML for config; YAML would add a dependency for no gain.
+  Files: `profile.toml`, `pins.toml`, `concepts.toml`, `behaviours/<id>.toml`
+  (+ `<id>/<id>.ino` sketch dir), `templates/<id>.toml` (+ sketch dir),
+  `hardware.md`, `stock/<Name>/...`. Owner may veto; then PyYAML.
+- Stock sketch location: `stock/` in the repo when the license allows (turret:
+  MIT header), else `data/boxes/<id>/stock/` on the device (untracked); the
+  profile says which (`stock = "repo" | "device"`). Baseline = that dir.
+- Tweakables: the IDE's trailing-comment markers only. Parser finds
+  `///{...}` JSON on a line, the tweakable is the first numeric/boolean/string
+  literal before the marker on that line; `range`/`min`+`max`/`step`/`options`
+  forms; render = replace that literal, clamped to range and snapped to step,
+  `options` must match exactly. Behaviours expose their markers as
+  `tweakables[]` (name = the variable or a `"name"` key in the marker),
+  templates likewise -- one engine for both; a template is a behaviour whose
+  whole point is its numbers.
+- Behaviours derive from the stock sketch's own structure (constants at top,
+  `switch` on IR command -> action functions), matching the Offline screen's
+  trick list: shake-head, nod-yes, lighthouse-spin, look-and-fire, guard-mode,
+  fire-all, plus the official hacks (passcode, roulette) as behaviours too.
+  Known fix from the IDE findings: yaw is speed+time, never `pan.write(angle)`.
+  "tested" = compiles for `arduino:avr:nano` in CI (no turret on hand);
+  marked `tested = "compile-only"` until flashed on a real turret.
+- `hacklab/profiles.py`: load + validate all `boxes/*`, typed dataclasses,
+  clear errors (missing file, bad marker, unknown library, pin out of range).
+  App reads boxes/behaviours/concepts/stock from it; `mock_data.py` is
+  deleted; `FakeJobRunner` stays for the PWA dev loop (`FAKE_BOARD=1`).
+- API additions within the contract: `tweakables[]` items gain optional
+  `options`; `/api/flash/behaviour` renders then flashes; `/api/flash/template`
+  likewise; `/api/sketch/current` unchanged. Never flash for box A while the
+  picker says B -- the job carries the box id and the profile check happens at
+  submit.
+- `scripts/new-box.sh <id> "<Name>"` scaffolds from `boxes/_template/`;
+  `scripts/check-box.sh <id>` validates the profile, compiles every behaviour
+  and template (Docker on the Mac/CI, native toolchain on the Pi), lints
+  kid copy (no emoji, no URLs, "the AI helper"). CI runs `check-box.sh` for
+  every box.
+- Parallelism: content (`boxes/ir-turret/*`) and code (`hacklab/profiles.py`,
+  `templates.py`, app, tests) are file-disjoint, but the content must compile
+  against the engine's marker rules and the P3 agent already occupies the
+  parallel slot; serialized in the main session.
+
+Steps:
+1. Content in: IR Turret `stock.ino`, `passcode.ino`, `roulette.ino` from the
+   Hack Pack IDE (MIT headers kept) -> `boxes/ir-turret/stock/`; hardware.md
+   and pins from the stock sketch + IDE findings. Forklift profile skeleton.
+2. Tests red: `tests/test_profiles.py` (load, validate, errors),
+   `tests/test_templates.py` (marker parse, render, clamp/snap, options,
+   bad marker), `tests/test_api_profiles.py` (boxes/behaviours/concepts from
+   disk, flash/behaviour renders + flashes via FakeBoard, box mismatch 409),
+   `tests/test_boxes_compile.py` (every behaviour/template compiles; skipped
+   unless `HACKLAB_CLI` points at a toolchain -- runs in the Docker CI job).
+3. `hacklab/profiles.py`, `hacklab/templates.py`, app wiring, delete
+   `mock_data.py`; green, ruff.
+4. `boxes/ir-turret/` behaviours (8) + templates (2) + concepts; all compile
+   in Docker; `scripts/new-box.sh`, `check-box.sh`, CI step.
+5. On the Pi: pull, `check-box.sh ir-turret` natively; HIL with the Forklift
+   profile (`stock = "device"`): offline path select -> behaviour flash is
+   N/A without turret hardware, so the Forklift HIL re-runs `hil-flash.sh`
+   through the profile-backed app (baseline from the device stock dir).
+6. README (boxes, new-box, check-box), P2 notes, hygiene (no nephew details,
+   stock headers intact), PR, merge; Pi follows main.
+
+## Progress — P2
+- [ ] Step 1 — turret stock + hacks in, hardware.md, pins, forklift skeleton
+- [ ] Step 2 — tests written (red)
+- [ ] Step 3 — profiles.py, templates.py, app wiring green, mock_data removed
+- [ ] Step 4 — ir-turret behaviours/templates/concepts compile; new-box.sh, check-box.sh, CI
+- [ ] Step 5 — Pi: check-box.sh native, Forklift HIL through the profile-backed app
+- [ ] Step 6 — README, notes, PR merged
+
 ## P3 plan — PWA (2026-10-30, pulled forward; approved, agent started on feat/p3-pwa)
 
 Goal: the kid-facing app, built from the six screen specs in `docs/screens/`
