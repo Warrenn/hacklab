@@ -8,8 +8,10 @@ P1 plan).
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import threading
+import tomllib
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -51,8 +53,67 @@ class Board(Protocol):
     def upload(self, sketch_dir: Path, fqbn: str, port: str, build_dir: Path) -> Result: ...
 
 
-def find_board(ports: list[Port]) -> Port | None:
-    return next((p for p in ports if (p.vid, p.pid) in KNOWN_NANO), None)
+REGISTRY = Path(__file__).resolve().parent.parent / "provisioning" / "boards.toml"
+_USB_ID = re.compile(r"^[0-9a-fA-F]{4}:[0-9a-fA-F]{4}$")
+
+
+@dataclass(frozen=True)
+class BoardSpec:
+    """One entry of provisioning/boards.toml (P6): how a board family is
+    detected, which fqbn variants to try, and how it behaves after an upload."""
+
+    fqbn: str
+    core: str
+    cpu_options: tuple[str, ...]
+    usb_ids: frozenset[tuple[str, str]]  # ("0x1a86", "0x7523") like Port.vid/pid
+    reenumerates: bool
+    upload_timeout: float
+    verified: bool
+
+    def fqbns(self) -> list[str]:
+        """Upload candidates in order: one per cpu option, or the bare fqbn."""
+        return [f"{self.fqbn}:cpu={c}" for c in self.cpu_options] or [self.fqbn]
+
+
+class Registry(dict):
+    additional_urls: list[str] = []
+
+
+def load_registry(path: Path | str = REGISTRY) -> Registry:
+    doc = tomllib.loads(Path(path).read_text())
+    reg = Registry()
+    reg.additional_urls = list(doc.get("cores", {}).get("additional_urls", []))
+    for fqbn, b in doc.get("boards", {}).items():
+        if not b.get("core"):
+            raise ValueError(f"boards.toml {fqbn}: missing core")
+        ids = b.get("usb_ids", [])
+        bad = [i for i in ids if not _USB_ID.match(str(i))]
+        if bad:
+            raise ValueError(f"boards.toml {fqbn}: usb_ids must be vvvv:pppp hex, got {bad}")
+        reg[fqbn] = BoardSpec(
+            fqbn=fqbn,
+            core=b["core"],
+            cpu_options=tuple(b.get("cpu_options", [])),
+            usb_ids=frozenset(
+                ("0x" + i.split(":")[0].lower(), "0x" + i.split(":")[1].lower()) for i in ids
+            ),
+            reenumerates=bool(b.get("reenumerates", False)),
+            upload_timeout=float(b.get("upload_timeout", 240)),
+            verified=bool(b.get("verified", False)),
+        )
+    return reg
+
+
+def board_spec(fqbn: str, path: Path | str = REGISTRY) -> BoardSpec:
+    reg = load_registry(path)
+    if fqbn not in reg:
+        raise KeyError(f"{fqbn!r} is not in provisioning/boards.toml (known: {', '.join(reg)})")
+    return reg[fqbn]
+
+
+def find_board(ports: list[Port], spec: BoardSpec | None = None) -> Port | None:
+    ids = spec.usb_ids if spec else KNOWN_NANO
+    return next((p for p in ports if (p.vid, p.pid) in ids), None)
 
 
 Runner = Callable[[list[str], float], tuple[int, str, str]]
@@ -137,15 +198,22 @@ class FakeBoard:
         self.compile_error: str | None = None
         self.upload_fails_for: set[str] = set()  # cpu values that fail, e.g. {"atmega328"}
         self.vanish_after_upload = False
+        self.reenumerate_gap = 0  # listings the port stays gone after an upload (native-USB boards)
+        self.port = Port("/dev/ttyFAKE0", "0x1a86", "0x7523", "")  # a CH340 Nano clone by default
         self.compiles = self.uploads = 0
         self.last_uploaded_source: str | None = None
         self.last_sketch_files: list[str] = []
+        self.last_fqbn: str | None = None
         self.max_concurrent = 0
         self._active = 0
+        self._gap = 0
         self._lock = threading.Lock()
 
     def list_ports(self) -> list[Port]:
-        return [] if self.unplugged else [Port("/dev/ttyFAKE0", "0x1a86", "0x7523", "")]
+        if self._gap > 0:
+            self._gap -= 1
+            return []
+        return [] if self.unplugged else [self.port]
 
     def compile(self, sketch_dir: Path, fqbn: str, out_dir: Path) -> Result:
         self.compiles += 1
@@ -166,13 +234,15 @@ class FakeBoard:
             self.max_concurrent = max(self.max_concurrent, self._active)
         try:
             self.uploads += 1
-            cpu = fqbn.rsplit("cpu=", 1)[-1]
+            self.last_fqbn = fqbn
+            cpu = fqbn.rsplit("cpu=", 1)[-1] if "cpu=" in fqbn else ""
             if cpu in self.upload_fails_for:
                 return Result(False, "avrdude: stk500_recv(): programmer is not responding")
             hexfile = Path(build_dir) / "sketch.ino.hex"
             self.last_uploaded_source = hexfile.read_text() if hexfile.exists() else None
             if self.vanish_after_upload:
                 self.unplugged = True
+            self._gap = self.reenumerate_gap
             return Result(True, "avrdude done.  Thank you.")
         finally:
             with self._lock:

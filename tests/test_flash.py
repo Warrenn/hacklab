@@ -144,3 +144,64 @@ def test_stale_detect_returns_at_once_and_refreshes_in_the_background(tmp_path: 
             break
         _time.sleep(0.02)
     assert f.detect() is None  # refreshed value visible
+
+
+# ---------- board registry (P6) ----------
+from hacklab.board import BoardSpec, Port, board_spec  # noqa: E402
+
+
+def test_flash_uses_the_spec_fqbn_candidates_in_order_and_caches(tmp_path: Path, sketch: Path):
+    spec = BoardSpec(
+        fqbn="x:y:z",
+        core="x:y",
+        cpu_options=("a", "b", "c"),
+        usb_ids=frozenset({("0x1a86", "0x7523")}),
+        reenumerates=False,
+        upload_timeout=60,
+        verified=True,
+    )
+    fb = FakeBoard()
+    fb.upload_fails_for = {"a", "b"}
+    f = make(tmp_path, fb)
+    res = f.flash("box", sketch, progress=lambda s: None, spec=spec)
+    assert res.ok and res.cpu == "c" and fb.uploads == 3
+    assert fb.last_fqbn == "x:y:z:cpu=c"
+    res2 = make(tmp_path, fb).flash("box", sketch, progress=lambda s: None, spec=spec)
+    assert res2.ok and fb.uploads == 4  # cached option tried first
+
+
+def test_esp32_spec_has_no_cpu_option_and_waits_for_reenumeration(tmp_path: Path, sketch: Path):
+    esp = board_spec("esp32:esp32:esp32")
+    fb = FakeBoard()
+    fb.port = Port("/dev/ttyACM0", "0x303a", "0x1001", "ESP32-S3-ABC")
+    fb.reenumerate_gap = 2  # port is gone for two listings after upload, then back
+    stages: list[str] = []
+    res = make(tmp_path, fb).flash("esp", sketch, progress=stages.append, spec=esp)
+    assert res.ok and res.cpu is None and res.port == "/dev/ttyACM0"
+    assert fb.last_fqbn == "esp32:esp32:esp32"
+    assert stages == ["compiling", "uploading", "verifying"]
+    assert not (tmp_path / "data" / "esp" / "board.json").exists()  # nothing to cache
+
+
+def test_reenumerating_board_that_never_returns_fails_verification(tmp_path: Path, sketch: Path):
+    esp = board_spec("esp32:esp32:esp32")
+    fb = FakeBoard()
+    fb.port = Port("/dev/ttyACM0", "0x303a", "0x1001", "")
+    fb.vanish_after_upload = True
+    res = make(tmp_path, fb).flash("esp", sketch, progress=lambda s: None, spec=esp)
+    assert not res.ok and res.failed_stage == "verifying"
+
+
+def test_reenumerating_board_that_never_vanishes_still_passes(tmp_path: Path, sketch: Path):
+    """A fast reset can finish before the first listing; presence is what matters."""
+    esp = board_spec("esp32:esp32:esp32")
+    fb = FakeBoard()
+    fb.port = Port("/dev/ttyACM0", "0x303a", "0x1001", "")
+    assert make(tmp_path, fb).flash("esp", sketch, progress=lambda s: None, spec=esp).ok
+
+
+def test_detect_with_a_spec_ignores_other_boards(tmp_path: Path):
+    fb = FakeBoard()
+    fb.port = Port("/dev/ttyUSB0", "0x0403", "0x6001", "A50285BI")  # FTDI: Nano family only
+    assert make(tmp_path, fb).detect(spec=board_spec("esp32:esp32:esp32")) is None
+    assert make(tmp_path, fb).detect(spec=board_spec("arduino:avr:nano")) is not None
