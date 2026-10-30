@@ -336,6 +336,82 @@ Deferred (recorded, not scheduled): physical reset button; points/levels;
 block-based editor; curated external links; conversational correction;
 touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 
+## P5a — Remote access + device provisioning (plan, 2026-10-30)
+
+Pulled forward from P5 on request: the Pi must be reachable and updatable
+over the internet before the app exists. Scope: Tailscale SSH (break-glass,
+root) + AWS IoT Core thing/cert + a report-only ops agent (shadow heartbeat).
+Deferred to P5 proper: Jobs allowlist, minisign, S3 releases, deploy/rollback
+scripts, read-only rootfs. Until then "update" = ssh over Tailscale + apt/git.
+
+Verified 2026-10-30 (live): Pi 3 Model B, Pi OS trixie, Python 3.13.5;
+Tailscale 1.104.4 has a trixie apt repo; Tailscale SSH works on the free
+Personal plan and the default policy lets the owner ssh as root to their
+own devices (check mode); `awscrt` 0.38.0 ships cp313-abi3 manylinux
+aarch64 wheels so `awsiotsdk` installs on the Pi without a compiler.
+IoT Core: 12-month free tier (2.25 M connection-min, 500 k messages,
+225 k shadow ops); after that, Ireland prices $0.08/M connection-min,
+$1/M messages, $1.25/M shadow ops -> one device at a 5-min heartbeat is
+under $0.10/month. Account: Busyweb (`busyweb-sso`). IoT Core is NOT offered in af-south-1
+(verified: no endpoint); all IoT resources go in **eu-west-1** (Ireland).
+Tailscale has no email/password signup; the tailnet is created the first
+time the owner signs in (Google/GitHub/Microsoft/Apple) at the login URL
+that `tailscale up` prints.
+
+Parallelism: two file-disjoint units (provision-device.sh vs ops agent +
+tests) but each is ~1 h; serialized -- merge overhead exceeds the saving.
+
+Decisions: agent uses `awsiotsdk` MQTT over mTLS (port 8883), classic
+shadow of the thing; thing name `hacklab-<device>`; IoT policy scoped to
+`${iot:Connection.Thing.ThingName}` so a leaked cert reaches only its own
+topics; certs live in `/opt/hacklab/data/iot/` mode 0600, never in git
+(`provisioning/local/` + `*.pem` already ignored). Agent is report-only:
+no subscriptions that execute anything. Separate venv + unit
+(`hacklab-ops.service`) per the architecture section.
+
+Steps:
+1. Tailscale on the Pi: apt repo + install, `tailscale up --ssh
+   --hostname hacklab`; owner signs in at the URL (creates the tailnet);
+   Mac client via `brew install --cask tailscale-app`; disable key expiry
+   for the Pi in the admin console. Verify `ssh root@hacklab` from the Mac
+   over the tailnet, and `tailscale status` on both.
+2. Tests first: `tests/test_ops_agent.py` -- state collector (hostname,
+   uptime, disk, CPU temp, wlan SSID/IP, comitup state, current release)
+   with subprocess/`/proc` mocked; shadow payload shape; heartbeat loop
+   tick with a fake MQTT client. (red)
+3. `ops/agent.py` + `ops/pyproject`-less requirements (`awsiotsdk` pinned):
+   connect, publish `$aws/things/<thing>/shadow/update` every 300 s with
+   `reported` state, reconnect on drop. (green, ruff clean)
+4. AWS via CloudFormation only (owner's rule, 2026-10-30): template
+   `provisioning/iot-device.yaml` -- `AWS::IoT::Thing`, `AWS::IoT::Policy`
+   (scoped to the thing), `AWS::IoT::Certificate` from a CSR parameter
+   (status ACTIVE), `AWS::IoT::PolicyPrincipalAttachment`,
+   `AWS::IoT::ThingPrincipalAttachment`; outputs cert id + ARN.
+   `scripts/provision-device.sh <device>`: generates the EC key + CSR with
+   openssl in `provisioning/local/<device>/` (private key never leaves the
+   Mac), `aws cloudformation deploy` stack `hacklab-device-<device>` in
+   eu-west-1, then fetches the cert PEM, ATS endpoint and Amazon Root CA 1
+   into the same folder. Re-running = stack update, idempotent.
+   `scripts/status.sh <device>` reads the shadow (table above). cfn-lint +
+   shellcheck clean.
+5. `provisioning/install-ops.sh` (run on the Pi over Tailscale; idempotent):
+   `/opt/hacklab/ops` venv, copy certs to `/opt/hacklab/data/iot/`, write +
+   enable `hacklab-ops.service` (Restart=always, After=network-online).
+   Verify on the device: unit active, `status.sh hacklab-pi3` shows a fresh
+   heartbeat; pull the Pi's power, confirm the heartbeat resumes.
+6. README ops section; P5 notes; hygiene check (no account id, tailnet
+   name, cert ids, network names in the diff); PR; merge.
+   Deploy gate: this IS the deploy -- evidence = shadow heartbeat + ssh
+   over Tailscale from the Mac.
+
+## Progress — P5a
+- [x] Step 1 — Tailscale SSH on the Pi and the Mac, `ssh root@hacklab` verified over the tailnet — completed 2026-10-30 (key expiry still to disable in the admin console)
+- [x] Step 2 — ops agent tests written (red) — completed 2026-10-30
+- [x] Step 3 — ops/agent.py green, ruff clean — completed 2026-10-30
+- [x] Step 4 — iot-device.yaml CloudFormation stack + provision-device.sh + status.sh, lint clean, thing provisioned — completed 2026-10-30
+- [x] Step 5 — install-ops.sh run end-to-end over Tailscale (root@hacklab), heartbeat in the shadow incl. tailscale_ip, survives reboot — completed 2026-10-30
+- [ ] Step 6 — README/P5 notes, hygiene check, PR merged
+
 ## P5 notes — WiFi fallback (comitup), verified 2026-10-27
 
 - `sudo apt install comitup` (one binary package, v1.43; `comitup-watch` is
@@ -396,6 +472,35 @@ touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
   install.sh must ship this file.
 - Also noted: `iw`, `rfkill`, `comitup-cli` live in /usr/sbin (need sudo or
   full path); comitup names a bare-nmcli test profile "Hotspot" -- delete it.
+
+## P5 notes — remote ops (P5a), verified 2026-10-30
+
+- IoT Core has no af-south-1 endpoint; everything lives in eu-west-1 under
+  CloudFormation stack `hacklab-device-<device>` (`provisioning/iot-device.yaml`).
+  Cert issued from a local P-256 CSR, valid to 2049, ACTIVE, attached to the
+  thing and to a policy scoped to `client/hacklab-<device>` and that thing's
+  shadow + `hacklab/<device>/*` topics.
+- Agent (`ops/agent.py`, awsiotsdk 1.31.0 in `/opt/hacklab/ops/venv`, runs as
+  system user `hacklab-ops`, certs 0600 in `/opt/hacklab/data/iot/`) connects
+  in ~3 s on a Pi 3 and reports every 300 s. A `None` field is dropped from
+  the shadow (IoT treats null as delete) -- `tailscale_ip` appears only once
+  the node is logged in. Verified: `scripts/status.sh pi3` shows a fresh
+  heartbeat before and after a reboot (agent up 47 s after boot).
+- Tailscale 1.104.4 installed from its trixie repo; `tailscale up --ssh
+  --hostname hacklab` leaves the node waiting at a login URL until the owner
+  signs in (that first sign-in creates the tailnet). Mac client is a cask
+  that needs the Mac admin password (`brew install --cask tailscale-app`).
+- Tailscale verified: Pi node `hacklab` online, `ssh root@hacklab` from the
+  Mac works with no key setup (Tailscale SSH, owner's default policy),
+  `install-ops.sh pi3 root@hacklab` re-ran idempotently and the shadow now
+  carries `tailscale_ip`. Gotcha: do not reboot the Pi while a `tailscale up`
+  login is pending -- the owner's sign-in then registers a node the restarted
+  daemon knows nothing about (stale offline entry, Pi still "Logged out");
+  re-run `tailscale up` for a fresh URL. Node key expiry (6 months) must be
+  disabled in the admin console for a headless device -- OPEN.
+- Gotcha: `printf pw | sudo -S tee FILE` feeds the password to tee, not the
+  piped content -- write files with `sudo -S bash -c 'curl ... -o FILE'`.
+  Both affected files were rewritten before anything was installed.
 
 ## P5 notes — security
 

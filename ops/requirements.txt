@@ -1,0 +1,2 @@
+# ops agent venv (separate from the app). awscrt 0.38 ships cp313-abi3 aarch64 wheels.
+awsiotsdk==1.31.0
