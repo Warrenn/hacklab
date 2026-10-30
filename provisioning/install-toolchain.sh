@@ -49,9 +49,24 @@ YAML
 
 cli() { "$CLI" --config-file "$CFG" "$@"; }
 
-log "installing arduino:avr core"
-cli core update-index
-cli core install arduino:avr
+# Cores: every core a box profile references (provisioning/boards.toml maps
+# fqbn -> core; [cores].additional_urls lists extra Boards Manager indexes).
+# Only cores in use are installed: an unused ESP32 core is ~500 MB on a Pi 3.
+read -r URLS CORES < <(python3 - "$REPO_DIR" <<'PY'
+import glob, sys, tomllib
+root = sys.argv[1]
+reg = tomllib.load(open(f"{root}/provisioning/boards.toml", "rb"))
+fqbns = {tomllib.load(open(p, "rb"))["board"]["fqbn"] for p in glob.glob(f"{root}/boxes/*/profile.toml")}
+cores = sorted({reg["boards"][f]["core"] for f in fqbns if f in reg["boards"]} | {"arduino:avr"})
+print(",".join(reg.get("cores", {}).get("additional_urls", [])) or "-", " ".join(cores))
+PY
+)
+extra=(); [ "$URLS" != "-" ] && extra=(--additional-urls "$URLS")
+log "installing cores: $CORES"
+cli core update-index "${extra[@]}"
+for core in $CORES; do
+  cli core install "$core" "${extra[@]}"
+done
 
 log "installing whitelisted libraries"
 grep -vE '^\s*(#|$)' "$REPO_DIR/provisioning/libraries.txt" | while read -r lib; do

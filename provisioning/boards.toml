@@ -1,0 +1,27 @@
+# Board registry (STRATEGY.md P6): what a box profile's [board].fqbn means for
+# the toolchain (core to install), detection (USB VID:PID of the serial chip)
+# and upload (bootloader options tried in order; whether the port disappears
+# and comes back after a flash). Keys are the fqbn exactly as profiles write it.
+
+[cores]
+# Extra Boards Manager index URLs passed to arduino-cli (`--additional-urls`).
+additional_urls = ["https://espressif.github.io/arduino-esp32/package_esp32_index.json"]
+
+[boards."arduino:avr:nano"]
+core = "arduino:avr"
+cpu_options = ["atmega328", "atmega328old"]   # new bootloader first; the working one is cached per box
+usb_ids = ["1a86:7523", "1a86:55d4", "0403:6001", "10c4:ea60", "2341:0043"]  # CH340, CH9102, FTDI, CP2102, official
+reenumerates = false                           # separate USB-serial chip: the port stays while the MCU resets
+upload_timeout = 240
+verified = true                                # IR Turret, Omnibot Forklift (CH340) 2026-10-30
+
+[boards."esp32:esp32:esp32"]
+# Newer Hack Pack boxes are expected to be ESP32-class. No ESP32 board was on
+# hand on 2026-10-30: these values follow the Espressif core and common dev
+# boards and must be confirmed on a real unit before `verified = true`.
+core = "esp32:esp32"
+cpu_options = []
+usb_ids = ["10c4:ea60", "1a86:7523", "1a86:55d4", "303a:1001"]  # CP2102, CH340, CH9102, native USB (ESP32-S2/S3/C3)
+reenumerates = true                            # native-USB boards drop off the bus while esptool resets them
+upload_timeout = 300
+verified = false
