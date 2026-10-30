@@ -10,7 +10,7 @@ src=${HACKLAB_SRC:-/opt/hacklab/src}
 agent_dir=${HACKLAB_AGENT_DIR:-$src/ops}   # where agent.py + requirements.txt are
 id -u hacklab-ops >/dev/null 2>&1 || useradd --system --home /opt/hacklab/ops --shell /usr/sbin/nologin hacklab-ops
 mkdir -p /opt/hacklab/ops /opt/hacklab/data/iot
-install -m 644 "$agent_dir/agent.py" "$agent_dir/requirements.txt" /opt/hacklab/ops/
+install -m 644 "$agent_dir"/*.py "$agent_dir/requirements.txt" /opt/hacklab/ops/   # agent.py, jobs.py, awsio.py
 if [ "$(realpath "$files")" != "$(realpath /opt/hacklab/data/iot)" ]; then
   for f in cert.pem private.key AmazonRootCA1.pem; do
     [ -f "$files/$f" ] && install -o hacklab-ops -g hacklab-ops -m 600 "$files/$f" /opt/hacklab/data/iot/

@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Root helper for signed updates. The ONLY privileged thing the ops agent may run
+# (sudoers: hacklab-ops -> /opt/hacklab/bin/hacklab-apply). Verbs are fixed; the
+# single argument is a version string used as a file name after validation.
+#   hacklab-apply deploy <version>   verify sig, extract to releases/<v>, pip install,
+#                                    switch current, restart app, health check, else roll back
+#   hacklab-apply rollback           previous release -> current, restart, health check
+#   hacklab-apply restart            restart hacklab-app and health check
+#   hacklab-apply apt-upgrade        apt-get upgrade -y
+#   hacklab-apply --dry-run <verb> [arg]
+set -euo pipefail
+PREFIX=${PREFIX:-/opt/hacklab}
+DRY=0; [ "${1:-}" = "--dry-run" ] && { DRY=1; shift; }
+verb=${1:-}; arg=${2:-}
+log() { printf '[apply] %s\n' "$*"; }
+run() { if [ "$DRY" = 1 ]; then printf '  would: %s\n' "$*"; else "$@"; fi; }
+
+current_target() { readlink -f "$PREFIX/current" 2>/dev/null || true; }
+release_version() { basename "$(current_target)"; }   # "src" before the first release
+health() {  # the app must answer on :80 within 60 s
+  for _ in $(seq 60); do curl -fs -m 5 http://127.0.0.1/api/status >/dev/null 2>&1 && return 0; sleep 1; done
+  return 1
+}
+switch_to() {  # <dir>: install into the venv, point current at it, restart
+  run "$PREFIX/venv/bin/pip" install -q --disable-pip-version-check -e "$1"
+  run ln -sfn "$1" "$PREFIX/current"
+  run systemctl restart hacklab-app.service
+}
+
+case $verb in
+  deploy)
+    [[ $arg =~ ^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$ ]] || { echo "bad version" >&2; exit 2; }
+    tar="$PREFIX/releases/hacklab-$arg.tar.gz"
+    [ -f "$tar" ] && [ -f "$tar.minisig" ] || { echo "release files missing" >&2; exit 2; }
+    log "verifying signature of $(basename "$tar")"
+    run minisign -V -q -p "$PREFIX/minisign.pub" -m "$tar"
+    cur=$(release_version)
+    if [ "$cur" != src ] && [ "$(printf '%s\n%s\n' "$arg" "$cur" | sort -V | head -1)" = "$arg" ] && [ "$arg" != "$cur" ]; then
+      echo "refusing downgrade $cur -> $arg (use rollback)" >&2; exit 3
+    fi
+    dest="$PREFIX/releases/$arg"
+    log "extracting to $dest"
+    run rm -rf "$dest"; run mkdir -p "$dest"
+    run tar -xzf "$tar" -C "$dest" --warning=no-unknown-keyword
+    [ "$DRY" = 1 ] || { prev=$(current_target); oldprev=$(cat "$PREFIX/releases/.previous" 2>/dev/null || true); echo "$prev" > "$PREFIX/releases/.previous"; }
+    switch_to "$dest"
+    if [ "$DRY" = 1 ] || health; then log "release $arg healthy"; exit 0; fi
+    log "health check failed, rolling back to $(basename "$prev")"
+    [ -n "${oldprev:-}" ] && echo "$oldprev" > "$PREFIX/releases/.previous"   # keep the real previous release
+    rm -rf "$dest"
+    switch_to "$prev"
+    health && { echo "health check failed on $arg; rolled back to $(basename "$prev")" >&2; exit 1; }
+    echo "health check failed on $arg AND after rollback to $(basename "$prev")" >&2; exit 1 ;;
+  rollback)
+    prev=$(cat "$PREFIX/releases/.previous" 2>/dev/null || true)
+    [ -n "$prev" ] && [ -d "$prev" ] || { echo "no previous release recorded" >&2; exit 2; }
+    log "rolling back to $(basename "$prev")"
+    cur=$(current_target); switch_to "$prev"; [ "$DRY" = 1 ] || echo "$cur" > "$PREFIX/releases/.previous"
+    [ "$DRY" = 1 ] || health || { echo "app unhealthy after rollback" >&2; exit 1; }
+    log "now on $(basename "$prev")" ;;
+  restart)
+    run systemctl restart hacklab-app.service
+    [ "$DRY" = 1 ] || health || { echo "app unhealthy after restart" >&2; exit 1; } ;;
+  apt-upgrade)
+    run apt-get update -qq; run apt-get upgrade -y -qq ;;
+  *) echo "usage: hacklab-apply [--dry-run] deploy <version> | rollback | restart | apt-upgrade" >&2; exit 2 ;;
+esac

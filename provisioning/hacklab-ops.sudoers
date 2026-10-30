@@ -1,0 +1,4 @@
+# The ops agent (hacklab-ops) may run exactly one root helper with fixed verbs.
+# The helper re-verifies release signatures itself; nothing from a job document
+# ever reaches a shell. Installed to /etc/sudoers.d/hacklab-ops by install.sh.
+hacklab-ops ALL=(root) NOPASSWD: /opt/hacklab/bin/hacklab-apply

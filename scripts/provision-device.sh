@@ -26,9 +26,22 @@ print(json.dumps([
 ]))
 PY
 
-aws cloudformation deploy --region "$region" --stack-name "$stack" \
-  --template-file "$root/provisioning/iot-device.yaml" \
-  --parameter-overrides "file://$out/params.json" --no-fail-on-empty-changeset
+if aws cloudformation describe-stacks --region "$region" --stack-name "$stack" >/dev/null 2>&1; then
+  # Existing device: keep the certificate. A fresh CSR would REPLACE it, so reuse the stored value.
+  if aws cloudformation update-stack --region "$region" --stack-name "$stack" \
+       --template-body "file://$root/provisioning/iot-device.yaml" \
+       --parameters ParameterKey=DeviceName,UsePreviousValue=true \
+                    ParameterKey=CertificateSigningRequest,UsePreviousValue=true >/dev/null 2>"$out/update.err"; then
+    aws cloudformation wait stack-update-complete --region "$region" --stack-name "$stack"
+  else
+    if grep -q "No updates are to be performed" "$out/update.err"; then echo "stack unchanged"; else cat "$out/update.err" >&2; exit 1; fi
+  fi
+  rm -f "$out/update.err"
+else
+  aws cloudformation deploy --region "$region" --stack-name "$stack" \
+    --template-file "$root/provisioning/iot-device.yaml" \
+    --parameter-overrides "file://$out/params.json" --no-fail-on-empty-changeset
+fi
 
 cert_id=$(aws cloudformation describe-stacks --region "$region" --stack-name "$stack" \
   --query "Stacks[0].Outputs[?OutputKey=='CertificateId'].OutputValue" --output text)

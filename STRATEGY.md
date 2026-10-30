@@ -357,6 +357,144 @@ HTTPS (see decision above); Android tablet running the CrunchLabs IDE directly
 (Chrome Android 148+ has Web Serial) if the hardware situation ever changes;
 touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 
+## P5c plan — Signed updates via IoT Jobs (2026-10-30, approved: option B, signing key outside AWS)
+
+Goal: the maintainer ships a new version with two commands and no login:
+`scripts/release.sh` builds and signs a tarball and uploads it to S3;
+`scripts/deploy.sh <device> <version>` creates an IoT Job; the ops agent on
+the Pi downloads, verifies the minisign signature, installs into
+`releases/<version>/`, swaps `current`, restarts the app, health-checks it
+and rolls back on failure, then reports the job result. `rollback.sh`,
+`logs.sh` and the job allowlist (`deploy`, `rollback`, `restart`,
+`upload-logs`, `report-state`, `apt-upgrade`) complete the design in "Dev &
+deploy". Read-only root stays deferred.
+
+Verified 2026-10-30: `awsiot.iotjobs.IotJobsClient` is in the Pi's ops venv
+(`subscribe_to_next_job_execution_changed_events`,
+`publish_start_next_pending_job_execution`, `publish_update_job_execution`,
+`UpdateJobExecutionRequest(thing_name, job_id, status, status_details,
+expected_version)`, `JobStatus.IN_PROGRESS/SUCCEEDED/FAILED`); `aws iot
+create-job --targets <thing arn> --document '<json>' --target-selection
+SNAPSHOT --timeout-config inProgressTimeoutInMinutes=30`; `minisign -G -W`
+(key without password), `-S -s key -m file -t comment` -> `file.minisig`,
+`-V -p minisign.pub -m file`; minisign 0.12 in Pi OS apt, Homebrew on the
+Mac. IoT Jobs: $0.0045 per remote action -- negligible.
+
+Decisions:
+- **CloudFormation** (owner's rule) `provisioning/releases.yaml`: a private
+  S3 bucket `hacklab-releases-<account>` (versioning on, public access
+  blocked, 90-day expiry for `logs/`), an IAM role `hacklab-device` trusted
+  by `credentials.iot.amazonaws.com` (GetObject/ListBucket on `releases/*`,
+  PutObject on `logs/${credentials-iot:ThingName}/*`, nothing else), and an
+  IoT **role alias** `hacklab-device` pointing at it (1 h credentials). The
+  device policy in `iot-device.yaml` gains the jobs topics
+  (`$aws/things/<thing>/jobs/*`) and `iot:AssumeRoleWithCertificate` on the
+  alias. **Option B (owner, 2026-10-30):** the Pi exchanges its existing
+  certificate for short-lived role credentials through the IoT credentials
+  provider (`awscrt.auth.AwsCredentialsProvider.new_x509`, verified in the
+  ops venv) and reads/writes S3 directly -- no presigned URLs, no Roles
+  Anywhere (would need our own CA for no gain), offline-Pi deploys work.
+  Certificate deactivation revokes both MQTT and the credentials. Updating
+  the device stack must keep the certificate: `provision-device.sh` uses
+  `update-stack` with `UsePreviousValue` for the CSR when the stack exists
+  (a regenerated CSR would replace the certificate).
+- **Signing (owner, 2026-10-30, revised):** the maintainer must be able to
+  work from any machine. One minisign key pair whose secret key is
+  **passphrase-protected** (`minisign -G`, passphrase chosen by the owner,
+  kept only in their password manager); the encrypted key file is backed up
+  as SecureString `/hacklab/minisign/secret-key` (`device-secrets.sh
+  backup-signing-key` / `restore-signing-key`). AWS access alone therefore
+  cannot sign (needs the passphrase); losing the Mac loses nothing. Signing
+  prompts for the passphrase (`release.sh` is run by a human). Public key
+  committed as `provisioning/minisign.pub`, installed to
+  `/opt/hacklab/minisign.pub` by `install.sh`. CI signing later would need
+  its own key. README gets a "new maintainer machine" checklist: clone,
+  `aws sso login`, `device-secrets.sh restore pi3`, `restore-key`,
+  `restore-signing-key`, `brew install minisign awscli` (or apt), done --
+  nothing in the workflow is tied to this Mac.
+- **Key custody revised again (owner, 2026-10-30, while stepping away):** the
+  passphrase was removed (`minisign -C -W`) so releases can be signed
+  unattended by the maintainer's tooling; the unencrypted key file is the
+  Parameter Store backup. Consequence, recorded deliberately: anyone with
+  read access to `/hacklab/minisign/secret-key` in the Busyweb account can
+  sign a release, so the AWS login (SSO + MFA) is now the single root of
+  trust for both creating jobs and authoring code. Re-adding a passphrase
+  later is `minisign -C -s ~/.minisign/hacklab.key` + `backup-signing-key`.
+- **Downgrade guard:** `hacklab-apply deploy` refuses a signed manifest whose
+  version is lower than the running release; `rollback` only steps to the
+  previous release already on disk.
+- **Release = `git archive` of a tag** (`hacklab/`, `boxes/`, `static/`,
+  `provisioning/`, `scripts/`, `ops/`, `pyproject.toml`, `README.md`) +
+  `manifest.json` (version, git sha, built-at, sha256 per file) ->
+  `hacklab-<version>.tar.gz` + `.minisig`, uploaded to
+  `s3://<bucket>/releases/<version>/`. Version = the tag (`v0.1.0` ->
+  `0.1.0`) or an explicit argument for untagged test builds.
+- **Job document:** `{"op": "deploy", "version": "..."}` (the agent derives
+  the S3 keys `releases/<version>/hacklab-<version>.tar.gz` + `.minisig`
+  from the version); `rollback`, `restart`, `upload-logs` (agent uploads to
+  `logs/<thing>/<ts>.tar.gz`), `report-state`, `apt-upgrade`. Anything else -> job REJECTED. The op allowlist is a dict
+  in the agent; there is no command field.
+- **Privilege split on the Pi:** the agent (user `hacklab-ops`) downloads to
+  `/opt/hacklab/releases/<version>.tar.gz` (it owns `releases/`) and
+  verifies the signature; the privileged part is one root helper
+  `/opt/hacklab/bin/hacklab-apply` (installed by `install.sh`, allowed via
+  `/etc/sudoers.d/hacklab-ops` NOPASSWD for exactly `hacklab-apply *`):
+  `apply <version>` re-verifies the signature, extracts, `pip install -e
+  releases/<version>` into the app venv, points `current` at it, restarts
+  `hacklab-app`, polls `/api/status` on :80 for 60 s and on failure rolls
+  back (previous `current`, reinstall, restart) and exits non-zero with the
+  reason; `rollback` and `restart` likewise; `apt-upgrade` runs
+  `apt-get upgrade -y`. Nothing in the job document is ever executed.
+- **Agent:** on connect subscribes to next-job-changed, starts the next
+  pending job, reports IN_PROGRESS with step details, runs the op in a
+  thread, reports SUCCEEDED/FAILED with `status_details` (reason, release,
+  health), updates the shadow (`release` now reads the `current` target,
+  `last_job`). Heartbeat unchanged.
+- **Maintainer scripts** (`scripts/`): `release.sh [version]`, `deploy.sh
+  <device> <version>` (creates the job, waits, prints the execution status
+  and details), `rollback.sh <device>`, `logs.sh <device>` (job + download
+  the bundle to `provisioning/local/<device>/logs/`), `restart.sh`
+  folded into `deploy.sh --restart`. `status.sh` shows `release` and
+  `last_job`.
+- Tests: agent job dispatch with a fake jobs client and fake downloader
+  (allowlist, rejection, progress/terminal updates, signature failure never
+  calls the helper); minisign wrapper against real `minisign` when present
+  (skip otherwise); `release.sh` builds a tarball + manifest in a temp dir
+  and its signature verifies; `hacklab-apply --dry-run`; shellcheck on all;
+  cfn-lint; `tests/test_boxes_compile.py` unchanged. HIL: the real loop on
+  the Pi (below).
+- Parallelism: AWS/scripts (`provisioning/*.yaml`, `scripts/*.sh`) vs
+  agent (`ops/agent.py`, tests) are file-disjoint; serialized, same session.
+
+Steps:
+1. Keys + AWS: minisign key pair (file + Keychain, not AWS), public key
+   committed; `releases.yaml` stack (bucket, device role, role alias) and
+   the device policy update (jobs topics + AssumeRoleWithCertificate) via
+   CloudFormation keeping the certificate; `install.sh` installs the public
+   key, the `hacklab-apply` helper, the sudoers rule, `minisign` from apt,
+   and the role-alias/bucket settings for the agent.
+2. Tests red: `tests/test_ops_jobs.py` (dispatch, allowlist, progress,
+   signature failure, rollback result), `tests/test_release.py`
+   (`release.sh --dry-run` tarball + manifest + signature verify).
+3. `ops/agent.py` jobs handling + `ops/minisign.py` wrapper;
+   `provisioning/hacklab-apply`; `scripts/release.sh`, `deploy.sh`,
+   `rollback.sh`, `logs.sh`; green, shellcheck, cfn-lint.
+4. Pi: `install.sh` re-run (helper, sudoers, pubkey); `release.sh 0.1.0`
+   from the Mac; `deploy.sh pi3 0.1.0` -> job SUCCEEDED, app serving from
+   `releases/0.1.0`, `status.sh` shows it; deploy a deliberately broken
+   build (`release.sh 0.1.1-bad` with a syntax error) -> health fails ->
+   automatic rollback -> job FAILED with the reason, app still up;
+   `rollback.sh` / `logs.sh` exercised; bogus job op -> REJECTED.
+5. README (release flow), P5 notes, hygiene (no bucket account id, no key
+   material), PR, merge; Pi follows main and from then on only releases.
+
+## Progress — P5c
+- [x] Step 1 — passphrase-protected signing key (encrypted backup in Parameter Store), releases stack (bucket, device role, role alias), device policy updated keeping the certificate, install.sh additions — completed 2026-10-30
+- [x] Step 2 — tests written (red) — completed 2026-10-30
+- [x] Step 3 — ops/jobs.py executor, ops/awsio.py (IoT credentials -> S3, minisign, sudo helper), JobsWorker in the agent, hacklab-apply, release/deploy/rollback/logs scripts; 162 tests, shellcheck, cfn-lint — completed 2026-10-30
+- [x] Step 4 — Pi: 0.1.0 exposed macOS metadata in the tarball (health failed, auto-rollback kept the app up), 0.1.1 and 0.1.2 SUCCEEDED, 0.1.2-bad FAILED with automatic rollback, rollback.sh back to 0.1.1, logs.sh bundle fetched, downgrade to 0.1.0 refused, bogus op FAILED as rejected — completed 2026-10-30
+- [ ] Step 5 — README, notes done; PR open, merge + release 0.2.0 pending
+
 ## Remote-UI policy plan (2026-10-30, awaiting approval)
 
 Goal: the owner's P5 notes on remote use over Tailscale, built: requests from
@@ -939,6 +1077,39 @@ Steps:
 - [x] Step 4 — iot-device.yaml CloudFormation stack + provision-device.sh + status.sh, lint clean, thing provisioned — completed 2026-10-30
 - [x] Step 5 — install-ops.sh run end-to-end over Tailscale (root@hacklab), heartbeat in the shadow incl. tailscale_ip, survives reboot — completed 2026-10-30
 - [ ] Step 6 — README/P5 notes, hygiene check, PR merged
+
+## P5c notes — signed updates, verified 2026-10-30
+
+- Chain verified end to end on the Pi: `release.sh` -> S3 -> `deploy.sh`
+  (IoT Job) -> agent downloads with role credentials from the IoT credentials
+  provider, verifies the minisign signature, `sudo hacklab-apply deploy` ->
+  extract, `pip install -e`, switch `current`, restart, 60 s health check.
+  0.1.1 and 0.1.2 SUCCEEDED (app serving from `releases/<v>`); `rollback.sh`
+  back to 0.1.1; `logs.sh` fetched a bundle (job logs, asks.jsonl, spend);
+  deploying 0.1.0 over 0.1.1 refused by the downgrade guard; `{"op":
+  "shell"}` ended FAILED "rejected: unknown op".
+- The very first deploy (0.1.0) was the best test: the tarball built on
+  macOS carried 114 AppleDouble `._*` files, the profile loader choked on
+  `._dance.toml`, the app failed its health check and the helper rolled back
+  to the previous code inside the same job, reporting FAILED with the reason.
+  Fixes: `COPYFILE_DISABLE=1 tar --no-xattrs` in `release.sh`, dotfiles
+  ignored by the loader, `--warning=no-unknown-keyword` on extract.
+- Things the live run found in the agent: modules not shipped by the
+  installer; the SDK asserts a `QoS` enum; a device may not report
+  `REJECTED` (the update was refused and the job looped) -> rejected ops end
+  FAILED with "rejected: ..." and a job id is never run twice; `JobStatus`
+  values are plain strings; the log bundle must be built in a temp dir
+  (the data dir belongs to the app user). The shadow's `release` may show a
+  failed version for one heartbeat during a rollback.
+- Key custody ended up: unencrypted minisign key on the Mac, backed up
+  (encrypted at rest by SSM, not by a passphrase) to
+  `/hacklab/minisign/secret-key`; AWS SSO + MFA is the single root of trust
+  for both jobs and signing. Recorded as the owner's decision.
+- Working from another machine: clone, `aws sso login --profile busyweb-sso`,
+  `scripts/device-secrets.sh restore pi3`, `restore-key`,
+  `restore-signing-key`, install `minisign` + `awscli`; then `release.sh` /
+  `deploy.sh` / `rollback.sh` / `logs.sh` / `status.sh` work. Nothing is
+  tied to this Mac.
 
 ## Remote-UI notes, verified 2026-10-30
 

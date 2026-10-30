@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  hacklab release channel: a private bucket for signed release tarballs and
+  device log bundles, plus the IAM role devices assume through the AWS IoT
+  credentials provider (role alias). Authenticity of releases comes from the
+  minisign signature, not from this bucket.
+
+Resources:
+  ReleasesBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub hacklab-releases-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-log-bundles
+            Status: Enabled
+            Prefix: logs/
+            ExpirationInDays: 90
+
+  DeviceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: hacklab-device
+      Description: Assumed by hacklab devices via the IoT credentials provider (role alias hacklab-device).
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: credentials.iot.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: releases-read-logs-write
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt ReleasesBucket.Arn
+                Condition:
+                  StringLike:
+                    s3:prefix: ["releases/*"]
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub ${ReleasesBucket.Arn}/releases/*
+              - Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub ${ReleasesBucket.Arn}/logs/${!credentials-iot:ThingName}/*
+
+  DeviceRoleAlias:
+    Type: AWS::IoT::RoleAlias
+    Properties:
+      RoleAlias: hacklab-device
+      RoleArn: !GetAtt DeviceRole.Arn
+      CredentialDurationSeconds: 3600
+
+Outputs:
+  BucketName:
+    Value: !Ref ReleasesBucket
+  RoleAliasArn:
+    Value: !GetAtt DeviceRoleAlias.RoleAliasArn
