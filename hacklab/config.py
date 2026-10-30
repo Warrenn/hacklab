@@ -29,6 +29,9 @@ class Config:
     boxes_dir: Path = field(
         default_factory=lambda: Path(__file__).resolve().parent.parent / "boxes"
     )
+    board: str = (
+        "arduino-cli"  # "fake" = real runner + store + genie on FakeBoard (dev without hardware)
+    )
 
 
 def load_config(path: Path | str = "config.toml", env: Mapping[str, str] | None = None) -> Config:
@@ -50,6 +53,7 @@ def load_config(path: Path | str = "config.toml", env: Mapping[str, str] | None 
         cfg.boxes_dir = Path(app["boxes_dir"])
     if env.get("HACKLAB_BOXES_DIR"):
         cfg.boxes_dir = Path(env["HACKLAB_BOXES_DIR"])
+    cfg.board = env.get("HACKLAB_BOARD") or app.get("board", Config.board)
     if "FAKE_BOARD" in env:
         cfg.fake_board = env["FAKE_BOARD"].strip().lower() in _TRUTHY
     if env.get("HACKLAB_DATA_DIR"):

@@ -4,6 +4,25 @@ from pathlib import Path
 
 import pytest
 
+SKELETON = """\
+#include <Servo.h>
+Servo s;
+//@@PARAMS
+void wave(int n) {
+  for (int i = 0; i < n; i++) { s.write(60); delay(200); s.write(120); delay(200); }
+}
+//@@FUNCTIONS
+void setup() { s.attach(10); }
+void loop() {
+    //@@LOOP
+    int key = 0;
+    switch (key) {
+        case 1: wave(1); break;
+        //@@CASES
+    }
+}
+"""
+
 SKETCH = """\
 #include <Servo.h>
 Servo s;
@@ -20,16 +39,22 @@ def write_box(root: Path, box_id: str = "testbox", *, stock_location: str = "rep
     (b / "behaviours" / "shake").mkdir(parents=True)
     (b / "templates" / "wave").mkdir(parents=True)
     (b / "stock" / "stock").mkdir(parents=True)
+    (b / "genie").mkdir()
+    (b / "genie" / "skeleton.ino").write_text(SKELETON)
     (b / "profile.toml").write_text(
         f'id = "{box_id}"\nname = "Test Box"\npicture = "/static/boxes/{box_id}.svg"\n'
         'libraries = ["Servo@1.3.0"]\n[board]\nfqbn = "arduino:avr:nano"\ncore = "arduino:avr"\n'
         f'[stock]\nlocation = "{stock_location}"\nmain = "stock"\n'
+        '[genie]\nskeleton = "genie/skeleton.ino"\n'
+        'helpers = ["wave(n): wave n times"]\nkeys = ["ok", "cmd1"]\n'
     )
     (b / "pins.toml").write_text("[pins]\nservo = 10\n[limits]\nangle = { min = 0, max = 180 }\n")
     (b / "hardware.md").write_text("# Test Box\nOne servo on pin 10.\n")
     (b / "concepts.toml").write_text(
         '[servo]\ntitle = "What is a servo?"\n'
         'explanation = "A motor that goes to an angle."\ntags = ["motor"]\n'
+        'question = "Want to know how a servo moves?"\n'
+        '[loop]\ntitle = "Repeating"\nexplanation = "A loop repeats."\n'
     )
     (b / "behaviours" / "shake.toml").write_text(
         'id = "shake"\ntitle = "Shake"\ndescription = "Press OK and it shakes."\n'

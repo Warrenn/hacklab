@@ -441,7 +441,7 @@ Steps:
 
 ## Progress — P4
 - [x] Step 1 — turret skeleton + [genie] profile section, concept questions, 5 hand-written goldens (forklift skeleton lands on the Pi in Step 5) — completed 2026-10-30
-- [ ] Step 2 — tests written (red)
+- [x] Step 2 — tests written (red) — completed 2026-10-30
 - [ ] Step 3 — genie, skeleton, spend, runner + app wiring green
 - [ ] Step 4 — goldens re-recorded live, cache hit verified
 - [ ] Step 5 — Pi: key installed, forklift HIL ask flashed and undone

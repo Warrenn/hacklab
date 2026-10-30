@@ -1,5 +1,5 @@
 // Hack Lab genie skeleton for the IR Turret: the stock sketch (MIT, Crunchlabs LLC) with
-// four insertion points the AI helper fills: //@@PARAMS, //@@CASES, //@@LOOP, //@@FUNCTIONS.
+// four insertion-point marker lines the AI helper fills (PARAMS, CASES, LOOP, FUNCTIONS).
 // Setup, pins and includes are fixed on purpose. Keys ok, star and 0-9 are free for rules;
 // up/down/left/right keep their stock moves.
 
