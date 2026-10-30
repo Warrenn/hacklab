@@ -31,7 +31,7 @@ WiFi, open `http://<mac-ip>:8000`.
 Inside the container the Pi toolchain is on `PATH`:
 
 ```sh
-docker compose exec app arduino-cli --config-file /opt/turret-lab/arduino/arduino-cli.yaml board list
+docker compose exec app arduino-cli --config-file /opt/hacklab/arduino/arduino-cli.yaml board list
 docker compose exec app pytest -q
 ```
 
@@ -79,8 +79,21 @@ deploy, rollback, status and logs (P5).
 
 ## Hardware-in-the-loop
 
-No board-touching code yet. The manual HIL smoke script arrives with the flash
-core in P1 and is documented here.
+The flash core (`hacklab/board.py`, `flash.py`, `store.py`, `RealJobRunner` in
+`jobs.py`) is unit-tested on `FakeBoard`. The real path is exercised on the
+Pi with a Nano-class box attached:
+
+```
+ssh root@hacklab
+cd /opt/hacklab/src && git pull
+PREFIX=/opt/hacklab scripts/hil-flash.sh <box-id> <stock-sketch-dir>
+```
+
+It drives the real app (`FAKE_BOARD=0`) through the HTTP API: select box,
+flash a serial sketch, undo, flash, reset; prints timings, the sketch's serial
+banner and the cached bootloader. Sketch versions live under
+`data/<box>/versions/NNNN/<sketch>/` with `0000` as the pinned stock baseline.
+arduino-cli needs the main file named after its folder (`<dir>/<dir>.ino`).
 
 ## Public repo hygiene
 

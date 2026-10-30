@@ -27,5 +27,5 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v7
-      - run: docker build -f Dockerfile.dev -t turret-lab-dev .
-      - run: docker run --rm turret-lab-dev pytest -q
+      - run: docker build -f Dockerfile.dev -t hacklab-dev .
+      - run: docker run --rm hacklab-dev pytest -q

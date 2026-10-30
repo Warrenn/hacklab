@@ -4,7 +4,7 @@
 # compiles with exactly the Pi's toolchain.
 #
 # Requires: bash, curl, python3 (>= 3.11) with the venv module.
-#   PREFIX               install root            (default /opt/turret-lab)
+#   PREFIX               install root            (default /opt/hacklab)
 #   REPO_DIR             checkout to install     (default: this script's repo)
 #   ARDUINO_CLI_VERSION  pinned arduino-cli      (default 1.5.1)
 #
@@ -14,7 +14,7 @@
 #   $PREFIX/venv                      Python venv with hacklab installed (editable)
 set -euo pipefail
 
-PREFIX="${PREFIX:-/opt/turret-lab}"
+PREFIX="${PREFIX:-/opt/hacklab}"
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 ARDUINO_CLI_VERSION="${ARDUINO_CLI_VERSION:-1.5.1}"
 ARDUINO_DIR="$PREFIX/arduino"

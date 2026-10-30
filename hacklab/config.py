@@ -24,6 +24,8 @@ class Config:
     model: str = "claude-sonnet-5-5"
     monthly_cap_usd: float = 10
     api_key: str | None = None
+    arduino_cli: str = "/opt/hacklab/bin/arduino-cli"
+    arduino_config: str | None = "/opt/hacklab/arduino/arduino-cli.yaml"
 
 
 def load_config(path: Path | str = "config.toml", env: Mapping[str, str] | None = None) -> Config:
@@ -38,6 +40,8 @@ def load_config(path: Path | str = "config.toml", env: Mapping[str, str] | None 
         fake_board=bool(app.get("fake_board", False)),
         model=ai.get("model", Config.model),
         monthly_cap_usd=float(ai.get("monthly_cap_usd", Config.monthly_cap_usd)),
+        arduino_cli=app.get("arduino_cli", Config.arduino_cli),
+        arduino_config=app.get("arduino_config", Config.arduino_config),
     )
     if "FAKE_BOARD" in env:
         cfg.fake_board = env["FAKE_BOARD"].strip().lower() in _TRUTHY

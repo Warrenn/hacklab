@@ -11,7 +11,7 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY . /app
-RUN PREFIX=/opt/turret-lab REPO_DIR=/app provisioning/install-toolchain.sh
+RUN PREFIX=/opt/hacklab REPO_DIR=/app provisioning/install-toolchain.sh
 
 # Smoke test baked into the image: a sketch using the whitelisted libraries
 # must compile for the Nano. A broken toolchain fails the build, so CI's
@@ -19,11 +19,11 @@ RUN PREFIX=/opt/turret-lab REPO_DIR=/app provisioning/install-toolchain.sh
 RUN mkdir -p /tmp/smoke/smoke \
  && printf '#include <Servo.h>\n#include <IRremote.hpp>\nServo s;\nvoid setup(){ s.attach(10); IrReceiver.begin(9); }\nvoid loop(){}\n' \
       > /tmp/smoke/smoke/smoke.ino \
- && /opt/turret-lab/bin/arduino-cli --config-file /opt/turret-lab/arduino/arduino-cli.yaml \
+ && /opt/hacklab/bin/arduino-cli --config-file /opt/hacklab/arduino/arduino-cli.yaml \
       compile --fqbn arduino:avr:nano /tmp/smoke/smoke \
  && rm -rf /tmp/smoke
 
-ENV PATH="/opt/turret-lab/venv/bin:/opt/turret-lab/bin:$PATH" \
+ENV PATH="/opt/hacklab/venv/bin:/opt/hacklab/bin:$PATH" \
     FAKE_BOARD=1
 EXPOSE 8000
 CMD ["uvicorn", "hacklab.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

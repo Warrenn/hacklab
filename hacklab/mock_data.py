@@ -8,9 +8,14 @@ The real stock sketch lands in boxes/ir-turret/stock/ in P2.
 BOXES = [
     {"id": "ir-turret", "name": "IR Turret", "picture": "/static/boxes/ir-turret.png"},
     {"id": "laser-synth", "name": "Laser Synthesizer", "picture": "/static/boxes/laser-synth.png"},
+    {
+        "id": "omnibot-forklift",
+        "name": "Omnibot Forklift",
+        "picture": "/static/boxes/omnibot-forklift.png",
+    },
 ]
 
-BEHAVIOURS = {
+BEHAVIOURS: dict[str, list] = {
     "ir-turret": [
         {
             "id": "shake-no",
@@ -42,6 +47,7 @@ BEHAVIOURS = {
             "tweakables": [],
         }
     ],
+    "omnibot-forklift": [],
 }
 
 CONCEPTS = {
