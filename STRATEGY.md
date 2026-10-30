@@ -363,19 +363,17 @@ touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
   later wlan0 is `type managed` on the home WiFi with its old DHCP address,
   comitup `CONNECTED state`, `hacklab-setup-0000` profile kept (inactive)
   for the next fallback. Whole loop verified headless over the wired link.
-- 2026-10-30 `hacklab.local` does NOT resolve from the dev Mac (same /24,
-  Deco mesh WiFi), before and after the rename. Not a Pi problem: avahi
-  announces hacklab.local on eth0 + wlan0, replies to the Mac's queries, no
-  firewall (`nft list ruleset` empty), rp_filter loose. Measured with raw
-  python multicast senders/listeners: Mac -> Pi on 224.0.0.251 arrives on
-  both Pi interfaces; Pi -> Mac on 239.1.2.3 arrives; Pi -> Mac on
-  224.0.0.251 (any port) never arrives. The Deco forwards the mDNS group
-  selectively -> looks like IGMP snooping with a stale/missing membership
-  for the Mac (no IGMP querier seen; capture cut short by a power loss).
-  Open: confirm by re-joining the Mac to WiFi, then check the Deco IGMP
-  snooping / IPTV setting. Matters for the iPad: if the kid's home router
-  does the same, `http://hacklab.local` fails and the PWA needs an IP /
-  QR-code fallback.
+- 2026-10-30 `hacklab.local` only resolves when the client is on the SAME
+  WiFi network as the Pi. From the dev Mac on a different Deco SSID (same
+  /24, unicast ssh to the IP fine) it never resolved: raw multicast tests
+  showed Mac -> Pi mDNS arrives, Pi -> Mac on other groups arrives, but
+  Pi -> Mac on 224.0.0.251 is dropped (the Deco does not forward the mDNS
+  group across its networks). Once the Mac was on the Pi's SSID:
+  `ssh admin@hacklab.local uptime` works, resolving to wlan0's address.
+  Pi side is clean (avahi announces on eth0 + wlan0, no firewall, rp_filter
+  loose). Setup instructions for the iPad must say "join the same WiFi
+  network as the box"; guest networks and multi-SSID routers will break
+  `http://hacklab.local`, so keep an IP / QR-code fallback in mind.
 - 2026-10-30 hotspot would not start (Pi OS trixie, kernel 6.18.50+rpt,
   NM 1.52.1, wpasupplicant 2:2.10-24+rpt3, BCM43430 brcmfmac). Symptom: NM
   "Hotspot network creation took too long ... supplicant-timeout" every ~25 s.
