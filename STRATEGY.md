@@ -405,7 +405,7 @@ Steps:
    over Tailscale from the Mac.
 
 ## Progress — P5a
-- [x] Step 1 — Tailscale SSH on the Pi and the Mac, `ssh root@hacklab` verified over the tailnet — completed 2026-10-30 (key expiry still to disable in the admin console)
+- [x] Step 1 — Tailscale SSH on the Pi and the Mac, `ssh root@hacklab` verified over the tailnet — completed 2026-10-30
 - [x] Step 2 — ops agent tests written (red) — completed 2026-10-30
 - [x] Step 3 — ops/agent.py green, ruff clean — completed 2026-10-30
 - [x] Step 4 — iot-device.yaml CloudFormation stack + provision-device.sh + status.sh, lint clean, thing provisioned — completed 2026-10-30
@@ -496,8 +496,8 @@ Steps:
   carries `tailscale_ip`. Gotcha: do not reboot the Pi while a `tailscale up`
   login is pending -- the owner's sign-in then registers a node the restarted
   daemon knows nothing about (stale offline entry, Pi still "Logged out");
-  re-run `tailscale up` for a fresh URL. Node key expiry (6 months) must be
-  disabled in the admin console for a headless device -- OPEN.
+  re-run `tailscale up` for a fresh URL. Node key expiry disabled in the
+  admin console 2026-10-30 (required for a headless device).
 - Gotcha: `printf pw | sudo -S tee FILE` feeds the password to tee, not the
   piped content -- write files with `sudo -S bash -c 'curl ... -o FILE'`.
   Both affected files were rewritten before anything was installed.
