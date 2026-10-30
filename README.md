@@ -87,3 +87,18 @@ core in P1 and is documented here.
 No secrets, no personal details. Config, keys, device identifiers and runtime
 state are untracked (see `.gitignore`). CrunchLabs stock sketches are MIT and
 are committed with their license headers.
+
+## Remote ops (P5a)
+
+The Pi reports to an AWS IoT Core device shadow every 5 minutes and is
+reachable for break-glass root SSH over Tailscale. No commands are executed
+remotely; updates until P5 proper are `ssh root@hacklab` + git/apt.
+
+| Command | Does |
+| --- | --- |
+| `scripts/provision-device.sh <device>` | Key + CSR on your machine, CloudFormation stack (thing, cert, scoped policy) in eu-west-1, cert/endpoint/root CA into `provisioning/local/<device>/` (git-ignored) |
+| `provisioning/install-ops.sh <device> [ssh-target]` | Installs/upgrades the agent on the Pi: `/opt/hacklab/ops` venv, certs 0600, `hacklab-ops.service` |
+| `scripts/status.sh <device>` | Prints the shadow's reported state and its age |
+
+Needs `AWS_PROFILE` (default `busyweb-sso`) logged in. Agent code: `ops/agent.py`,
+tests in `tests/test_ops_agent.py`.
