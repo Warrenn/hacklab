@@ -138,6 +138,9 @@ def test_non_json_garbage_raises_cli_error(tmp_path: Path):
 
 def test_fake_board_scripts_failures(tmp_path: Path):
     fb = FakeBoard()
+    tmp_path = tmp_path / "sk"
+    tmp_path.mkdir()
+    (tmp_path / "sk.ino").write_text("")
     assert fb.list_ports()[0].address == "/dev/ttyFAKE0"
     assert fb.compile(tmp_path, "arduino:avr:nano:cpu=atmega328", tmp_path / "o").ok
     fb.compile_error = "error: 'foo' was not declared"

@@ -48,15 +48,20 @@ class Flasher:
         )
 
     def detect(self) -> Port | None:
+        self.last_ports: list[Port] = []
+        self.last_error: str | None = None
         try:
-            return find_board(self.board.list_ports())
-        except Exception:  # noqa: BLE001 - a flaky CLI call means "not connected", not a crash
+            self.last_ports = self.board.list_ports()
+            return find_board(self.last_ports)
+        except Exception as exc:  # noqa: BLE001 - a flaky CLI call means "not connected", not a crash
+            self.last_error = f"{type(exc).__name__}: {exc}"
             return None
 
     def flash(self, box: str, sketch_dir: Path, progress: Callable[[str], None]) -> FlashResult:
         log: list[str] = []
         port = self.detect()
         if port is None:
+            log.append(f"[detect] ports={self.last_ports} error={self.last_error}")
             return self._fail("detecting", log)
         progress("compiling")
         build = Path(tempfile.mkdtemp(prefix="hacklab-build-"))
@@ -89,10 +94,10 @@ class Flasher:
     def _still_there(self, port: Port) -> bool:
         deadline = time.monotonic() + self.timeout
         while True:
-            ports = self.detect() and self.board.list_ports() or []
+            self.detect()  # one CLI call (~10 s on a Pi 3); ports land in last_ports
             same = [
                 p
-                for p in ports
+                for p in self.last_ports
                 if (port.serial and p.serial == port.serial) or p.address == port.address
             ]
             if same:

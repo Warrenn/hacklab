@@ -93,8 +93,10 @@ def create_app(
     def ensure_baseline(box: str) -> None:
         # P2 replaces the mock stock sketch with the box profile's stock/ dir.
         if store and store.baseline(box) is None:
-            d = Path(tempfile.mkdtemp(prefix="stock-"))
-            (d / f"{box.replace('-', '_')}.ino").write_text(mock_data.STOCK_SKETCH)
+            name = box.replace("-", "_")  # arduino-cli: <dir>/<dir>.ino
+            d = Path(tempfile.mkdtemp(prefix="stock-")) / name
+            d.mkdir()
+            (d / f"{name}.ino").write_text(mock_data.STOCK_SKETCH)
             store.ensure_baseline(box, d)
 
     async def start(kind: str, payload: dict[str, Any]) -> dict[str, str]:

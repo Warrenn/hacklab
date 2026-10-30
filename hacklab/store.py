@@ -110,9 +110,10 @@ class SketchStore:
 
     # -- internals -------------------------------------------------------
     def _write(self, box, vid, sketch_dir, kind, parent, note) -> Version:
-        dest = self._versions_dir(box) / vid
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(sketch_dir, dest, ignore=shutil.ignore_patterns("meta.json"))
+        vdir = self._versions_dir(box) / vid
+        vdir.mkdir(parents=True, exist_ok=True)
+        dest = vdir / Path(sketch_dir).name  # keep the name: arduino-cli wants <dir>/<dir>.ino
+        shutil.copytree(sketch_dir, dest)
         v = Version(
             id=vid,
             kind=kind,
@@ -121,7 +122,7 @@ class SketchStore:
             parent=parent,
             note=note,
         )
-        (dest / "meta.json").write_text(json.dumps(asdict(v)))
+        (vdir / "meta.json").write_text(json.dumps(asdict(v)))
         self._set_current(box, vid)
         return v
 

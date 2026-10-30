@@ -199,6 +199,16 @@ class RealJobRunner:
     async def _run(self, job: Job, on_done: OnDone | None) -> None:
         box = job.payload["box"]
         async with self._lock:
+            try:
+                await self._run_locked(job, box, on_done)
+            except Exception as exc:  # noqa: BLE001 - a bug must surface as a failed job, never a hang
+                job.log_ref = self._write_log(
+                    box, job, f"internal error: {type(exc).__name__}: {exc}"
+                )
+                self._set(job, "failed")
+
+    async def _run_locked(self, job: Job, box: str, on_done: OnDone | None) -> None:
+        if True:
             sketch_dir = self._sketch_dir(job)
             if sketch_dir is None:
                 self._set(job, "failed")
