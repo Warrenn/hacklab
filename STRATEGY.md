@@ -492,8 +492,8 @@ Steps:
 - [x] Step 1 — passphrase-protected signing key (encrypted backup in Parameter Store), releases stack (bucket, device role, role alias), device policy updated keeping the certificate, install.sh additions — completed 2026-10-30
 - [x] Step 2 — tests written (red) — completed 2026-10-30
 - [x] Step 3 — ops/jobs.py executor, ops/awsio.py (IoT credentials -> S3, minisign, sudo helper), JobsWorker in the agent, hacklab-apply, release/deploy/rollback/logs scripts; 162 tests, shellcheck, cfn-lint — completed 2026-10-30
-- [ ] Step 4 — Pi: deploy 0.1.0, broken build rolls back, rollback/logs/rejected
-- [ ] Step 5 — README, notes, PR merged
+- [x] Step 4 — Pi: 0.1.0 exposed macOS metadata in the tarball (health failed, auto-rollback kept the app up), 0.1.1 and 0.1.2 SUCCEEDED, 0.1.2-bad FAILED with automatic rollback, rollback.sh back to 0.1.1, logs.sh bundle fetched, downgrade to 0.1.0 refused, bogus op FAILED as rejected — completed 2026-10-30
+- [ ] Step 5 — README, notes done; PR open, merge + release 0.2.0 pending
 
 ## Remote-UI policy plan (2026-10-30, awaiting approval)
 
@@ -1077,6 +1077,39 @@ Steps:
 - [x] Step 4 — iot-device.yaml CloudFormation stack + provision-device.sh + status.sh, lint clean, thing provisioned — completed 2026-10-30
 - [x] Step 5 — install-ops.sh run end-to-end over Tailscale (root@hacklab), heartbeat in the shadow incl. tailscale_ip, survives reboot — completed 2026-10-30
 - [ ] Step 6 — README/P5 notes, hygiene check, PR merged
+
+## P5c notes — signed updates, verified 2026-10-30
+
+- Chain verified end to end on the Pi: `release.sh` -> S3 -> `deploy.sh`
+  (IoT Job) -> agent downloads with role credentials from the IoT credentials
+  provider, verifies the minisign signature, `sudo hacklab-apply deploy` ->
+  extract, `pip install -e`, switch `current`, restart, 60 s health check.
+  0.1.1 and 0.1.2 SUCCEEDED (app serving from `releases/<v>`); `rollback.sh`
+  back to 0.1.1; `logs.sh` fetched a bundle (job logs, asks.jsonl, spend);
+  deploying 0.1.0 over 0.1.1 refused by the downgrade guard; `{"op":
+  "shell"}` ended FAILED "rejected: unknown op".
+- The very first deploy (0.1.0) was the best test: the tarball built on
+  macOS carried 114 AppleDouble `._*` files, the profile loader choked on
+  `._dance.toml`, the app failed its health check and the helper rolled back
+  to the previous code inside the same job, reporting FAILED with the reason.
+  Fixes: `COPYFILE_DISABLE=1 tar --no-xattrs` in `release.sh`, dotfiles
+  ignored by the loader, `--warning=no-unknown-keyword` on extract.
+- Things the live run found in the agent: modules not shipped by the
+  installer; the SDK asserts a `QoS` enum; a device may not report
+  `REJECTED` (the update was refused and the job looped) -> rejected ops end
+  FAILED with "rejected: ..." and a job id is never run twice; `JobStatus`
+  values are plain strings; the log bundle must be built in a temp dir
+  (the data dir belongs to the app user). The shadow's `release` may show a
+  failed version for one heartbeat during a rollback.
+- Key custody ended up: unencrypted minisign key on the Mac, backed up
+  (encrypted at rest by SSM, not by a passphrase) to
+  `/hacklab/minisign/secret-key`; AWS SSO + MFA is the single root of trust
+  for both jobs and signing. Recorded as the owner's decision.
+- Working from another machine: clone, `aws sso login --profile busyweb-sso`,
+  `scripts/device-secrets.sh restore pi3`, `restore-key`,
+  `restore-signing-key`, install `minisign` + `awscli`; then `release.sh` /
+  `deploy.sh` / `rollback.sh` / `logs.sh` / `status.sh` work. Nothing is
+  tied to this Mac.
 
 ## Remote-UI notes, verified 2026-10-30
 

@@ -83,6 +83,33 @@ Coming per phase: `boxes/<id>/` profiles (P2), the PWA (P3), the AI helper
 (P4), `provisioning/install.sh`, systemd units and `scripts/` for release,
 deploy, rollback, status and logs (P5).
 
+## Releases and remote updates (P5c)
+
+```
+scripts/release.sh 0.2.0          # git archive of HEAD + manifest, minisign-signed, uploaded to S3
+scripts/deploy.sh pi3 0.2.0       # IoT Job; waits and prints SUCCEEDED/FAILED with the reason
+scripts/rollback.sh pi3           # previous release on the device
+scripts/logs.sh pi3               # log bundle from the device into provisioning/local/pi3/logs/
+scripts/deploy.sh pi3 --op restart|report-state|apt-upgrade
+```
+
+On the Pi the ops agent (unprivileged) downloads the release with short-lived
+role credentials obtained from its device certificate (IoT credentials
+provider, role alias `hacklab-device`), verifies the signature against
+`/opt/hacklab/minisign.pub`, then calls the only privileged command it is
+allowed, `hacklab-apply`, which re-verifies, installs into
+`/opt/hacklab/releases/<version>`, switches `current`, restarts the app and
+rolls back automatically if the app is not healthy within 60 s. Downgrades are
+refused (use rollback). Jobs with any other operation are rejected; no job
+content is ever executed. Infrastructure: `provisioning/releases.yaml`
+(bucket, device role, role alias) and the jobs/credentials statements in
+`provisioning/iot-device.yaml`, both CloudFormation.
+
+**Working from another machine:** clone the repo, `aws sso login --profile
+busyweb-sso`, `scripts/device-secrets.sh restore pi3`, `restore-key`,
+`restore-signing-key`, install `minisign` and the AWS CLI. Everything above
+then works; nothing depends on a particular computer.
+
 ## Remote view over Tailscale
 
 `http://hacklab/` (MagicDNS) serves the same UI to the maintainer. Requests
