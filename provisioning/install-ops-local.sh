@@ -11,9 +11,12 @@ agent_dir=${HACKLAB_AGENT_DIR:-$src/ops}   # where agent.py + requirements.txt a
 id -u hacklab-ops >/dev/null 2>&1 || useradd --system --home /opt/hacklab/ops --shell /usr/sbin/nologin hacklab-ops
 mkdir -p /opt/hacklab/ops /opt/hacklab/data/iot
 install -m 644 "$agent_dir/agent.py" "$agent_dir/requirements.txt" /opt/hacklab/ops/
-for f in cert.pem private.key AmazonRootCA1.pem; do
-  [ -f "$files/$f" ] && install -o hacklab-ops -g hacklab-ops -m 600 "$files/$f" /opt/hacklab/data/iot/
-done
+if [ "$(realpath "$files")" != "$(realpath /opt/hacklab/data/iot)" ]; then
+  for f in cert.pem private.key AmazonRootCA1.pem; do
+    [ -f "$files/$f" ] && install -o hacklab-ops -g hacklab-ops -m 600 "$files/$f" /opt/hacklab/data/iot/
+  done
+fi
+chown -R hacklab-ops:hacklab-ops /opt/hacklab/data/iot && chmod 600 /opt/hacklab/data/iot/*
 [ -x /opt/hacklab/ops/venv/bin/python ] || python3 -m venv /opt/hacklab/ops/venv
 /opt/hacklab/ops/venv/bin/pip install -q --disable-pip-version-check -r /opt/hacklab/ops/requirements.txt
 if [ -n "${HACKLAB_THING:-}" ] && [ -n "${HACKLAB_IOT_ENDPOINT:-}" ]; then

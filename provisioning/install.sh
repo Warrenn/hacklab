@@ -29,17 +29,18 @@ run ln -sfn "$SRC" "$PREFIX/current"
 
 log "4/9 config + env file (key never in git)"
 [ -f /etc/hacklab/config.toml ] || run install -m 644 "$SRC/provisioning/appliance.toml" /etc/hacklab/config.toml
-if [ ! -f /etc/default/hacklab ]; then
-  run install -m 600 /dev/null /etc/default/hacklab
-  if [ "$DRY" = 0 ]; then
-    printf 'HACKLAB_CONFIG=/etc/hacklab/config.toml\nHACKLAB_DATA_DIR=%s/data\nHACKLAB_BOXES_DIR=%s/current/boxes\nANTHROPIC_API_KEY=%s\n' \
-      "$PREFIX" "$PREFIX" "${HACKLAB_API_KEY:-}" > /etc/default/hacklab
-  fi
-elif [ -n "${HACKLAB_API_KEY:-}" ] && [ "$DRY" = 0 ]; then
-  grep -v '^ANTHROPIC_API_KEY=' /etc/default/hacklab > /etc/default/hacklab.tmp || true
-  printf 'ANTHROPIC_API_KEY=%s\n' "$HACKLAB_API_KEY" >> /etc/default/hacklab.tmp
+# /etc/default/hacklab: merge (never clobber a key someone pushed); root-only.
+setvar() {  # setvar NAME VALUE -> replace or append NAME=VALUE
+  [ "$DRY" = 1 ] && { printf '  would: set %s in /etc/default/hacklab\n' "$1"; return; }
+  { grep -v "^$1=" /etc/default/hacklab 2>/dev/null || true; printf '%s=%s\n' "$1" "$2"; } > /etc/default/hacklab.tmp
   install -m 600 /etc/default/hacklab.tmp /etc/default/hacklab && rm -f /etc/default/hacklab.tmp
-fi
+}
+[ -f /etc/default/hacklab ] || run install -m 600 /dev/null /etc/default/hacklab
+setvar HACKLAB_CONFIG /etc/hacklab/config.toml
+setvar HACKLAB_DATA_DIR "$PREFIX/data"
+setvar HACKLAB_BOXES_DIR "$PREFIX/current/boxes"
+if [ -n "${HACKLAB_API_KEY:-}" ]; then setvar ANTHROPIC_API_KEY "$HACKLAB_API_KEY"
+elif ! grep -q '^ANTHROPIC_API_KEY=' /etc/default/hacklab 2>/dev/null; then setvar ANTHROPIC_API_KEY ""; fi
 
 log "5/9 systemd unit, logrotate, journald limit"
 run install -m 644 "$SRC/provisioning/hacklab-app.service" /etc/systemd/system/hacklab-app.service
