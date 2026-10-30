@@ -353,6 +353,9 @@ async function startJob(kind, path, body, asked) {
 }
 function onJob(job) {
   if (!S.job || job.job_id !== S.job.job_id) return;
+  // A late reply to the post-submit sync or a poll must never overwrite a finished job
+  // (seen on Firefox: the Done heading showed the compiling stage text).
+  if (S.job.state === 'done' || S.job.state === 'failed') return;
   S.job = { ...S.job, ...job };
   if (job.state === 'done' || job.state === 'failed') finishJob();
   else if (S.screen === 'working') render();

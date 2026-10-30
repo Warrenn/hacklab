@@ -47,7 +47,9 @@ test.beforeEach(async ({ page }) => page.setViewportSize({ width: 1180, height: 
 async function openPicker(page, url) {
   await page.goto(url);
   const picker = page.getByRole('heading', { name: 'Which box is plugged in?' });
-  if (!(await picker.isVisible().catch(() => false))) await page.getByRole('button', { name: /plugged in/ }).click();
+  const chip = page.getByRole('button', { name: /plugged in/ });
+  await expect(picker.or(chip)).toBeVisible({ timeout: 15000 }); // first render waits for /api/status
+  if (!(await picker.isVisible())) await chip.click();
   await expect(picker).toBeVisible();
 }
 async function pickTurret(page, url) {
