@@ -357,6 +357,64 @@ HTTPS (see decision above); Android tablet running the CrunchLabs IDE directly
 (Chrome Android 148+ has Web Serial) if the hardware situation ever changes;
 touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 
+## Remote-UI policy plan (2026-10-30, awaiting approval)
+
+Goal: the owner's P5 notes on remote use over Tailscale, built: requests from
+the Tailscale side see the same UI read-only, an explicit admin toggle
+(gated on source, not a password) enables remote flashing, the kid's screen
+shows "Uncle is helping" while it is on, and every remote action is logged
+with `source=tailscale`.
+
+Decisions:
+- Source classification server-side from the peer address: Tailscale =
+  100.64.0.0/10 or fd7a:115c:a1e0::/48 -> `remote`; everything else
+  (home LAN, the setup hotspot 10.41.0.0/24, localhost) -> `local`. One
+  function, `hacklab/remote.py`, unit-tested on addresses. The mock backend
+  (`FAKE_BOARD=1`, no hardware) additionally honours an `X-Hacklab-Source`
+  header so the browser tests can act as a remote viewer; the real runner
+  never reads that header.
+- Write endpoints (`/api/flash/*`, `/api/ask`, `/api/undo`, `/api/reset`,
+  `/api/box` select) from a `remote` source return 403 with
+  `{"detail": "Remote view only. Turn on helping to make changes."}` unless
+  helping is on. Reads (`status`, `boxes`, `behaviours`, `jobs`, `sketch`,
+  `concepts`, `events`) are always allowed.
+- Helping toggle: `POST /api/helping {on: bool}` accepted only from a
+  `remote` source (local callers get 403: the toggle never exists on the LAN
+  side, matching "gated on the source interface"). Server-wide state with a
+  2-hour auto-off; `GET /api/status` gains `helping: bool` and `source:
+  "local"|"remote"`; a status event goes out on `/api/events` when it flips.
+- PWA: when `source == "remote"` show a "Remote view" banner with the
+  helping switch (also honour `?admin=1` on load by calling the toggle);
+  while `helping` is true every client shows the line "Uncle is helping"
+  under the header (the kid-facing copy the owner chose; no name). Write
+  buttons disabled with the banner when remote and not helping.
+- Logging: jobs record `source` in their JSONL event and ask log; the
+  helping flips are logged to `data/helping.jsonl` with the peer address.
+- No new dependencies; no password. Parallelism: API (`hacklab/`, tests)
+  and PWA (`static/`, `tests/pwa/`) are file-disjoint; small enough to
+  serialize in one branch.
+
+Steps:
+1. Tests red: `tests/test_remote.py` (classification), `tests/test_api_remote.py`
+   (403s, toggle only from remote, status fields, auto-off via injected clock,
+   events on flip, job/ask logs carry `source`, mock header honoured only in
+   mock mode).
+2. `hacklab/remote.py` + app wiring; green.
+3. PWA banner, switch, `?admin=1`, "Uncle is helping" line; `pw` tests via
+   the mock header (browser-testing skill); screenshots.
+4. Pi: deploy; from the Mac over Tailscale (`http://hacklab/`): write blocked,
+   toggle on, real ask flashes the Forklift, LAN view (`http://hacklab.local/`)
+   shows the helping line, logs show `source=tailscale`; toggle off blocks
+   again.
+5. README, notes, PR, merge; Pi follows main.
+
+## Progress — remote UI
+- [ ] Step 1 — tests written (red)
+- [ ] Step 2 — remote.py + app wiring green
+- [ ] Step 3 — PWA banner, switch, helping line, pw tests
+- [ ] Step 4 — verified on the Pi over Tailscale and on the LAN
+- [ ] Step 5 — README, notes, PR merged
+
 ## P5b plan — Appliance (2026-10-30, awaiting approval)
 
 Owner's choices 2026-10-30: P5 in two halves -- (A) appliance now, verify on
