@@ -83,6 +83,21 @@ Coming per phase: `boxes/<id>/` profiles (P2), the PWA (P3), the AI helper
 (P4), `provisioning/install.sh`, systemd units and `scripts/` for release,
 deploy, rollback, status and logs (P5).
 
+## Boxes
+
+Everything box-specific lives in `boxes/<id>/` (TOML + Markdown + sketch
+folders): `profile.toml` (board, libraries, where the stock code lives),
+`pins.toml`, `hardware.md`, `concepts.toml`, `behaviours/<id>.toml` +
+`behaviours/<id>/<id>.ino`, `templates/...`, `stock/` (only when the license
+allows; otherwise the stock code is copied to `data/boxes/<id>/stock/` on the
+device). Tweakable numbers use the Hack Pack IDE's trailing-comment markers,
+e.g. `int shakes = 3; ///{"range":[1,10],"label":"How many shakes"}`.
+
+- `scripts/new-box.sh <id> "<Name>"` scaffolds a box from `boxes/_template`.
+- `scripts/check-box.sh <id>` validates the profile and kid copy, then compiles
+  every behaviour, template and stock sketch (local toolchain, the Pi, or the
+  dev container).
+
 ## Hardware-in-the-loop
 
 The flash core (`hacklab/board.py`, `flash.py`, `store.py`, `RealJobRunner` in

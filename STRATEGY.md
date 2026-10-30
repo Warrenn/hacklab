@@ -432,7 +432,7 @@ Steps:
 - [x] Step 2 — tests written (red) — completed 2026-10-30
 - [ ] Step 3 — profiles.py, templates.py, app wiring green, mock_data removed
 - [ ] Step 4 — ir-turret behaviours/templates/concepts compile; new-box.sh, check-box.sh, CI
-- [ ] Step 5 — Pi: check-box.sh native, Forklift HIL through the profile-backed app
+- [x] Step 5 — Pi: check-box.sh ir-turret (11 compile tests, 3 min) and omnibot-forklift, Forklift HIL flash/undo/flash/reset through the profile-backed app — completed 2026-10-30
 - [ ] Step 6 — README, notes, PR merged
 
 ## P3 plan — PWA (2026-10-30, pulled forward; approved, agent started on feat/p3-pwa)
@@ -684,6 +684,29 @@ Steps:
 - [x] Step 4 — iot-device.yaml CloudFormation stack + provision-device.sh + status.sh, lint clean, thing provisioned — completed 2026-10-30
 - [x] Step 5 — install-ops.sh run end-to-end over Tailscale (root@hacklab), heartbeat in the shadow incl. tailscale_ip, survives reboot — completed 2026-10-30
 - [ ] Step 6 — README/P5 notes, hygiene check, PR merged
+
+## P2 notes — box profiles, verified 2026-10-30
+
+- Profiles are TOML (stdlib). `scripts/check-box.sh ir-turret` on the Pi: 7
+  behaviours + 2 templates + 2 stock sketches compile for arduino:avr:nano
+  in ~3 min (11 x ~17 s). CI runs the same compile tests inside the dev
+  container (`HACKLAB_CLI` set in the docker step).
+- Tweak markers: the IDE's `///{...}` convention plus our `"label"` key for
+  kid-facing slider text; the stock `yawStopSpeed` marker is stripped from
+  derived sketches ("keep this at 90"). Behaviour-specific numbers are placed
+  above the stock params so they come first in the Tweak screen.
+- Behaviours are generated from the stock sketch by text insertion (switch
+  cases, params, functions, loop prelude) -- the generator was a one-off and
+  is not committed; the sketches are. Each file keeps the MIT header.
+- Omnibot Forklift profile uses `stock.location = "device"`; the stock code
+  must be copied to `data/boxes/omnibot-forklift/stock/StockCode/` on the Pi
+  (no license header, not in git). The HIL script seeds it from
+  `/root/hil/StockCode`. Roulette hack for the turret still to fetch from
+  the IDE (it never loaded as an editor model).
+- API gaps the P3 agent listed, now partly closed: per-tweakable label (done);
+  still open: job cancel, version title + timestamp in `/api/status`,
+  per-stage explanation text, per-value "what it will do" summary, PNG box
+  pictures (SVG placeholders in use).
 
 ## P1 notes — flash core, verified on the Pi 2026-10-30
 

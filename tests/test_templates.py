@@ -70,7 +70,10 @@ def test_bad_marker_is_reported_with_line_number():
 
 
 def test_label_is_our_extension_and_passes_through():
-    src = 'int shakes = 3; ///{"range":[1,10],"label":"How many shakes"}\nint x = 1; ///{"range":[0,1]}\n'
+    src = (
+        'int shakes = 3; ///{"range":[1,10],"label":"How many shakes"}\n'
+        'int x = 1; ///{"range":[0,1]}\n'
+    )
     api = [t.to_api() for t in find_tweakables(src)]
     assert api[0]["label"] == "How many shakes"
     assert "label" not in api[1]
