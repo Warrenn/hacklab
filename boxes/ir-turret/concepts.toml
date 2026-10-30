@@ -1,0 +1,21 @@
+# Concept id -> kid explanation (2-4 sentences, no links). Tags pick curiosity prompts.
+
+[servo]
+title = "What is a servo?"
+explanation = "A servo is a small motor that listens for a number. Tell the tilt servo 100 and it turns to that angle and holds there. The turning servos are different: 90 means stop, and numbers above or below 90 mean spin one way or the other."
+tags = ["motor", "angle", "write"]
+
+[loop]
+title = "Doing something again and again"
+explanation = "A loop repeats the same lines a set number of times. Shaking the head three times is one shake written once, inside a loop that counts to three. Change the count and the turret shakes more or less."
+tags = ["for", "repeat", "count"]
+
+[delay]
+title = "Waiting"
+explanation = "delay(500) tells the board to wait 500 milliseconds, which is half a second. The turning servos keep spinning while the board waits, so a longer wait means a bigger turn."
+tags = ["time", "milliseconds", "wait"]
+
+[event]
+title = "When I press a key"
+explanation = "The remote sends a code for each key. The code checks which key arrived and runs the matching action. That is a rule: when this key, do that move."
+tags = ["remote", "switch", "trigger"]

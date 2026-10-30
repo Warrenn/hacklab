@@ -420,7 +420,7 @@ Steps:
    stock headers intact), PR, merge; Pi follows main.
 
 ## Progress — P2
-- [ ] Step 1 — turret stock + hacks in, hardware.md, pins, forklift skeleton
+- [x] Step 1 — turret stock + passcode hack in (MIT headers kept; roulette did not load from the IDE, follow-up), hardware.md, pins, concepts, forklift skeleton — completed 2026-10-30
 - [ ] Step 2 — tests written (red)
 - [ ] Step 3 — profiles.py, templates.py, app wiring green, mock_data removed
 - [ ] Step 4 — ir-turret behaviours/templates/concepts compile; new-box.sh, check-box.sh, CI

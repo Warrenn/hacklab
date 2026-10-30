@@ -1,0 +1,12 @@
+# Pin map and the safe ranges the code must respect (from the stock sketch).
+[pins]
+yaw_servo = 10      # continuous rotation: write(90) stops, +/- speed around 90
+pitch_servo = 11    # positional
+roll_servo = 12     # continuous rotation: fires darts
+ir_receiver = 9
+
+[limits]
+pitch = { min = 33, max = 150, home = 100 }   # pitchMin / pitchMax / home in stock.ino
+yaw_speed = { min = 10, max = 90 }            # added to / subtracted from 90
+yaw_precision_ms = { min = 50, max = 500 }
+roll_precision_ms = { min = 125, max = 225 }  # ~158 ms = one dart

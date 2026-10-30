@@ -1,0 +1,13 @@
+# Box profile: IR Turret (CrunchLabs Hack Pack). See STRATEGY.md "Box profile schema".
+id = "ir-turret"
+name = "IR Turret"
+picture = "/static/boxes/ir-turret.svg"
+libraries = ["Servo@1.3.0", "IRremote@4.7.1"]
+
+[board]
+fqbn = "arduino:avr:nano"   # the flasher appends cpu=atmega328 / atmega328old itself
+core = "arduino:avr"
+
+[stock]
+location = "repo"           # MIT-licensed stock code lives in stock/ (headers kept)
+main = "stock"              # sketch directory name under stock/: stock/stock/stock.ino
