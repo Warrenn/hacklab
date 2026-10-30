@@ -1,0 +1,7 @@
+{
+ "slug": "synth-box",
+ "files": {
+  "StockCode/StockCode.ino": "/* Synthetic test sketch in the shape of a Forklift-style Hack Pack box: no license header. */\n#include \"config.h\"\n\n#define RF_S1_V 19       // receiver pair 1\n#define RF_S1_G 18\n#define M1_DIR 4\n#define M1_PWM 5\n#define LIFT_DIR 2\n#define LIFT_PWM 3\n\nint vSpeed[3];\nint moveFork = 0;\ndouble botRadius = 100.0;\nunsigned long lastStrafe = 0;\n\nvoid setup() {\n  Serial.begin(115200);\n  pinMode(RF_S1_V, INPUT_PULLUP);\n  pinMode(M1_DIR, OUTPUT);\n}\n\nvoid loop() {\n  getDirection();\n  moveBot();\n}\n\nvoid getDirection() {\n  moveFork = digitalRead(RF_S1_V) ? 0 : 1;\n}\n\nvoid moveBot() {\n  digitalWrite(M1_DIR, moveFork > 0);\n}\n",
+  "StockCode/config.h": "uint8_t maxSpeed = 255; ///{\"min\":0,\"max\":255}\nbool flipM1 = false; ///{\"options\":[\"true\",\"false\"]}\n"
+ }
+}
