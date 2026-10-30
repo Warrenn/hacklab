@@ -493,7 +493,7 @@ Steps:
 - [x] Step 2 — tests written (red) — completed 2026-10-30
 - [x] Step 3 — ops/jobs.py executor, ops/awsio.py (IoT credentials -> S3, minisign, sudo helper), JobsWorker in the agent, hacklab-apply, release/deploy/rollback/logs scripts; 162 tests, shellcheck, cfn-lint — completed 2026-10-30
 - [x] Step 4 — Pi: 0.1.0 exposed macOS metadata in the tarball (health failed, auto-rollback kept the app up), 0.1.1 and 0.1.2 SUCCEEDED, 0.1.2-bad FAILED with automatic rollback, rollback.sh back to 0.1.1, logs.sh bundle fetched, downgrade to 0.1.0 refused, bogus op FAILED as rejected — completed 2026-10-30
-- [ ] Step 5 — README, notes done; PR open, merge + release 0.2.0 pending
+- [x] Step 5 — README, notes, PR #11 merged; release 0.2.0 cut from main and deployed — completed 2026-10-30
 
 ## Remote-UI policy plan (2026-10-30, awaiting approval)
 
