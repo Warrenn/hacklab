@@ -119,6 +119,9 @@ footer{padding:16px 32px 24px;display:flex;justify-content:center}
   .quote{font-size:26px}
   pre{max-height:40vh}
 }
+.remotebar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 24px;background:#FFF4E5;color:#8A5A00;font-weight:800}
+.remotebar .small{padding:8px 14px;font-size:15px}
+.helping{padding:8px 24px;background:#E6F7F2;color:#0B6B57;font-weight:800;text-align:center}
 </style>
 </head>
 <body>
@@ -128,7 +131,7 @@ footer{padding:16px 32px 24px;display:flex;justify-content:center}
 // One screen router keyed on state. All kid-facing copy either comes from the
 // server (message_kid, titles, prompts) or is copied verbatim from docs/screens.
 const S = { status: null, boxes: [], behaviours: [], sketch: null, job: null, asked: '', screen: 'picker',
-            picked: null, tweak: null, concept: null, showCode: true, editor: '' };
+            picked: null, tweak: null, concept: null, showCode: true, editor: '', busy: false };
 const $app = document.getElementById('app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const api = async (path, body) => {
@@ -136,6 +139,11 @@ const api = async (path, body) => {
   if (!r.ok) throw Object.assign(new Error('api ' + r.status), { status: r.status });
   return r.json();
 };
+// Remote view (owner's P5 notes): a Tailscale viewer may only change things while helping is on.
+const remote = () => S.status?.source === 'remote';
+const helping = () => !!S.status?.helping;
+const locked = () => remote() && !helping();
+const dis = (extra = false) => (locked() || extra ? 'disabled' : '');
 const boxName = () => (S.boxes.find((b) => b.id === S.status?.box) || {}).name || 'box';
 const changes = () => Math.max(0, (S.status?.versions_count || 1) - 1);
 const tweakable = () => S.behaviours.find((b) => b.tweakables && b.tweakables.length);
@@ -161,7 +169,12 @@ function header(opts = {}) {
   const left = opts.back
     ? `<button class="back" data-act="${opts.back}" aria-label="Back">${I.back}</button><div style="font-size:26px;font-weight:900">${opts.title}</div>`
     : `<div class="logo">${I.logo}</div><div>Hack Lab</div>`;
-  return `<header><div class="brand">${left}</div><div class="chips">${boxChip}${opts.chips === false ? '' : aiChip}</div></header>`;
+  const helpLine = helping() ? `<div class="helping" role="status">Uncle is helping</div>` : '';
+  const remoteBar = remote()
+    ? `<div class="remotebar" role="status"><span>Remote view${helping() ? ' · helping is on' : ' · read only'}</span>
+       <button class="ghost small" data-act="helping">${helping() ? 'Turn off helping' : 'Turn on helping'}</button></div>`
+    : '';
+  return `<header><div class="brand">${left}</div><div class="chips">${boxChip}${opts.chips === false ? '' : aiChip}</div></header>${remoteBar}${helpLine}`;
 }
 function rightNow() {
   const st = S.status || {};
@@ -174,12 +187,12 @@ function rightNow() {
 function rescue(note) {
   const canUndo = changes() > 0;
   return `<div class="list">
-    <button class="rescue" data-act="undo" ${canUndo ? '' : 'disabled'}>${I.undo}Undo last change</button>
-    <button class="rescue teal" data-act="reset">${I.reset}Back to how it came</button></div>
+    <button class="rescue" data-act="undo" ${dis(!canUndo)}>${I.undo}Undo last change</button>
+    <button class="rescue teal" data-act="reset" ${dis()}>${I.reset}Back to how it came</button></div>
     <div class="note">${note}</div>`;
 }
 function tries() {
-  return S.behaviours.slice(0, 3).map((b) => `<button class="try" data-act="behaviour" data-id="${esc(b.id)}"><span>${esc(b.title)}</span>${I.arrow}</button>`).join('');
+  return S.behaviours.slice(0, 3).map((b) => `<button class="try" data-act="behaviour" data-id="${esc(b.id)}" ${dis()}><span>${esc(b.title)}</span>${I.arrow}</button>`).join('');
 }
 function highlight(src, values) {
   // Numbers carrying a ///{...} Level 2 marker get the highlight; values the
@@ -213,20 +226,20 @@ function picker() {
     <div><h1>Which box is plugged in?</h1><p class="sub" style="margin-top:8px">Plug the USB cable into the box you want to play with, then tap it here.</p></div>
     <div class="grid3">${cards}</div>
     <div class="row"><div class="faint">Picked the wrong one? No problem, nothing breaks. Just come back here.</div>
-    <button class="primary" data-act="go" ${S.picked ? '' : 'disabled'}>Let's go</button></div></main>`;
+    <button class="primary" data-act="go" ${dis(!S.picked || S.busy)}>${S.busy ? 'Getting ready' : "Let's go"}</button></div></main>`;
 }
 function home() {
   const name = esc(boxName());
   return `${header()}<main>
     <section class="col7"><h1>What should the ${name} do?</h1>
       <label class="lead" for="ask">Say it or type it. Tap the mic on your keyboard to talk.</label>
-      <form class="ask" data-form="ask"><input id="ask" type="text" placeholder="Make it shake its head when I press 7" autocomplete="off" enterkeyhint="go"><button class="primary" type="submit">Go!</button></form>
+      <form class="ask" data-form="ask"><input id="ask" type="text" placeholder="Make it shake its head when I press 7" autocomplete="off" enterkeyhint="go"><button class="primary" type="submit" ${dis()}>Go!</button></form>
       <div class="lead" style="margin-top:8px">Try one of these</div><div class="list">${tries()}</div></section>
     <aside class="col5">${rightNow()}${rescue('Nothing you try can break it. Those two buttons always put it right.')}</aside></main>`;
 }
 function offline() {
   const name = esc(boxName());
-  const tricks = S.behaviours.map((b) => `<button class="trick" data-act="behaviour" data-id="${esc(b.id)}"><b>${esc(b.title)}</b><span>${esc(b.description)}</span></button>`).join('');
+  const tricks = S.behaviours.map((b) => `<button class="trick" data-act="behaviour" data-id="${esc(b.id)}" ${dis()}><b>${esc(b.title)}</b><span>${esc(b.description)}</span></button>`).join('');
   const numbers = tweakable() ? `<button class="trick numbers" data-act="tweak" data-id="${esc(tweakable().id)}"><b>Change the numbers</b><span>Make a trick faster, bigger, longer</span></button>` : '';
   return `${header()}<div class="banner">${I.wifi}<div><strong style="color:var(--ink)">The AI helper can't hear you right now</strong> — the internet is probably off. You can still pick a trick below or change the numbers in one, and the ${name} will do it. Nothing here needs the internet.</div></div>
     <main style="padding-top:24px"><section class="col7" style="gap:14px"><h1 style="font-size:32px">Pick a trick</h1><div class="tricks">${tricks}${numbers}</div></section>
@@ -283,10 +296,10 @@ function tweak() {
     const id = 'tw-' + tw.name, v = t.values[tw.name];
     if (tw.options) {
       const opts = tw.options.map((o) => `<option value="${esc(o)}" ${String(o) === String(v) ? 'selected' : ''}>${esc(o)}</option>`).join('');
-      return `<div class="slider"><label for="${id}"><span>${esc(tw.name)}</span><output data-testid="val-${esc(tw.name)}">${esc(v)}</output></label><select id="${id}" data-tw="${esc(tw.name)}">${opts}</select></div>`;
+      return `<div class="slider"><label for="${id}"><span>${esc(tw.label || tw.name)}</span><output data-testid="val-${esc(tw.name)}">${esc(v)}</output></label><select id="${id}" data-tw="${esc(tw.name)}">${opts}</select></div>`;
     }
     const [min, max] = tw.range || [tw.min, tw.max];
-    return `<div class="slider"><label for="${id}"><span>${esc(tw.name)}</span><output data-testid="val-${esc(tw.name)}">${esc(v)}</output></label>
+    return `<div class="slider"><label for="${id}"><span>${esc(tw.label || tw.name)}</span><output data-testid="val-${esc(tw.name)}">${esc(v)}</output></label>
       <input id="${id}" type="range" min="${esc(min)}" max="${esc(max)}" step="${esc(tw.step || 1)}" value="${esc(v)}" data-tw="${esc(tw.name)}"></div>`;
   }).join('');
   const src = S.sketch?.source || '';
@@ -295,7 +308,7 @@ function tweak() {
   return `${header({ back: 'home', title: `${esc(t.behaviour.title)} · Level 2: change the numbers`, chips: false })}<main>
     <section class="col6"><p class="sub">Slide these and watch the code change on the right. The ${name} can't be hurt — every number has a safe limit.</p>
       ${controls}
-      <div class="actions"><button class="primary wide" data-act="send">Send to ${name}</button><button class="ghost" data-act="resetnumbers">Reset numbers</button></div></section>
+      <div class="actions"><button class="primary wide" data-act="send" ${dis()}>Send to ${name}</button><button class="ghost" data-act="resetnumbers">Reset numbers</button></div></section>
     <aside class="col6" style="gap:12px"><div class="lead">The code, live</div><pre>${setLine}${highlight(src, t.values)}</pre>
       <div class="summary"><strong style="color:var(--ink)">What it will do:</strong> ${esc(t.behaviour.description)}</div></aside></main>`;
 }
@@ -364,7 +377,11 @@ function pollJob(id) {
 }
 function connectEvents() {
   const es = new EventSource('/api/events');
-  es.onmessage = (ev) => { try { onJob(JSON.parse(ev.data)); } catch (_) { /* ping */ } };
+  es.onmessage = (ev) => {
+    let d; try { d = JSON.parse(ev.data); } catch (_) { return; /* ping */ }
+    if (d.type === 'status') { refresh().then(render); return; }
+    onJob(d);
+  };
   es.onerror = () => { es.close(); setTimeout(connectEvents, 3000); };
 }
 function openTweak(id) {
@@ -377,7 +394,12 @@ function openTweak(id) {
 const ACTIONS = {
   picker: () => { S.picked = S.status?.box || S.picked; S.screen = 'picker'; render(); },
   pick: (id) => { S.picked = id; render(); },
-  go: async () => { await api('/box', { id: S.picked }); await refresh(); S.screen = homeScreen(); render(); },
+  go: async () => {
+    S.busy = true; render();
+    try { await api('/box', { id: S.picked }); await refresh(); S.screen = homeScreen(); }
+    finally { S.busy = false; render(); }
+  },
+  helping: async () => { await api('/helping', { on: !helping() }); await refresh(); render(); },
   home: () => { S.screen = homeScreen(); render(); },
   done: () => { S.screen = 'done'; render(); },
   code: () => { S.job = null; S.concept = null; S.screen = 'done'; render(); },
@@ -415,6 +437,10 @@ $app.addEventListener('input', (e) => {
   try { await refresh(); } catch (_) { S.status = { box: null, ai_available: false, board_connected: false }; }
   S.picked = S.status.box;
   S.screen = S.status.box ? homeScreen() : 'picker';
+  // ?admin=1: a remote helper asks to help on arrival (the server refuses it from the LAN side)
+  if (new URLSearchParams(location.search).get('admin') === '1' && remote() && !helping()) {
+    try { await api('/helping', { on: true }); await refresh(); } catch (_) { /* not remote */ }
+  }
   render();
   connectEvents();
   setInterval(async () => { if (S.screen === 'home' || S.screen === 'offline') { const was = S.status?.ai_available; await refresh().catch(() => {}); if (S.status?.ai_available !== was) S.screen = homeScreen(); render(); } }, 20000);

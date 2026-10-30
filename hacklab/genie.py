@@ -130,8 +130,9 @@ class FakeGenieClient:
     """Replays golden responses; records every call. A response dict with
     {"refusal": True} produces a refusal, {"error": "..."} raises."""
 
-    def __init__(self, responses: list[dict]):
+    def __init__(self, responses: list[dict], cycle: bool = False):
         self.responses = list(responses)
+        self.cycle = cycle
         self.calls: list[dict] = []
         self.messages = SimpleNamespace(parse=self._parse)
 
@@ -140,6 +141,8 @@ class FakeGenieClient:
         if not self.responses:
             raise RuntimeError("FakeGenieClient: no scripted response left")
         r = self.responses.pop(0)
+        if self.cycle:
+            self.responses.append(r)
         if r.get("error"):
             raise ConnectionError(r["error"])
         usage = SimpleNamespace(
@@ -152,4 +155,36 @@ class FakeGenieClient:
             return SimpleNamespace(
                 stop_reason="refusal", stop_details="declined", parsed_output=None, usage=usage
             )
+        return SimpleNamespace(stop_reason="end_turn", parsed_output=GenieResult(**r), usage=usage)
+
+
+class GoldenGenieClient(FakeGenieClient):
+    """HACKLAB_GENIE=golden: answer with the recorded golden whose request text
+    appears in the kid's ask, else the first recorded sketch. No API, no cost."""
+
+    def __init__(self):
+        import json
+        from pathlib import Path
+
+        self.by_request: dict[str, dict] = {}
+        for f in sorted(
+            (Path(__file__).resolve().parent.parent / "tests" / "golden").glob("*.json")
+        ):
+            d = json.loads(f.read_text())
+            good = [r for r in d["responses"] if "fire() break" not in r.get("cases", "")]
+            if good:
+                self.by_request[d["request"].lower()] = good[-1]
+        super().__init__([], cycle=False)
+
+    def _parse(self, **kwargs):
+        self.calls.append(kwargs)
+        asked = str(kwargs["messages"][0]["content"]).lower()
+        hit = next((r for req, r in self.by_request.items() if req in asked), None)
+        r = hit or next(r for r in self.by_request.values() if r["kind"] == "sketch")
+        usage = SimpleNamespace(
+            input_tokens=1200,
+            output_tokens=150,
+            cache_read_input_tokens=1000,
+            cache_creation_input_tokens=0,
+        )
         return SimpleNamespace(stop_reason="end_turn", parsed_output=GenieResult(**r), usage=usage)

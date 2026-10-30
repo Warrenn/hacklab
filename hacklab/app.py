@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import shutil
 import tempfile
 from collections.abc import AsyncIterator
@@ -87,6 +88,10 @@ def make_runner(
 def make_genie_client(cfg: Config):
     if not cfg.api_key:
         return None
+    if os.environ.get("HACKLAB_GENIE") == "golden":  # full-stack tests: replay tests/golden, no API
+        from hacklab.genie import GoldenGenieClient
+
+        return GoldenGenieClient()
     import anthropic  # imported here so the mock backend never needs the SDK
 
     return anthropic.Anthropic(api_key=cfg.api_key, max_retries=1, timeout=60.0)
