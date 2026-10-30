@@ -83,6 +83,21 @@ Coming per phase: `boxes/<id>/` profiles (P2), the PWA (P3), the AI helper
 (P4), `provisioning/install.sh`, systemd units and `scripts/` for release,
 deploy, rollback, status and logs (P5).
 
+## Remote view over Tailscale
+
+`http://hacklab/` (MagicDNS) serves the same UI to the maintainer. Requests
+from the Tailscale side are read-only: the page shows a "Remote view" banner
+and every change button is disabled until the helper switch is on
+(`Turn on helping`, or open `http://hacklab/?admin=1`). While it is on, every
+screen, including the kid's, shows "Uncle is helping"; it switches itself off
+after two hours. The switch does not exist on the LAN side (gated on the
+source address, not a password). Remote asks and flashes are logged with
+`source=tailscale`; flips go to `data/helping.jsonl`.
+
+Browser tests: `pw test tests/pwa` runs the mock-backend UI suite and the
+full-stack suite (real runner on the emulated board, recorded AI answers) on
+Chromium, Firefox and WebKit.
+
 ## The appliance (P5b)
 
 On a fresh Raspberry Pi OS (64-bit) with SSH and WiFi set up:

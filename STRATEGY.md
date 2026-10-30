@@ -412,8 +412,8 @@ Steps:
 - [x] Step 1 — tests written (red) — completed 2026-10-30
 - [x] Step 2 — remote.py + app wiring green (149 tests) — completed 2026-10-30
 - [ ] Step 3 — PWA banner, switch, helping line, pw tests
-- [ ] Step 4 — verified on the Pi over Tailscale and on the LAN
-- [ ] Step 5 — README, notes, PR merged
+- [x] Step 4 — verified on the Pi from the Mac: remote writes 403, LAN cannot toggle, toggle from Tailscale, LAN status shows helping, real ask over Tailscale flashed the Forklift (57 s) and undo, off blocks again, asks.jsonl source=tailscale, helping.jsonl peers — completed 2026-10-30
+- [ ] Step 5 — README, notes done; PR open, merge pending
 
 ## P5b plan — Appliance (2026-10-30, awaiting approval)
 
@@ -939,6 +939,32 @@ Steps:
 - [x] Step 4 — iot-device.yaml CloudFormation stack + provision-device.sh + status.sh, lint clean, thing provisioned — completed 2026-10-30
 - [x] Step 5 — install-ops.sh run end-to-end over Tailscale (root@hacklab), heartbeat in the shadow incl. tailscale_ip, survives reboot — completed 2026-10-30
 - [ ] Step 6 — README/P5 notes, hygiene check, PR merged
+
+## Remote-UI notes, verified 2026-10-30
+
+- Policy lives in `hacklab/remote.py` (classification + helping switch) and
+  one `writable(request)` guard in the API. Verified from the Mac: over
+  Tailscale `source=remote`, writes 403 until helping; from the LAN the
+  switch itself is 403; with helping on, a real ask over Tailscale compiled
+  and flashed the Forklift (57 s) and the LAN status showed `helping=true`;
+  off again -> 403. `asks.jsonl` carries `"source": "tailscale"`,
+  `data/helping.jsonl` the peer address of every flip.
+- Browser suite reworked (owner's ask): the mock-only tests had drifted since
+  P2 (mock data gone) and passed only by test order. Now: `tests/pwa/pwa.spec.js`
+  (mock backend: screens, SSE stages, failure path, offline, tweak clamp,
+  remote view, helping, ?admin=1, busy Let's go) and `tests/pwa/fullstack.spec.js`
+  (real runner + store + profiles + templates + skeleton on the emulated
+  board, `HACKLAB_GENIE=golden` replays the recorded answers by request):
+  ask -> assembled real code on Done -> Undo; a shipped trick becomes a
+  version; a tweak renders the chosen number into the stored sketch; Reset
+  truncates to 0000. 43 tests on Chromium, Firefox and WebKit. Only the USB
+  cable is outside the browser suite (`scripts/hil-*.sh` on the Pi).
+- Two real bugs the suite found: a late job sync overwrote the Done
+  heading with the compiling text (Firefox timing); and the unresponsive
+  "Let's go" the owner reported (status blocked ~10 s on detection; now
+  stale-while-revalidate plus a busy state on the button).
+- Not in CI: the browser suite runs through the machine-wide `pw` harness on
+  the Mac; GitHub CI runs pytest and the compile matrix only.
 
 ## P5b notes — appliance, verified 2026-10-30
 
