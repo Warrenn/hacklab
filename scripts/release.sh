@@ -30,7 +30,8 @@ m = {"version": sys.argv[2], "git": sys.argv[3], "built_at": time.strftime("%Y-%
 (root / "manifest.json").write_text(json.dumps(m, indent=1, sort_keys=True))
 PY
 # 3. tarball + signature
-(cd "$work" && tar -czf "$out/$name" -- *)   # member names without a leading ./
+# member names without a leading ./ ; no macOS xattrs/resource forks in the archive
+(cd "$work" && COPYFILE_DISABLE=1 tar --no-xattrs -czf "$out/$name" -- *)
 minisign -S -s "$key" -m "$out/$name" -t "hacklab $version $(date -u +%Y-%m-%dT%H:%M:%SZ)" >/dev/null
 minisign -V -q -p "$root/provisioning/minisign.pub" -m "$out/$name" 2>/dev/null || \
   minisign -V -q -p "$(dirname "$key")/../$(basename "$key" .key).pub" -m "$out/$name" 2>/dev/null || true

@@ -116,7 +116,7 @@ def _load_items(box_dir: Path, kind: str, where: str) -> dict[str, Behaviour]:
     items: dict[str, Behaviour] = {}
     if not folder.is_dir():
         return items
-    for meta_path in sorted(folder.glob("*.toml")):
+    for meta_path in sorted(p for p in folder.glob("*.toml") if not p.name.startswith(".")):
         w = f"{where}/{kind}s/{meta_path.name}"
         meta = _toml(meta_path, w)
         bid = _need(meta, "id", w)

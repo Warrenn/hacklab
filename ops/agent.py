@@ -200,8 +200,8 @@ class JobsWorker:
             status = JS.SUCCEEDED if result.ok else (JS.REJECTED if result.rejected else JS.FAILED)
             details = {k: str(v)[:1000] for k, v in result.details.items()}
             self._report(job_id, status, details)
-            self.last = {"job": job_id, "op": doc.get("op"), "status": status.name, **details}
-            log.info("job %s -> %s %s", job_id, status.name, details.get("reason", ""))
+            self.last = {"job": job_id, "op": doc.get("op"), "status": str(status), **details}
+            log.info("job %s -> %s %s", job_id, status, details.get("reason", ""))
         self._ask_next()
 
 

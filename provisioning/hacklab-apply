@@ -41,7 +41,7 @@ case $verb in
     dest="$PREFIX/releases/$arg"
     log "extracting to $dest"
     run rm -rf "$dest"; run mkdir -p "$dest"
-    run tar -xzf "$tar" -C "$dest"
+    run tar -xzf "$tar" -C "$dest" --warning=no-unknown-keyword
     [ "$DRY" = 1 ] || { prev=$(current_target); echo "$prev" > "$PREFIX/releases/.previous"; }
     switch_to "$dest"
     if [ "$DRY" = 1 ] || health; then log "release $arg healthy"; exit 0; fi

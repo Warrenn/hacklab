@@ -89,3 +89,11 @@ def test_real_repo_boxes_load():
         and (t.stock_dir(Path("/x")) / "stock.ino").is_file()
     )
     assert boxes["omnibot-forklift"].stock_location == "device"
+
+
+def test_dotfiles_next_to_behaviours_are_ignored(boxes_dir: Path):
+    """A macOS-built release once shipped AppleDouble '._x.toml' files; never parse them."""
+    junk = b"\x00\x05\x16\x07\x00\xa3junk"
+    (boxes_dir / "testbox" / "behaviours" / "._shake.toml").write_bytes(junk)
+    (boxes_dir / "testbox" / "._profile.toml").write_bytes(b"\x00\x05\x16\x07junk")
+    assert list(load_boxes(boxes_dir)["testbox"].behaviours) == ["shake"]
