@@ -129,6 +129,10 @@ class FakeJobRunner:
         for q in self._subscribers:
             q.put_nowait(job.to_dict())
 
+    def broadcast(self, event: dict[str, Any]) -> None:
+        for q in self._subscribers:
+            q.put_nowait(event)
+
     async def _run(self, job: Job, on_done: OnDone | None) -> None:
         for stage in STAGES[job.kind]:
             self._set(job, stage)
@@ -195,6 +199,10 @@ class RealJobRunner:
     def _publish(self, job: Job) -> None:
         for q in self._subscribers:
             q.put_nowait(job.to_dict())
+
+    def broadcast(self, event: dict[str, Any]) -> None:
+        for q in self._subscribers:
+            q.put_nowait(event)
 
     def _sketch_dir(self, job: Job) -> Path | None:
         """Where the sketch to flash lives: a stored version (undo/reset), a
@@ -296,6 +304,9 @@ class RealJobRunner:
 
         text = job.payload.get("text", "")
         t0 = time.time()
+        src = (
+            "tailscale" if job.payload.get("origin") == "remote" else "local"
+        )  # owner's log wording
         self._set(job, "thinking")
         genie = self.genie(box) if self.genie else None
         if genie is None:
@@ -331,6 +342,7 @@ class RealJobRunner:
             entry = {
                 "request": text,
                 "box": box,
+                "source": src,
                 "kind": result.kind,
                 "attempts": attempt,
                 "usage": {
@@ -387,5 +399,7 @@ class RealJobRunner:
                 return
             error = res.log
         job.log_ref = self._write_log(box, job, "\n".join(log))
-        self._log_ask(box, {"request": text, "box": box, "kind": "gave-up", "attempts": 3})
+        self._log_ask(
+            box, {"request": text, "box": box, "source": src, "kind": "gave-up", "attempts": 3}
+        )
         self._set(job, "failed", KID_GAVE_UP)

@@ -409,8 +409,8 @@ Steps:
 5. README, notes, PR, merge; Pi follows main.
 
 ## Progress — remote UI
-- [ ] Step 1 — tests written (red)
-- [ ] Step 2 — remote.py + app wiring green
+- [x] Step 1 — tests written (red) — completed 2026-10-30
+- [x] Step 2 — remote.py + app wiring green (149 tests) — completed 2026-10-30
 - [ ] Step 3 — PWA banner, switch, helping line, pw tests
 - [ ] Step 4 — verified on the Pi over Tailscale and on the LAN
 - [ ] Step 5 — README, notes, PR merged
