@@ -22,7 +22,10 @@ from hacklab.jobs import FakeJobRunner, JobRunner, RealJobRunner
 from hacklab.store import SketchStore
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
-PLACEHOLDER = "<!doctype html><title>Hack Lab</title><p>Hack Lab is starting up. The app screen arrives with P3.</p>"
+PLACEHOLDER = (
+    "<!doctype html><title>Hack Lab</title>"
+    "<p>Hack Lab is starting up. The app screen arrives with P3.</p>"
+)
 
 STOCK = "stock"
 
