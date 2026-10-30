@@ -39,6 +39,7 @@ aws iot describe-endpoint --region "$region" --endpoint-type iot:Data-ATS \
 curl -fsSL https://www.amazontrust.com/repository/AmazonRootCA1.pem -o "$out/AmazonRootCA1.pem"
 rm -f "$out/params.json"
 
+"$root/scripts/device-secrets.sh" backup "$device"   # Parameter Store copy: the only backup of the key
 echo "thing hacklab-$device provisioned in $region; files in $out:"
 ls -1 "$out"
 echo "next: provisioning/install-ops.sh (copies $out to the Pi)"

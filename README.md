@@ -112,6 +112,7 @@ remotely; updates until P5 proper are `ssh root@hacklab` + git/apt.
 | `scripts/provision-device.sh <device>` | Key + CSR on your machine, CloudFormation stack (thing, cert, scoped policy) in eu-west-1, cert/endpoint/root CA into `provisioning/local/<device>/` (git-ignored) |
 | `provisioning/install-ops.sh <device> [ssh-target]` | Installs/upgrades the agent on the Pi: `/opt/hacklab/ops` venv, certs 0600, `hacklab-ops.service` |
 | `scripts/status.sh <device>` | Prints the shadow's reported state and its age |
+| `scripts/device-secrets.sh backup\|restore\|list <device>` | Copies the git-ignored `provisioning/local/<device>/` files (cert, private key, CSR, endpoint, root CA) to/from SecureString parameters under `/hacklab/devices/<device>/` in Parameter Store (eu-west-1). `provision-device.sh` runs the backup itself; run `restore` on a new machine. |
 
 Needs `AWS_PROFILE` (default `busyweb-sso`) logged in. Agent code: `ops/agent.py`,
 tests in `tests/test_ops_agent.py`.
