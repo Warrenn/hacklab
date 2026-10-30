@@ -1,0 +1,25 @@
+# [concept-id]  title, explanation (kid language, no links), tags, question
+
+[scale]
+title = "What is a scale?"
+explanation = "A scale is a short list of notes that sound good together. Major scales sound bright and Minor ones sound a bit sad or spooky. The code keeps the scale as a table of numbers, and the touchpad just picks a spot in that table."
+tags = ["scale", "note", "table"]
+question = "Want to know how the code decides which notes you can play?"
+
+[midi-note]
+title = "Notes as numbers"
+explanation = "Every note has a number: middle C is 60 and each step up is one more. Add 12 and you get the same note one octave higher. The synth turns that number into a frequency, which is how fast the speaker wobbles."
+tags = ["midi", "frequency", "octave"]
+question = "Want to see how a number turns into a note?"
+
+[waveform]
+title = "Wave shapes"
+explanation = "A speaker makes sound by wobbling back and forth. The shape of that wobble is the wave: a smooth triangle sounds soft, a square sounds buzzy like an old video game, and a saw sounds sharp. The bottom knob picks which table of numbers the synth reads."
+tags = ["wave", "oscillator", "table"]
+question = "Want to know why square waves sound buzzy?"
+
+[lfo]
+title = "Making the sound wobble"
+explanation = "An LFO is a slow wave that changes something else, here the volume. Spinning the fidget spinner over the sensor sets how fast the wobble goes, and when the spinner slows down the wobble fades away too."
+tags = ["lfo", "modulation", "sensor"]
+question = "Want to see how the spinner controls the wobble?"

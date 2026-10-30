@@ -1,0 +1,22 @@
+# Pin map and safe ranges (from stock/StockCode/system_config.h and config.h).
+[pins]
+pot_bottom = "A5"     # wave selection (0-3: Triangle, Square, Saw, Noise)
+pot_middle = "A6"     # second note
+pot_top = "A7"        # master volume
+proximity = 6         # digital; HIGH while a hand (or the spinner) is over it
+touch_x1 = "A0"       # resistive touchpad: X = A0 / D7
+touch_x2 = 7
+touch_y1 = "A1"       # Y = A1 / D8
+touch_y2 = 8
+# Audio out is Mozzi's fixed PWM pin on a Nano (D9); do not use it for anything else.
+
+[limits]
+root_note = { min = 24, max = 108 }       # MIDI_ROOT_MIN..MIDI_ROOT_MAX (C1..C8)
+scale_type = { min = 0, max = 11 }        # 12 scales in scale_tables.h
+wave = { min = 0, max = 3 }
+master_gain_max = { min = 24, max = 64 }
+volume_shift = { min = 4, max = 8 }       # higher = quieter
+smooth_freq = { min = 0.1, max = 0.9 }
+lfo_bpm = { min = 30, max = 600 }
+audio_output_bits = { min = 13, max = 15 }
+scale_octaves = { min = 2, max = 4 }
