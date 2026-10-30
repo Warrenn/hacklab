@@ -83,3 +83,31 @@ def test_detect_returns_port_or_none(tmp_path: Path):
     assert make(tmp_path, fb).detect().address == "/dev/ttyFAKE0"
     fb.unplugged = True
     assert make(tmp_path, fb).detect() is None
+
+
+def test_detect_is_cached_briefly(tmp_path: Path):
+    """/api/status polls detect(); a real `board list` costs ~10 s on a Pi 3."""
+    fb = FakeBoard()
+    calls = {"n": 0}
+    orig = fb.list_ports
+
+    def counting():
+        calls["n"] += 1
+        return orig()
+
+    fb.list_ports = counting
+    now = {"t": 1000.0}
+    f = Flasher(
+        fb,
+        data_dir=tmp_path / "data",
+        reenumerate_timeout=0.3,
+        sleep=lambda s: None,
+        clock=lambda: now["t"],
+    )
+    assert f.detect() is not None and f.detect() is not None
+    assert calls["n"] == 1  # second call served from the cache
+    now["t"] += 15
+    f.detect()
+    assert calls["n"] == 2  # cache expired
+    fb.unplugged = True
+    assert f.detect(fresh=True) is None and calls["n"] == 3  # flash() always asks for a fresh look

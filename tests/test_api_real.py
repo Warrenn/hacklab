@@ -35,9 +35,21 @@ def settle(client: TestClient, job_id: str, timeout: float = 5.0) -> dict:
 
 
 def test_status_reports_real_board_detection(client, fb):
+
     assert client.get("/api/status").json()["board_connected"] is True
     fb.unplugged = True
-    assert client.get("/api/status").json()["board_connected"] is False
+    assert client.get("/api/status").json()["board_connected"] is True  # cached for DETECT_TTL
+
+
+def test_status_sees_an_unplugged_board_once_the_cache_expires(tmp_path, fb, monkeypatch):
+    import hacklab.flash
+
+    monkeypatch.setattr(hacklab.flash, "DETECT_TTL", 0.0)
+    cfg = Config(data_dir=tmp_path / "data", fake_board=False)
+    with TestClient(create_app(cfg, board=fb)) as c:
+        assert c.get("/api/status").json()["board_connected"] is True
+        fb.unplugged = True
+        assert c.get("/api/status").json()["board_connected"] is False
 
 
 def test_select_box_creates_baseline_and_flash_undo_reset_persist(client, tmp_path):

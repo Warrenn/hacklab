@@ -340,9 +340,103 @@ behaviours + 1 template; proves the abstraction.
 **P7 — Hardening & field checklist.** Spend cap; guardrail red-team; persona
 polish; family "if broken" card; on-site smoke test; box pictures for picker.
 
+Decision 2026-10-30 — **HTTP only for the MVP** at `http://hacklab.local`
+(mDNS via Avahi; same network segment as the iPad; backend on port 80 so no
+port in the URL). Not a secure context, so: no service worker / offline PWA
+caching, no in-page microphone (keyboard dictation unaffected). When the
+in-app mic or installable PWA is wanted, the path is a real certificate via
+own domain + Let's Encrypt DNS-01 (Route 53), A record to the Pi's private
+LAN IP (DHCP reservation or self-updating record), renewal by the Pi or an
+IoT job, `hacklab.local` kept as fallback. Check the home router for DNS
+rebind protection. Self-signed + iPad trust profile rejected (fiddly, fails
+"just works"); Tailscale certs are admin-only.
+
 Deferred (recorded, not scheduled): physical reset button; points/levels;
 block-based editor; curated external links; conversational correction;
+HTTPS (see decision above); Android tablet running the CrunchLabs IDE directly
+(Chrome Android 148+ has Web Serial) if the hardware situation ever changes;
 touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
+
+## P5b plan — Appliance (2026-10-30, awaiting approval)
+
+Owner's choices 2026-10-30: P5 in two halves -- (A) appliance now, verify on
+the Pi, then (B) signed updates via IoT Jobs; read-only root filesystem
+deferred to a re-image with physical access (install.sh stays ready for the
+two-partition layout; procedure documented).
+
+Goal: a fresh Pi becomes the appliance with one script: the app runs as a
+service on port 80 (`http://hacklab.local` from the iPad, no port), survives
+reboots and power cuts, logs rotate, the API key lives in a root-only env
+file, the ops agent keeps reporting, and the captive-portal fallback hands
+port 80 back and forth cleanly.
+
+Verified on the Pi 2026-10-30: `comitup-web` is inactive while connected;
+comitup's `web_service:` option disables the named unit in hotspot mode and
+enables it when WiFi is up (the unit must be left disabled in systemctl so
+comitup owns it) -- that is the port-80 hand-off. `logrotate` is installed;
+`minisign` 0.12 is in apt (for B). No `hacklab` user yet; `/opt/hacklab/*`
+is root-owned.
+
+Decisions:
+- Layout (unchanged from Dev & deploy): `/opt/hacklab/{bin,arduino,venv,
+  ops,data,src}`; `current -> src` for now (B swaps it to `releases/<v>`).
+  Everything the services write goes under `/opt/hacklab/data` (sketch
+  versions, logs, spend, device stock/skeletons, work dir) so a future
+  writable partition mounts there.
+- Service user `hacklab` (system, groups `dialout` for USB, owns
+  `/opt/hacklab/arduino` and `/opt/hacklab/data`; `src`/`venv` root-owned,
+  world-readable). The ops agent stays as `hacklab-ops`.
+- `hacklab-app.service`: `uvicorn hacklab.app:app --host 0.0.0.0 --port 80`
+  from `/opt/hacklab/venv`, `WorkingDirectory=/opt/hacklab/current`,
+  `AmbientCapabilities=CAP_NET_BIND_SERVICE`, `EnvironmentFile=
+  /etc/default/hacklab` (root:root 0600: `ANTHROPIC_API_KEY`,
+  `HACKLAB_DATA_DIR`, `HACKLAB_BOXES_DIR`), `Restart=always`, `After=
+  network-online.target`, hardening (`NoNewPrivileges`, `ProtectSystem=
+  strict` with `ReadWritePaths` = data + arduino, `PrivateTmp`). NOT enabled
+  in systemctl: comitup starts/stops it via `web_service`.
+- `config.toml` for the appliance at `/etc/hacklab/config.toml` (port 80,
+  data_dir, boxes_dir); `load_config` gains `HACKLAB_CONFIG` env.
+- Logging: app stdout -> journald (`SystemMaxUse=200M`); JSONL logs under
+  data rotated weekly by `/etc/logrotate.d/hacklab` (keep 8, compress).
+- `provisioning/install.sh` (idempotent, root, run from a clone at
+  `/opt/hacklab/src`): apt deps (git, python3-venv, logrotate, avahi),
+  `install-toolchain.sh`, users, dirs + ownership, device stock/skeleton
+  dirs, `/etc/default/hacklab` (created 0600 if absent; key filled from
+  `HACKLAB_API_KEY` env or left for `scripts/push-key.sh`), config, units,
+  logrotate, journald limit, comitup `web_service`, NM PMF fix file,
+  `install-ops.sh` remote block folded in. Prints a health summary.
+- `scripts/push-key.sh <ssh-target>`: pushes `ANTHROPIC_API_KEY` from `.env`
+  into `/etc/default/hacklab` over Tailscale (never through git).
+- Health: `GET /api/status` on :80 from the Mac at `http://hacklab.local`,
+  the PWA loads, ask works (real genie), Forklift HIL via the service, power
+  cut -> both services back, hotspot test -> comitup takes :80, home WiFi ->
+  app takes :80 again.
+- Tests: `install.sh` via shellcheck + a `--dry-run` that prints the plan
+  (no root needed); unit files validated with `systemd-analyze verify` on
+  the Pi; `load_config` HACKLAB_CONFIG test; `tests/test_api.py` unchanged.
+- Parallelism: single track (shell + one config test); serialized.
+
+Steps:
+1. Config: `HACKLAB_CONFIG` env in `load_config` (test first); appliance
+   `provisioning/config.toml`.
+2. `provisioning/install.sh` + `hacklab-app.service` + logrotate + journald
+   drop-in + `scripts/push-key.sh`; shellcheck; `--dry-run` locally.
+3. Pi: run `install.sh` over Tailscale, push the key, verify
+   `systemd-analyze verify`, service active on :80, `http://hacklab.local`
+   from the Mac (status, PWA), real ask through the service with the
+   Forklift (`hil-ask.sh` variant against :80), Undo.
+4. Resilience on the Pi: power cut (owner pulls the plug) -> services back,
+   heartbeat resumes; hotspot fallback -> comitup on :80 -> rejoin -> app
+   back on :80 (comitup `web_service`).
+5. README (fresh-Pi install, key push, re-image procedure for the
+   two-partition layout), P5 notes, hygiene, PR, merge; Pi follows main.
+
+## Progress — P5b
+- [ ] Step 1 — HACKLAB_CONFIG + appliance config.toml
+- [ ] Step 2 — install.sh, unit, logrotate, journald, push-key.sh (lint + dry run)
+- [x] Step 3 — installed on the Pi (install.sh idempotent, 3 runs), app as `hacklab` on :80, PWA + API at http://hacklab.local from the Mac, real ask through the service 56 s, Undo 46 s — completed 2026-10-30
+- [x] Step 4 — power cut (ssh 60 s, all 5 units active, :80 from the Mac, heartbeat at boot+44 s) and hotspot hand-off (comitup-web up, app stopped, portal served to the phone, app back on :80 59 s after rejoin) verified — completed 2026-10-30
+- [ ] Step 5 — README, notes done; PR open, merge pending
 
 ## P4 plan — Genie (the AI helper) (2026-10-30, approved incl. the fragments deviation)
 
@@ -788,6 +882,42 @@ Steps:
 - [x] Step 5 — install-ops.sh run end-to-end over Tailscale (root@hacklab), heartbeat in the shadow incl. tailscale_ip, survives reboot — completed 2026-10-30
 - [ ] Step 6 — README/P5 notes, hygiene check, PR merged
 
+## P5b notes — appliance, verified 2026-10-30
+
+- `install.sh` ran three times on the Pi (first two aborted on real bugs,
+  third clean): `/etc/default/hacklab` is now merged variable by variable so
+  a pushed key survives re-runs; `config.toml` is git-ignored by pattern, so
+  the appliance config is `provisioning/appliance.toml`.
+- Hardening found two silent failures: (1) arduino-cli's build cache defaults
+  to `~/.cache` and the service home is read-only under `ProtectSystem=
+  strict` -> `build_cache.path` under `/opt/hacklab/arduino/cache` in the
+  generated `arduino-cli.yaml`; (2) arduino-cli reports that kind of failure
+  in a top-level `error` field with empty `compiler_err` -> now in the log.
+- `/api/status` cost 10 s per call (one `board list` each; the PWA polls it)
+  -> detection cached 10 s (`DETECT_TTL`), flash still looks fresh. Under
+  load the 2 s discovery window missed the board once -> 5 s.
+- A 409 on box select used to leave the box half-selected and the next
+  `/api/sketch/current` crashed (seen from the PWA) -> select only after the
+  baseline exists.
+- The service ignored SIGTERM while a worker thread compiled (90 s then
+  SIGKILL) -> `TimeoutStopSec=20`, `KillMode=mixed`.
+- comitup `web_service: hacklab-app.service` set; the unit stays disabled in
+  systemctl so comitup owns it (hotspot takes :80, home WiFi gives it back).
+- Observed from the Mac: PWA loads at `http://hacklab.local/`, ask through
+  the service done in 56 s, Undo 46 s. The owner opened the PWA from the Mac
+  during the install (requests visible in the journal).
+- Hand-off verified (journal): `comitup-web` started and `hacklab-app`
+  stopped when the hotspot came up; the phone's portal probes were served;
+  after the portal connect `comitup-web` stopped and `hacklab-app` started
+  (59 s from rejoin to the app answering on :80 from the Mac).
+- Remote UI over Tailscale works already: `http://hacklab/` (MagicDNS, port
+  80 on all interfaces) serves the PWA and API from the Mac; the PWA uses
+  relative URLs only. The owner's read-only-by-default / admin-toggle /
+  "helping" banner / source=tailscale logging requirements (notes above) are
+  the next plan step, not yet built.
+- Device-only content on this Pi: `/opt/hacklab/data/boxes/omnibot-forklift/
+  {stock/StockCode, genie/skeleton.ino}` (owner-supplied, not in git).
+
 ## P4 notes — the AI helper, verified 2026-10-30
 
 - Live on the Pi with the Forklift (`scripts/hil-ask.sh`): "lift the fork up
@@ -956,6 +1086,24 @@ Steps:
   piped content -- write files with `sudo -S bash -c 'curl ... -o FILE'`.
   Both affected files were rewritten before anything was installed.
 
+## P5 notes — remote use of the UI over Tailscale
+
+- The maintainer reaches the same UI the nephew uses: `http://hacklab:<port>`
+  via MagicDNS, or `tailscale serve --bg <port>` for a tailnet-only HTTPS name.
+  `hacklab.local` never works remotely (mDNS is link-local), so the PWA and
+  API use **relative URLs only** — never a hard-coded hostname.
+- Requests arriving from the Tailscale interface (100.64.0.0/10) are
+  **read-only by default**: the UI shows status, current sketch, log tail,
+  and the box picker, but flash/undo/reset buttons are disabled with a clear
+  "remote view" banner.
+- **Remote flashing is allowed on purpose** — the maintainer may need to fix
+  things or do what the nephew asks for over the phone. Enable it per session
+  with an explicit `?admin=1` (or an "I'm here to help" toggle); while it is
+  on, the kid-facing screen shows "Uncle is helping" so a flash from afar is
+  never a surprise, and every remote action is logged with source=tailscale.
+- Never expose the admin toggle on the LAN side; it is gated on the source
+  interface, not on a password.
+
 ## P5 notes — security
 
 - Setup hotspot WPA2 + sticker passphrase; portal is HTTP but only over that
@@ -976,6 +1124,35 @@ Steps:
 - No PII: nephew's name, network names, Tailscale/IoT identifiers in untracked
   config only.
 - API key via env only; CI never touches real keys.
+
+## Roadmap item — every Hack Pack box, zero maintenance on arrival (owner's ask 2026-10-30)
+
+The owner is subscribed to the whole Hack Pack range: a new box must work
+without a maintenance visit. Not MVP, but to be provisioned for ahead of time:
+
+- **Content pipeline:** `scripts/import-box.sh <id>` pulls a box's stock code
+  and hacks from the Hack Pack IDE (browser automation, same editor-model
+  read used by hand on 2026-10-30), keeps MIT-headed files in `boxes/<id>/
+  stock/`, else stages them for the device, scaffolds the profile from
+  `boxes/_template`, derives pins/limits from the sketch's `#define`s and
+  `///{}` markers, and runs `check-box.sh`. One command per new box.
+- **Board registry:** newer boxes (Nixie Clock, Color Composer, Space
+  Oddity, Robot Ranger, RoboLamp, Tank Plant, Omnibot Forklift's successors)
+  are PlatformIO-style and some are ESP32-class. The profile's `[board]`
+  already carries fqbn + core; `install-toolchain.sh` must pre-install every
+  core the profiles reference (`arduino:avr`, `esp32:esp32`, ...) and the
+  flasher must learn each core's upload quirks (ESP32: no bootloader cpu
+  option, `esptool` resets, native-USB re-enumeration). The P1 `KNOWN_NANO`
+  VID:PID list becomes a per-board table.
+- **Skeleton per box** for the AI helper, generated by the same import script
+  (markers after the params block, in `loop()`, before the first function).
+- **CI matrix:** `check-box.sh` for every box on every push (already), plus
+  the cores cached in the dev image so the matrix stays fast.
+- **Delivery:** new box = one PR with content only, shipped by P5c's signed
+  release; the Pi needs no login.
+Owner's note: "I don't want to be forced to do maintenance when a new hack
+pack arrives." Plan this as P6 (replacing the single Laser Synthesizer
+profile with the general pipeline, Laser Synth as its first proof).
 
 ## Open decisions
 

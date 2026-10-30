@@ -1,0 +1,10 @@
+# JSONL logs the Hack Lab services write under /opt/hacklab/data.
+/opt/hacklab/data/*/logs/*.jsonl /opt/hacklab/data/spend/*.jsonl {
+    weekly
+    rotate 8
+    compress
+    missingok
+    notifempty
+    copytruncate
+    su hacklab hacklab
+}

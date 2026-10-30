@@ -40,3 +40,10 @@ def test_api_key_comes_from_env_only(tmp_path: Path):
     f.write_text('[ai]\napi_key = "sk-ant-should-be-ignored"\n')
     assert load_config(f, env={}).api_key is None
     assert load_config(f, env={"ANTHROPIC_API_KEY": "sk-ant-x"}).api_key == "sk-ant-x"
+
+
+def test_hacklab_config_env_points_at_the_file(tmp_path: Path):
+    f = tmp_path / "appliance.toml"
+    f.write_text('[app]\nport = 80\ndata_dir = "/opt/hacklab/data"\n')
+    cfg = load_config(tmp_path / "ignored.toml", env={"HACKLAB_CONFIG": str(f)})
+    assert cfg.port == 80 and cfg.data_dir == Path("/opt/hacklab/data")

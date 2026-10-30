@@ -166,3 +166,18 @@ def test_fake_board_enforces_arduino_cli_sketch_naming(tmp_path: Path):
     good.mkdir()
     (good / "blink.ino").write_text("")
     assert fb.compile(good, "arduino:avr:nano:cpu=atmega328", tmp_path / "o2").ok
+
+
+def test_compile_surfaces_arduino_cli_error_field(tmp_path: Path):
+    """Seen under the hardened service: success=false, an `error` string, empty compiler_err."""
+    reply = {
+        "compiler_out": "",
+        "compiler_err": "",
+        "success": False,
+        "error": "Error during build: Cannot create build cache directory: "
+        "mkdir /opt/hacklab/.cache: read-only file system",
+    }
+    res = ArduinoCli("cli", None, run=Recorder((1, reply))).compile(
+        tmp_path / "s", "arduino:avr:nano", tmp_path / "out"
+    )
+    assert res.ok is False and "build cache" in res.log

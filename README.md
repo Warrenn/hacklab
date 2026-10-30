@@ -83,6 +83,34 @@ Coming per phase: `boxes/<id>/` profiles (P2), the PWA (P3), the AI helper
 (P4), `provisioning/install.sh`, systemd units and `scripts/` for release,
 deploy, rollback, status and logs (P5).
 
+## The appliance (P5b)
+
+On a fresh Raspberry Pi OS (64-bit) with SSH and WiFi set up:
+
+```
+sudo apt-get install -y git
+sudo git clone https://github.com/Warrenn/hacklab.git /opt/hacklab/src
+sudo /opt/hacklab/src/provisioning/install.sh      # idempotent; --dry-run to preview
+```
+
+Then from the maintainer's machine: `scripts/push-key.sh root@hacklab` (API key
+from `.env` into the root-only `/etc/default/hacklab`) and
+`provisioning/install-ops.sh <device> root@hacklab` (IoT agent, after
+`scripts/provision-device.sh <device>`). Boxes whose stock code is not in git
+get it under `/opt/hacklab/data/boxes/<id>/stock/<Main>/` and their genie
+skeleton under `.../genie/skeleton.ino` (owner-supplied).
+
+The app runs as the `hacklab` user on port 80 (`http://hacklab.local` from the
+iPad), config in `/etc/hacklab/config.toml`, state under `/opt/hacklab/data`,
+logs in journald (200 MB cap) and rotated JSONL files. comitup stops the app
+while the setup hotspot owns port 80 and starts it again on home WiFi.
+
+Re-image for the two-partition layout (deferred, needs the card in hand):
+write Pi OS, shrink the root partition, add an ext4 data partition mounted at
+`/opt/hacklab/data` (fstab), run `install.sh`, then enable the overlay root
+(`raspi-config` > Performance > Overlay File System) so a power cut cannot
+corrupt the OS. The spare card gets the same image.
+
 ## The AI helper (P4)
 
 `ANTHROPIC_API_KEY` in the environment turns the helper on (`.env` locally; the

@@ -200,8 +200,8 @@ def create_app(
     def select_box(body: BoxSelect):
         if body.id not in boxes:
             raise HTTPException(404, "No such box.")
+        ensure_baseline(body.id)  # may 409: the box stays unselected
         state["box"] = body.id
-        ensure_baseline(body.id)
         state["versions"].setdefault(body.id, [STOCK])
         return {"box": body.id}
 

@@ -81,7 +81,8 @@ class ArduinoCli:
         return rc, data, err
 
     def list_ports(self) -> list[Port]:
-        _, data, _ = self._json(["board", "list", "--discovery-timeout", "2s"])
+        # 5 s: on a loaded Pi 3 the serial discovery can miss a 2 s window (seen under the service)
+        _, data, _ = self._json(["board", "list", "--discovery-timeout", "5s"])
         ports = []
         for item in data.get("detected_ports", []):
             p, props = item.get("port", {}), item.get("port", {}).get("properties")
@@ -104,7 +105,8 @@ class ArduinoCli:
             s["name"]: (s["size"], s["max_size"])
             for s in d.get("builder_result", {}).get("executable_sections_size", [])
         }
-        log = "\n".join(x for x in (d.get("compiler_out", ""), d.get("compiler_err", ""), err) if x)
+        parts = (d.get("compiler_out", ""), d.get("compiler_err", ""), d.get("error", ""), err)
+        log = "\n".join(x for x in parts if x)
         return Result(ok=rc == 0 and bool(d.get("success")), log=log, sizes=sizes)
 
     def upload(self, sketch_dir: Path, fqbn: str, port: str, build_dir: Path) -> Result:
@@ -121,7 +123,9 @@ class ArduinoCli:
                 str(sketch_dir),
             ]
         )
-        log = "\n".join(x for x in (d.get("stdout", ""), d.get("stderr", ""), err) if x)
+        log = "\n".join(
+            x for x in (d.get("stdout", ""), d.get("stderr", ""), d.get("error", ""), err) if x
+        )
         return Result(ok=rc == 0, log=log)
 
 
