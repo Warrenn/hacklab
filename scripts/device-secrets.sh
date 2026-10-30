@@ -71,7 +71,7 @@ case $cmd in
     # the file is already passphrase-encrypted by minisign; SecureString adds the AWS layer on top
     aws ssm put-parameter --region "$region" --name /hacklab/minisign/secret-key --type SecureString \
       --value "file://$keyfile" --overwrite --tier Standard >/dev/null
-    echo "backed up $keyfile -> /hacklab/minisign/secret-key (passphrase still required to sign)" ;;
+    echo "backed up $keyfile -> /hacklab/minisign/secret-key" ;;
   restore-signing-key)
     keyfile=${2:-$HOME/.minisign/hacklab.key}
     mkdir -p "$(dirname "$keyfile")" && chmod 700 "$(dirname "$keyfile")"

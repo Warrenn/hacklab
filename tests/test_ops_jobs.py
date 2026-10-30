@@ -95,9 +95,13 @@ def test_missing_release_fails_cleanly(env):
 
 def test_helper_failure_is_reported_with_its_output(env):
     s3, apply, verify, ex = env
-    apply.results["deploy"] = (1, "health check failed; rolled back to 0.1.0")
+    apply.results["deploy"] = (
+        1,
+        "[apply] verifying\n[apply] extracting\nhealth check failed; rolled back to 0.1.0",
+    )
     result = ex.run({"op": "deploy", "version": "0.2.0"}, progress=lambda s: None)
-    assert not result.ok and "rolled back" in result.details["reason"]
+    assert not result.ok and result.details["reason"] == "health check failed; rolled back to 0.1.0"
+    assert "[apply] extracting" in result.details["helper"]  # full output kept separately
 
 
 @pytest.mark.parametrize("op", ["rollback", "restart", "apt-upgrade"])

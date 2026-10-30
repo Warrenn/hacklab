@@ -29,6 +29,11 @@ class Result:
     details: dict[str, str] = field(default_factory=dict)
 
 
+def _last_line(text: str) -> str:
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    return lines[-1] if lines else ""
+
+
 class JobExecutor:
     def __init__(
         self,
@@ -84,7 +89,7 @@ class JobExecutor:
         rc, out = self.apply("deploy", version)
         details = {"release": version, "helper": out[-800:]}
         if rc != 0:
-            details["reason"] = out[-800:] or f"hacklab-apply exited {rc}"
+            details["reason"] = _last_line(out) or f"hacklab-apply exited {rc}"
             return Result(False, details=details)
         return Result(True, details=details)
 
@@ -93,7 +98,7 @@ class JobExecutor:
         rc, out = self.apply(verb)
         details = {"helper": out[-800:]}
         if rc != 0:
-            details["reason"] = out[-800:] or f"hacklab-apply exited {rc}"
+            details["reason"] = _last_line(out) or f"hacklab-apply exited {rc}"
             return Result(False, details=details)
         return Result(True, details=details)
 

@@ -42,10 +42,12 @@ case $verb in
     log "extracting to $dest"
     run rm -rf "$dest"; run mkdir -p "$dest"
     run tar -xzf "$tar" -C "$dest" --warning=no-unknown-keyword
-    [ "$DRY" = 1 ] || { prev=$(current_target); echo "$prev" > "$PREFIX/releases/.previous"; }
+    [ "$DRY" = 1 ] || { prev=$(current_target); oldprev=$(cat "$PREFIX/releases/.previous" 2>/dev/null || true); echo "$prev" > "$PREFIX/releases/.previous"; }
     switch_to "$dest"
     if [ "$DRY" = 1 ] || health; then log "release $arg healthy"; exit 0; fi
     log "health check failed, rolling back to $(basename "$prev")"
+    [ -n "${oldprev:-}" ] && echo "$oldprev" > "$PREFIX/releases/.previous"   # keep the real previous release
+    rm -rf "$dest"
     switch_to "$prev"
     health && { echo "health check failed on $arg; rolled back to $(basename "$prev")" >&2; exit 1; }
     echo "health check failed on $arg AND after rollback to $(basename "$prev")" >&2; exit 1 ;;
