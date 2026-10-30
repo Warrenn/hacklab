@@ -48,6 +48,19 @@ Resources:
             Resource:
               - !Sub arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topicfilter/$aws/things/hacklab-${DeviceName}/shadow/*
               - !Sub arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topicfilter/hacklab/${DeviceName}/*
+          # Jobs (P5c): signed updates. Nothing in a job document is executed; see ops/agent.py allowlist.
+          - Effect: Allow
+            Action:
+              - iot:Publish
+              - iot:Receive
+            Resource: !Sub arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topic/$aws/things/hacklab-${DeviceName}/jobs/*
+          - Effect: Allow
+            Action: iot:Subscribe
+            Resource: !Sub arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topicfilter/$aws/things/hacklab-${DeviceName}/jobs/*
+          # Credentials provider (P5c option B): the device trades its certificate for role credentials.
+          - Effect: Allow
+            Action: iot:AssumeRoleWithCertificate
+            Resource: !Sub arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:rolealias/hacklab-device
 
   PolicyAttachment:
     Type: AWS::IoT::PolicyPrincipalAttachment

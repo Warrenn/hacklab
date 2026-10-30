@@ -398,12 +398,20 @@ Decisions:
   the device stack must keep the certificate: `provision-device.sh` uses
   `update-stack` with `UsePreviousValue` for the CSR when the stack exists
   (a regenerated CSR would replace the certificate).
-- **Signing:** one minisign key pair on the Mac (`minisign -G -W`,
-  `~/.minisign/hacklab.key`, mode 600) plus a copy in the macOS login
-  Keychain; the owner adds it to their password manager. **Never in AWS**
-  (owner, 2026-10-30): AWS access alone must not be able to sign a release.
-  Public key committed as `provisioning/minisign.pub`, installed to
-  `/opt/hacklab/minisign.pub` by `install.sh`. CI signing later.
+- **Signing (owner, 2026-10-30, revised):** the maintainer must be able to
+  work from any machine. One minisign key pair whose secret key is
+  **passphrase-protected** (`minisign -G`, passphrase chosen by the owner,
+  kept only in their password manager); the encrypted key file is backed up
+  as SecureString `/hacklab/minisign/secret-key` (`device-secrets.sh
+  backup-signing-key` / `restore-signing-key`). AWS access alone therefore
+  cannot sign (needs the passphrase); losing the Mac loses nothing. Signing
+  prompts for the passphrase (`release.sh` is run by a human). Public key
+  committed as `provisioning/minisign.pub`, installed to
+  `/opt/hacklab/minisign.pub` by `install.sh`. CI signing later would need
+  its own key. README gets a "new maintainer machine" checklist: clone,
+  `aws sso login`, `device-secrets.sh restore pi3`, `restore-key`,
+  `restore-signing-key`, `brew install minisign awscli` (or apt), done --
+  nothing in the workflow is tied to this Mac.
 - **Downgrade guard:** `hacklab-apply deploy` refuses a signed manifest whose
   version is lower than the running release; `rollback` only steps to the
   previous release already on disk.
