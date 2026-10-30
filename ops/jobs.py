@@ -13,6 +13,7 @@ from __future__ import annotations
 import io
 import re
 import tarfile
+import tempfile
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -121,7 +122,9 @@ class JobExecutor:
             for f in sorted(self.logs_dir.rglob("*")):
                 if f.is_file() and f.suffix in (".jsonl", ".log", ".gz"):
                     t.add(f, arcname=str(f.relative_to(self.logs_dir)))
-        bundle = self.logs_dir / f"bundle-{int(time.time())}.tar.gz"
+        # the data dir belongs to the app user; write the bundle in a temp dir we own
+        tmp = Path(tempfile.mkdtemp(prefix="hacklab-logs-"))
+        bundle = tmp / f"bundle-{int(time.time())}.tar.gz"
         bundle.write_bytes(buf.getvalue())
         key = f"logs/{self.thing}/{bundle.name}"
         progress("uploading")
@@ -129,4 +132,5 @@ class JobExecutor:
             self.s3.upload(key, bundle)
         finally:
             bundle.unlink(missing_ok=True)
+            bundle.parent.rmdir()
         return Result(True, details={"key": key, "bytes": str(len(buf.getvalue()))})
