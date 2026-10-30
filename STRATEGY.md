@@ -357,7 +357,7 @@ HTTPS (see decision above); Android tablet running the CrunchLabs IDE directly
 (Chrome Android 148+ has Web Serial) if the hardware situation ever changes;
 touchscreen kiosk page; Bluetooth onboarding (rejected — needs native app).
 
-## P5c plan — Signed updates via IoT Jobs (2026-10-30, awaiting approval)
+## P5c plan — Signed updates via IoT Jobs (2026-10-30, approved: option B, signing key outside AWS)
 
 Goal: the maintainer ships a new version with two commands and no login:
 `scripts/release.sh` builds and signs a tarball and uploads it to S3;
@@ -383,27 +383,40 @@ Mac. IoT Jobs: $0.0045 per remote action -- negligible.
 Decisions:
 - **CloudFormation** (owner's rule) `provisioning/releases.yaml`: a private
   S3 bucket `hacklab-releases-<account>` (versioning on, public access
-  blocked, 90-day expiry for log bundles under `logs/`), and the device
-  policy in `iot-device.yaml` gains the jobs topics
-  (`$aws/things/<thing>/jobs/*` publish/subscribe/receive). No IAM role for
-  presigned URLs: `deploy.sh` presigns the S3 GET itself (1 h) and puts the
-  URLs in the job document; `logs.sh` presigns a PUT the same way.
-- **Signing:** one minisign key pair generated on the Mac (`minisign -G -W`
-  into `~/.minisign/hacklab.key`), public key committed as
-  `provisioning/minisign.pub` and installed to `/opt/hacklab/minisign.pub`
-  by `install.sh`; secret key backed up to Parameter Store
-  (`/hacklab/minisign/secret-key`, `device-secrets.sh` gains it). CI
-  signing later (decision already in STRATEGY).
+  blocked, 90-day expiry for `logs/`), an IAM role `hacklab-device` trusted
+  by `credentials.iot.amazonaws.com` (GetObject/ListBucket on `releases/*`,
+  PutObject on `logs/${credentials-iot:ThingName}/*`, nothing else), and an
+  IoT **role alias** `hacklab-device` pointing at it (1 h credentials). The
+  device policy in `iot-device.yaml` gains the jobs topics
+  (`$aws/things/<thing>/jobs/*`) and `iot:AssumeRoleWithCertificate` on the
+  alias. **Option B (owner, 2026-10-30):** the Pi exchanges its existing
+  certificate for short-lived role credentials through the IoT credentials
+  provider (`awscrt.auth.AwsCredentialsProvider.new_x509`, verified in the
+  ops venv) and reads/writes S3 directly -- no presigned URLs, no Roles
+  Anywhere (would need our own CA for no gain), offline-Pi deploys work.
+  Certificate deactivation revokes both MQTT and the credentials. Updating
+  the device stack must keep the certificate: `provision-device.sh` uses
+  `update-stack` with `UsePreviousValue` for the CSR when the stack exists
+  (a regenerated CSR would replace the certificate).
+- **Signing:** one minisign key pair on the Mac (`minisign -G -W`,
+  `~/.minisign/hacklab.key`, mode 600) plus a copy in the macOS login
+  Keychain; the owner adds it to their password manager. **Never in AWS**
+  (owner, 2026-10-30): AWS access alone must not be able to sign a release.
+  Public key committed as `provisioning/minisign.pub`, installed to
+  `/opt/hacklab/minisign.pub` by `install.sh`. CI signing later.
+- **Downgrade guard:** `hacklab-apply deploy` refuses a signed manifest whose
+  version is lower than the running release; `rollback` only steps to the
+  previous release already on disk.
 - **Release = `git archive` of a tag** (`hacklab/`, `boxes/`, `static/`,
   `provisioning/`, `scripts/`, `ops/`, `pyproject.toml`, `README.md`) +
   `manifest.json` (version, git sha, built-at, sha256 per file) ->
   `hacklab-<version>.tar.gz` + `.minisig`, uploaded to
   `s3://<bucket>/releases/<version>/`. Version = the tag (`v0.1.0` ->
   `0.1.0`) or an explicit argument for untagged test builds.
-- **Job document:** `{"op": "deploy", "version": "...", "url": "<presigned
-  tar>", "sig_url": "<presigned minisig>"}`; `rollback` (no payload),
-  `restart`, `upload-logs` (`{"put_url": ...}`), `report-state`,
-  `apt-upgrade`. Anything else -> job REJECTED. The op allowlist is a dict
+- **Job document:** `{"op": "deploy", "version": "..."}` (the agent derives
+  the S3 keys `releases/<version>/hacklab-<version>.tar.gz` + `.minisig`
+  from the version); `rollback`, `restart`, `upload-logs` (agent uploads to
+  `logs/<thing>/<ts>.tar.gz`), `report-state`, `apt-upgrade`. Anything else -> job REJECTED. The op allowlist is a dict
   in the agent; there is no command field.
 - **Privilege split on the Pi:** the agent (user `hacklab-ops`) downloads to
   `/opt/hacklab/releases/<version>.tar.gz` (it owns `releases/`) and
@@ -438,10 +451,12 @@ Decisions:
   agent (`ops/agent.py`, tests) are file-disjoint; serialized, same session.
 
 Steps:
-1. Keys + AWS: minisign key pair, public key committed, secret key backed
-   up; `releases.yaml` stack + jobs topics in the device policy
-   (CloudFormation deploy); `install.sh` installs the public key, the
-   `hacklab-apply` helper, the sudoers rule and `minisign` from apt.
+1. Keys + AWS: minisign key pair (file + Keychain, not AWS), public key
+   committed; `releases.yaml` stack (bucket, device role, role alias) and
+   the device policy update (jobs topics + AssumeRoleWithCertificate) via
+   CloudFormation keeping the certificate; `install.sh` installs the public
+   key, the `hacklab-apply` helper, the sudoers rule, `minisign` from apt,
+   and the role-alias/bucket settings for the agent.
 2. Tests red: `tests/test_ops_jobs.py` (dispatch, allowlist, progress,
    signature failure, rollback result), `tests/test_release.py`
    (`release.sh --dry-run` tarball + manifest + signature verify).
