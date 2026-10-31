@@ -2062,6 +2062,8 @@ snippet on the iPad). A snippet shows about 14 lines and scrolls inside.
 - [x] Step 3 — preview v15; release 0.7.9 on the Pi (healthy); live on the Pi: "Explain lines 30-44" of the Forklift came back with a range on every step and the snippets embedded; goldens re-recorded live (every step ranged) and committed — completed 2026-10-31
 - [x] Step 4 — cache key explain2-*; snippet boxes no minimum height; release 0.7.10 on the Pi (healthy); live: the Laser Synthesizer's whole-sketch explanation came fresh in 10 s with six ranged steps and embedded snippets, no side bar, version line once — completed 2026-10-31
 - [x] Step 5 — pre.snip max-height 14 lines, scrolls inside; pwa test; 63 pw — completed 2026-10-31
+- [x] Step 6 — live on the Pi the Turret's explanation came back with 7 steps, the shape allowed 6, and the validation error was treated as an outage (helper away 10 min). Steps allow up to 8 (persona still asks 3-6); a wrong-shaped answer fails with "The AI helper got muddled. Ask again." and never marks the helper away, in both the explain and the ask paths; logged as kind shape. Unit tests; 272 — completed 2026-10-31 (release 0.7.12 below)
+- [ ] Step 7 — release 0.7.12 on the Pi; the Turret's whole-sketch explanation live
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 

@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
+from pydantic import ValidationError
+
 if TYPE_CHECKING:
     from hacklab.flash import Flasher
     from hacklab.genie import Genie
@@ -28,6 +30,7 @@ KID_AWAY = "The AI helper is away right now. Pick a trick instead."
 KID_DECLINED = "The AI helper can't help with that one. Pick a trick instead."
 MOCK_QUESTION = "Which key on the remote should start it?"  # mock backend's clarify answer
 MOCK_READY = "I know what to do. Press Go! and watch the box."  # mock backend's ready answer
+KID_MUDDLED = "The AI helper got muddled. Ask again."  # the answer had the wrong shape
 KID_GAVE_UP = (
     "The AI helper tried three times and the code would not build. "
     "Try saying it another way, or pick a trick."
@@ -372,6 +375,10 @@ class RealJobRunner:
             self._log_ask(box, {**entry, "kind": "refusal"})
             self._set(job, "failed", KID_DECLINED)
             return
+        except ValidationError as exc:  # the model's answer had the wrong shape: not an outage
+            self._log_ask(box, {**entry, "kind": "shape", "error": str(exc)[:300]})
+            self._set(job, "failed", KID_MUDDLED)
+            return
         except Exception as exc:  # noqa: BLE001 - network/API trouble => helper is away
             self._log_ask(box, {**entry, "kind": "error", "error": str(exc)[:300]})
             self.mark_away()
@@ -444,6 +451,12 @@ class RealJobRunner:
                         box, {"request": text, "box": box, "kind": "refusal", "attempts": attempt}
                     )
                     self._set(job, "failed", KID_DECLINED)
+                    return
+                except ValidationError as exc:  # wrong shape from the model: not an outage
+                    log.append(f"shape: {exc}")
+                    job.log_ref = self._write_log(box, job, "\n".join(log))
+                    self._log_ask(box, {"request": text, "box": box, "kind": "shape"})
+                    self._set(job, "failed", KID_MUDDLED)
                     return
                 except Exception as exc:  # noqa: BLE001 - network/API trouble => helper is away
                     log.append(f"api error: {type(exc).__name__}: {exc}")
