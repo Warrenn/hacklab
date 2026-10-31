@@ -7,6 +7,7 @@ P1 plan).
 
 from __future__ import annotations
 
+import glob
 import json
 import re
 import subprocess
@@ -49,6 +50,7 @@ class CliError(RuntimeError):
 
 class Board(Protocol):
     def list_ports(self) -> list[Port]: ...
+    def device_nodes(self) -> frozenset[str]: ...  # cheap: which serial devices exist right now
     def compile(self, sketch_dir: Path, fqbn: str, out_dir: Path) -> Result: ...
     def upload(self, sketch_dir: Path, fqbn: str, port: str, build_dir: Path) -> Result: ...
 
@@ -141,6 +143,12 @@ class ArduinoCli:
             raise CliError(f"arduino-cli returned non-JSON: {out[:200]}") from exc
         return rc, data, err
 
+    # ponytail: a 1 s glob of the device nodes instead of udev; `board list` costs seconds on a Pi 3
+    device_globs: tuple[str, ...] = ("/dev/ttyUSB*", "/dev/ttyACM*", "/dev/cu.usb*")
+
+    def device_nodes(self) -> frozenset[str]:
+        return frozenset(n for pat in self.device_globs for n in glob.glob(pat))
+
     def list_ports(self) -> list[Port]:
         # 5 s: on a loaded Pi 3 the serial discovery can miss a 2 s window (seen under the service)
         _, data, _ = self._json(["board", "list", "--discovery-timeout", "5s"])
@@ -214,6 +222,9 @@ class FakeBoard:
             self._gap -= 1
             return []
         return [] if self.unplugged else [self.port]
+
+    def device_nodes(self) -> frozenset[str]:
+        return frozenset() if self.unplugged else frozenset({self.port.address})
 
     def compile(self, sketch_dir: Path, fqbn: str, out_dir: Path) -> Result:
         self.compiles += 1
