@@ -366,11 +366,22 @@ class RealJobRunner:
             self._set(job, "failed", KID_AWAY)
             return
         source = self.store.main_source(box, cur)
+        diff = None
+        if scope == "changed":  # P8 round 5: the change vs the version before this one
+            from hacklab.diff import sketch_diff
+
+            prev = self.store.previous(box)
+            diff = (
+                sketch_diff(self.store.path(box, prev), self.store.path(box, cur)) if prev else ""
+            )
+            if not diff:
+                self._set(job, "failed", "Nothing changed yet.")
+                return
         t0 = time.time()
         src = "tailscale" if job.payload.get("origin") == "remote" else "local"
         entry = {"request": f"explain {key}", "box": box, "source": src, "kind": "explain"}
         try:
-            result, usage = await asyncio.to_thread(genie.explain, source, lines)
+            result, usage = await asyncio.to_thread(genie.explain, source, lines, "medium", diff)
         except GenieRefused:
             self._log_ask(box, {**entry, "kind": "refusal"})
             self._set(job, "failed", KID_DECLINED)

@@ -2142,6 +2142,35 @@ release 0.8.0, live on the Pi (synth sliders).
 - [x] Step 2 — S.numbers loads with the box; numbersItem() behind "Change the numbers" (code footer, Offline card) when no just-flashed trick has sliders; Tweak screen groups sliders by file with the author's hint and shows each file live (#define and true/false highlighted; #define markers take the macro name); Send posts /flash/numbers; preview stand-in mirrors; pwa (Turret yawPrecision, synth config.h) + full stack (real compile, stored yawPrecision = 500) — completed 2026-10-31
 - [x] Step 3 — preview v20; release 0.8.0 on the Pi (healthy); live on the Forklift: five config.h sliders (maxSpeed, flipM1-4) with the config.h preview, maxSpeed 200 -> Send -> real compile + flash in 22 s -> version 0001 "My numbers" with maxSpeed = 200 in config.h -> Undo -> stock — completed 2026-10-31
 
+## P8 round 5 — "What just changed?" (owner's ask 2026-10-31, approved by default)
+
+Owner: one more chip on the code page, "What just changed?", that explains
+the code that was just added or removed and why it was used; shown only when
+a change is known, hidden when nothing changed or the difference cannot be
+told.
+
+Design: every flash saves a version, so the change is the unified diff
+between the current version's files and the previous version's (`*.ino`,
+`*.h`; `hacklab/diff.py: sketch_diff(a_dir, b_dir)`). `GET /api/status` gains
+`changed` (real mode: a previous version exists and the diff is not empty;
+mock: more than one version). `POST /api/explain {scope: "changed"}` (409
+"Nothing changed yet." when not changed) runs the teaching persona with the
+diff and the current numbered code and asks what changed and why that code
+was used (line refs point at the current code); cached as
+`explain2-changed.json` beside the version; a `changed` job with no previous
+version fails softly. The golden client serves `explain-changed` for that
+ask; the recorder records it live from the stock vs the stock with the
+shake-on-7 fragments assembled in (a real genie change). Page: the chip
+"What just changed?" first in the row when `status.changed`; same explanation
+view. Preview stand-in mirrors (changed = more than one version).
+Steps: 1 server (red -> green); 2 page + pwa + full stack (golden recorded
+live on the Pi); 3 preview v21, release 0.8.1, live on the Pi.
+
+## Progress — P8 round 5
+- [x] Step 1 — hacklab/diff.sketch_diff over every *.ino/*.h, status.changed (real: previous exists and differs; mock: >1 version), explain scope changed with the diff + current code and "why", 409 when nothing changed, soft fail in the job, golden client serves explain-changed; tests/test_changed.py; 281 unit — completed 2026-10-31
+- [x] Step 2 — "What just changed?" chip first in the row when status.changed, same explanation view; stand-in mirrors; three explanation goldens re-recorded live locally incl. explain-changed ("Button 7 Makes the Turret Say No", every step ranged); pwa (mock: hidden on stock, shown after a trick, explains) + full stack (ask -> Go! -> chip -> recorded explanation with snippets); 69 pw, 281 unit — completed 2026-10-31
+- [ ] Step 3 — preview v21, release 0.8.1 live on the Pi
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the

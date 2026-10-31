@@ -473,7 +473,9 @@ function done() {
   }
   // Otherwise the page stacks and the code gets all the room (owner, 2026-10-31): message and
   // buttons in one row; a row of chips (the two code questions first, then the prompts); code below.
-  const ask = `<button class="prompt" data-act="explaincode" ${dis()}><span class="q">?</span><span>What does this code do?</span></button><button class="prompt" data-act="how"><span class="q">?</span><span>How does the whole thing work?</span></button>`;
+  // "What just changed?" only when the server can tell (a previous version that differs; P8 round 5)
+  const changed = S.status?.changed ? `<button class="prompt" data-act="explainchanged" ${dis()}><span class="q">?</span><span>What just changed?</span></button>` : '';
+  const ask = `${changed}<button class="prompt" data-act="explaincode" ${dis()}><span class="q">?</span><span>What does this code do?</span></button><button class="prompt" data-act="how"><span class="q">?</span><span>How does the whole thing work?</span></button>`;
   return `${header({ chips: false })}<main><section class="col12">
     <div class="toprow">${head}${actions}</div>
     <div class="curious">${ask}${prompts}</div>${concept}
@@ -663,6 +665,7 @@ const ACTIONS = {
   done: () => { S.screen = 'done'; render(); },
   code: () => { S.job = null; S.concept = null; S.explanation = null; S.sel = null; S.screen = 'done'; render(); },
   explaincode: () => { S.prevJob = S.job; startJob('explain', '/explain', { scope: 'sketch' }, 'What does this code do?'); },
+  explainchanged: () => { S.prevJob = S.job; startJob('explain', '/explain', { scope: 'changed' }, 'What just changed?'); },
   explainlines: () => { const a = Math.min(S.sel.a, S.sel.b ?? S.sel.a), b = Math.max(S.sel.a, S.sel.b ?? S.sel.a); S.prevJob = S.job; startJob('explain', '/explain', { scope: 'lines', from: a, to: b }, `What do lines ${a} to ${b} do?`); },
   closeexplain: () => { S.explanation = null; render(); },
   clearsel: () => { S.sel = null; render(); },

@@ -539,6 +539,25 @@ test('Level 2 on the box\'s own code: Change the numbers shows the IDE markers f
   expect(await page.locator('input[data-tw]').count()).toBeGreaterThan(20);
 });
 
+test('What just changed? appears only once a change is known, and explains it', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  await page.getByRole('button', { name: 'Back to how it came' }).click().catch(() => {});       // a clean start if an earlier test left a change
+  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 20000 });
+  await page.getByRole('button', { name: 'Show me the code' }).click();
+  await expect(page.getByRole('heading', { name: 'The code right now' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /What just changed\?/ })).toHaveCount(0);        // stock: nothing to compare
+  await page.getByRole('button', { name: 'Try something else' }).click();
+  await page.getByRole('button', { name: 'Nod yes' }).click();
+  await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
+  const chip = page.getByRole('button', { name: /What just changed\?/ });
+  await expect(chip).toBeVisible();                                                              // first in the row
+  expect(await page.locator('.prompt').first().textContent()).toMatch(/What just changed\?/);
+  await chip.click();
+  const xp = page.getByRole('region', { name: 'What the code does' });
+  await expect(xp).toBeVisible({ timeout: 15000 });
+  await expect(xp.locator('.xstep').first()).toBeVisible();
+});
+
 test('the header box button (drawing, name, state) and the Hack Lab mark both lead to the picker', async ({ page }) => {
   await pickTurret(page, homeUrl);
   const boxBtn = page.getByRole('button', { name: /Change box: IR Turret, plugged in/ });
@@ -583,7 +602,7 @@ test('the code page explains itself: the explanation is one column with the line
   expect(cap.overflow).toBe('auto');
   await expect(xp.locator('.metaphor')).toContainText('tap');
   await expect(xp).toContainText('Try it: Press 7');
-  await expect(page.getByText(/^Version \w+\.$/)).toHaveCount(1);                        // owner: not repeated
+  await expect(page.getByText(/^(Version \S+\.|That was change \d+ since it came\.|It is back to how it came\.)$/)).toHaveCount(1);   // owner: the version line, not repeated (mock versions carry a .ino suffix)
   const [xb, mb] = await Promise.all([xp.boundingBox(), page.locator('main').boundingBox()]);
   expect(xb.width).toBeGreaterThan(mb.width * 0.9);                                       // one column, no wasted side
   await xp.getByRole('button', { name: 'Close' }).click();

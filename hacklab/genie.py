@@ -171,16 +171,33 @@ class Genie:
         return response.parsed_output, response.usage
 
 
-def _explain_impl(self, source: str, lines: tuple[int, int] | None = None, effort: str = "medium"):
-    """Explain a sketch, or lines a..b of it (1-based, inclusive), for the kid."""
-    scope = f"lines {lines[0]} to {lines[1]}" if lines else "the whole sketch"
+def _explain_impl(
+    self,
+    source: str,
+    lines: tuple[int, int] | None = None,
+    effort: str = "medium",
+    diff: str | None = None,
+):
+    """Explain a sketch, lines a..b of it (1-based, inclusive), or, with `diff`, what just
+    changed and why that code was used (P8 round 5)."""
     numbered = "\n".join(f"{i + 1:4d}  {ln}" for i, ln in enumerate(source.splitlines()))
-    user = (
-        f"Explain {scope} of this sketch for the {self.box.name}. The code, with line numbers:\n"
-        f"```\n{numbered}\n```\n"
-    )
-    if lines:
-        user += "Focus on the asked lines; mention the rest only as far as the kid needs it.\n"
+    if diff:
+        user = (
+            f"Explain what just changed in this sketch for the {self.box.name}, and why that "
+            "code was used: what the new or changed lines make the box do, and why they are "
+            "written that way. Lines starting with - are gone, lines starting with + are new:\n"
+            f"```diff\n{diff}\n```\n"
+            f"The current code, with line numbers (from_line and to_line point here):\n"
+            f"```\n{numbered}\n```\n"
+        )
+    else:
+        scope = f"lines {lines[0]} to {lines[1]}" if lines else "the whole sketch"
+        user = (
+            f"Explain {scope} of this sketch for the {self.box.name}. "
+            f"The code, with line numbers:\n```\n{numbered}\n```\n"
+        )
+        if lines:
+            user += "Focus on the asked lines; mention the rest only as far as the kid needs it.\n"
     response = self.client.messages.parse(
         model=self.model,
         max_tokens=4000,
@@ -276,7 +293,13 @@ class GoldenGenieClient(FakeGenieClient):
             import json
             from pathlib import Path
 
-            name = "explain-lines" if asked.startswith("explain lines") else "explain-sketch"
+            name = (
+                "explain-changed"
+                if asked.startswith("explain what just changed")
+                else "explain-lines"
+                if asked.startswith("explain lines")
+                else "explain-sketch"
+            )
             f = Path(__file__).resolve().parent.parent / "tests" / "golden" / f"{name}.json"
             if not f.is_file():
                 raise RuntimeError(f"no recorded golden {name}: run scripts/record-golden.py")

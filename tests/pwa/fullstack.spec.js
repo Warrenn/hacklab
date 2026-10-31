@@ -180,6 +180,22 @@ test('Level 2 on the Turret\'s own code: a CrunchLabs number is changed, compile
   expect(JSON.parse(fs.readFileSync(path.join(dataDir, 'ir-turret', 'versions', latest, 'meta.json'), 'utf8')).note).toBe('My numbers');
 });
 
+test('What just changed? explains the AI helper\'s change from the recorded answer', async ({ page }) => {
+  await pickTurret(page);
+  await page.getByRole('button', { name: 'Back to how it came' }).click().catch(() => {});
+  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 60000 });
+  await page.getByPlaceholder(/shake its head/).fill('make it shake its head when I press 7');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeEnabled({ timeout: 30000 });
+  await page.getByRole('button', { name: 'Go!' }).click();
+  await expect(doneScreen(page)).toBeVisible({ timeout: 60000 });
+  await page.getByRole('button', { name: /What just changed\?/ }).click();
+  const xp = page.getByRole('region', { name: 'What the code does' });
+  await expect(xp).toBeVisible({ timeout: 30000 });
+  await expect(xp.locator('.xstep pre.snip').first()).toBeVisible();                           // the recorded steps point at the new lines
+  await expect(xp).toContainText(/7|seven/i);
+});
+
 test('explanations come from the recorded model answers and are cached per version', async ({ page }) => {
   await pickTurret(page);
   await page.getByRole('button', { name: 'Show me the code' }).click();

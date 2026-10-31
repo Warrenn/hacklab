@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 
 from hacklab.board import ArduinoCli, Board, FakeBoard, board_spec
 from hacklab.config import Config, load_config
+from hacklab.diff import sketch_diff
 from hacklab.flash import Flasher
 from hacklab.genie import Genie
 from hacklab.jobs import FakeJobRunner, JobRunner, RealJobRunner
@@ -99,7 +100,7 @@ class Go(BaseModel):
 
 
 class Explain(BaseModel):
-    scope: Literal["sketch", "lines"] = "sketch"
+    scope: Literal["sketch", "lines", "changed"] = "sketch"  # changed: vs the previous version
     from_line: int | None = Field(default=None, alias="from", ge=1)
     to_line: int | None = Field(default=None, alias="to", ge=1)
 
@@ -348,6 +349,16 @@ def create_app(
 
         return {"job_id": await runner.submit(kind, payload, on_done)}
 
+    def changed(box_id: str) -> bool:
+        """A previous version exists and its files differ from the current ones (mock mode:
+        more than one version)."""
+        if store is None:
+            return len(versions()) > 1
+        cur, prev = store.current(box_id), store.previous(box_id)
+        if cur is None or prev is None:
+            return False
+        return sketch_diff(store.path(box_id, prev), store.path(box_id, cur)) != ""
+
     def current_meta(box: str | None, vs: list[str]) -> dict[str, Any]:
         """The Home card's title and time: the current version's note and creation
         time, or "" / None for the stock version ("How it came")."""
@@ -383,6 +394,7 @@ def create_app(
             ),
             "current_version": vs[-1] if vs else None,
             "versions_count": len(vs),
+            "changed": changed(box) if box else False,  # "What just changed?" is offered
             **current_meta(box, vs),
             "source": source(request),
             "helping": helping.is_on(),
@@ -536,6 +548,8 @@ def create_app(
         if body.scope == "lines":
             if body.from_line is None or body.to_line is None or body.to_line < body.from_line:
                 raise HTTPException(422, "Pick a first and a last line, in order.")
+        if body.scope == "changed" and not changed(box):
+            raise HTTPException(409, "Nothing changed yet.")
         if store and genie_for(box) is None:
             raise HTTPException(409, "The AI helper is away right now.")
         payload: dict[str, Any] = {"scope": body.scope, "explanation": MOCK_EXPLANATION}

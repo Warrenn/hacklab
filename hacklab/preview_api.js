@@ -54,7 +54,7 @@
     if (path === '/status') {
       const v = st.box ? vs() : [];
       return json({ box: st.box, online: true, ai_available: st.ai, board_connected: st.board,
-        current_version: v.length ? v[v.length - 1].id : null, versions_count: v.length, source, helping: st.helping,
+        current_version: v.length ? v[v.length - 1].id : null, versions_count: v.length, changed: v.length > 1, source, helping: st.helping,
         current_note: v.length > 1 ? v[v.length - 1].note : '', current_created: v.length > 1 ? v[v.length - 1].created : null });
     }
     if (path === '/boxes') return json(D.boxes);
@@ -62,7 +62,13 @@
     if (path === '/helping') { if (source !== 'remote') return json({ detail: 'Only a remote viewer can switch helping.' }, 403); st.helping = !!body.on; emit({ type: 'status' }); return json({ helping: st.helping }); }
     if (path === '/behaviours') return needBox() || json(box.behaviours);
     if (path === '/sketch/current') { const bad = needBox(); if (bad) return bad; const v = vs(); return json({ source: v[v.length - 1].source, version: v[v.length - 1].id, box: st.box }); }
-    if (path === '/explain') { const bad = needBox(); if (bad) return bad; const lines = body.scope === 'lines' ? { ...EXPLANATION, title: `Lines ${body.from} to ${body.to}: ${EXPLANATION.title}` } : EXPLANATION; return json({ job_id: runJob('explain', { explanation: lines }) }); }
+    if (path === '/explain') {
+      const bad = needBox(); if (bad) return bad;
+      if (body.scope === 'changed' && vs().length < 2) return json({ detail: 'Nothing changed yet.' }, 409);
+      const x = body.scope === 'lines' ? { ...EXPLANATION, title: `Lines ${body.from} to ${body.to}: ${EXPLANATION.title}` }
+        : body.scope === 'changed' ? { ...EXPLANATION, title: `What changed: ${EXPLANATION.title}` } : EXPLANATION;
+      return json({ job_id: runJob('explain', { explanation: x }) });
+    }
     if (path.startsWith('/jobs/')) { const j = st.jobs[path.slice(6)]; return j ? json(j) : json({ detail: 'No such job.' }, 404); }
     if (path.startsWith('/concepts/')) { const c = box && box.concepts[path.slice(10)]; return c ? json(c) : json({ detail: 'No such concept.' }, 404); }
     const bad = needBox() || write(); if (bad) return bad;
