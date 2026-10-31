@@ -64,6 +64,21 @@ def main() -> int:
         else None
     )
     ok = True
+    # P8: explanations of the stock sketch (whole, and the IR switch block) as ExplainResult goldens
+    if "--explain" in sys.argv:
+        stock = (ROOT / "boxes" / "ir-turret" / "stock" / "stock" / "stock.ino").read_text()
+        lines = stock.splitlines()
+        a = next(i for i, ln in enumerate(lines, 1) if "switch(IrReceiver" in ln or "switch (IrReceiver" in ln)
+        b = next(i for i in range(a, len(lines) + 1) if lines[i - 1].strip() == "}")
+        for gname, rng in (("explain-sketch", None), ("explain-lines", (a, b))):
+            result, usage = genie.explain(stock, rng)
+            print(f"{gname:22} in={usage.input_tokens} out={usage.output_tokens} title={result.title!r}")
+            print(f"   steps: {[s.get('label') for s in result.steps]}")
+            (GOLDEN / f"{gname}.json").write_text(
+                json.dumps({"request": f"explain {rng or 'sketch'}", "responses": [result.model_dump()]}, indent=2)
+                + "\n"
+            )
+        names = [n for n in names if n in REQUESTS and len(sys.argv) > 2 and n in sys.argv]
     for name in names:
         req = REQUESTS[name]
         result, usage = genie.ask(req, Fragments())

@@ -35,6 +35,21 @@ LEAK = ("Rules you never break", "insertion point", "//@@", "skeleton")
 MAX_KID_TEXT = 400
 
 
+def check_text(fields: dict[str, str], max_len: int = MAX_KID_TEXT) -> list[str]:
+    """Kid-facing text rules, for any named fields (explanations use longer limits)."""
+    problems: list[str] = []
+    for name, text in fields.items():
+        if URL.search(text):
+            problems.append(f"{name} contains a link")
+        if EMOJI.search(text):
+            problems.append(f"{name} contains an emoji")
+        if any(k.lower() in text.lower() for k in LEAK):
+            problems.append(f"{name} repeats the instructions")
+        if len(text) > max_len:
+            problems.append(f"{name} is too long ({len(text)} chars, max {max_len})")
+    return problems
+
+
 def check(result: GenieResult) -> list[str]:
     problems: list[str] = []
     code = "\n".join((result.params, result.cases, result.loop, result.functions))

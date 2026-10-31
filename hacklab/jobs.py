@@ -36,6 +36,7 @@ GenieFactory = Callable[[str], "Genie | None"]
 TERMINAL_STATES = {"done", "failed"}
 
 STAGES = {
+    "explain": ["thinking"],
     "ask": ["thinking", "compiling", "uploading", "verifying"],
     "flash": ["compiling", "uploading", "verifying"],
     "undo": ["uploading", "verifying"],
@@ -64,9 +65,8 @@ class Job:
     log_ref: str | None = None
     prompts: list[dict[str, str]] = field(default_factory=list)
     sketch_ref: str | None = None
-    answer: str | None = (
-        None  # ask jobs: sketch | clarify | explain (what the helper came back with)
-    )
+    answer: str | None = None  # ask jobs: what the helper came back with (sketch|clarify|explain)
+    explanation: dict[str, Any] | None = None  # explain jobs: ExplainResult as a dict
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -78,6 +78,7 @@ class Job:
             "prompts": self.prompts,
             "sketch_ref": self.sketch_ref,
             "answer": self.answer,
+            "explanation": self.explanation,
         }
 
 
@@ -143,6 +144,12 @@ class FakeJobRunner:
         for stage in STAGES[job.kind]:
             self._set(job, stage)
             await asyncio.sleep(self.delay)
+            if stage == "thinking" and job.kind == "explain":
+                job.explanation = job.payload.get("explanation")
+                job.state = "done"
+                job.message_kid = "Here is what the code does."
+                self._publish(job)
+                return
             if stage == "thinking" and job.payload.get("clarify"):
                 job.answer = "clarify"
                 job.state = "done"
@@ -262,6 +269,9 @@ class RealJobRunner:
         self._away_until = time.time() + minutes * 60
 
     async def _run_locked(self, job: Job, box: str, on_done: OnDone | None) -> None:
+        if job.kind == "explain":
+            await self._run_explain(job, box)
+            return
         if job.kind == "ask":
             await self._run_ask(job, box, on_done)
             return
@@ -317,6 +327,69 @@ class RealJobRunner:
         logs = self._mk(self.store.root / box / "logs")
         with (logs / "asks.jsonl").open("a") as f:
             f.write(json.dumps({"ts": int(time.time()), **entry}) + "\n")
+
+    async def _run_explain(self, job: Job, box: str) -> None:
+        """The AI helper explains the current sketch (or a line range) for the kid. Cached
+        beside the version so re-reading is free; logged and guarded like an ask."""
+        from hacklab.genie import GenieRefused
+        from hacklab.guard import check_text
+
+        scope = job.payload.get("scope", "sketch")
+        lines = (int(job.payload["from"]), int(job.payload["to"])) if scope == "lines" else None
+        key = f"explain-{scope}" + (f"-{lines[0]}-{lines[1]}" if lines else "")
+        cur = self.store.current(box)
+        cache = self.store.version_dir(box, cur) / f"{key}.json" if cur else None
+        if cache and cache.is_file():
+            job.explanation = json.loads(cache.read_text())
+            self._set(job, "done", "Here is what the code does.")
+            return
+        self._set(job, "thinking")
+        genie = self.genie(box) if self.genie else None
+        if genie is None or cur is None:
+            self._set(job, "failed", KID_AWAY)
+            return
+        source = self.store.main_source(box, cur)
+        t0 = time.time()
+        src = "tailscale" if job.payload.get("origin") == "remote" else "local"
+        entry = {"request": f"explain {key}", "box": box, "source": src, "kind": "explain"}
+        try:
+            result, usage = await asyncio.to_thread(genie.explain, source, lines)
+        except GenieRefused:
+            self._log_ask(box, {**entry, "kind": "refusal"})
+            self._set(job, "failed", KID_DECLINED)
+            return
+        except Exception as exc:  # noqa: BLE001 - network/API trouble => helper is away
+            self._log_ask(box, {**entry, "kind": "error", "error": str(exc)[:300]})
+            self.mark_away()
+            self._set(job, "failed", KID_AWAY)
+            return
+        if self.ledger:
+            self.ledger.record(genie.model, usage)
+        texts = {"title": result.title, "metaphor": result.metaphor, "watch_for": result.watch_for}
+        texts.update({f"story[{i}]": p for i, p in enumerate(result.story)})
+        for i, step in enumerate(result.steps):
+            texts[f"step[{i}]"] = f"{step.get('label', '')} {step.get('detail', '')}"
+        problems = check_text(texts, max_len=900)
+        if problems:
+            self._log_ask(box, {**entry, "kind": "guard", "problems": problems})
+            self._set(job, "failed", KID_DECLINED)
+            return
+        job.explanation = result.model_dump()
+        if cache:
+            cache.write_text(json.dumps(job.explanation))
+        self._log_ask(
+            box,
+            {
+                **entry,
+                "duration_s": round(time.time() - t0, 1),
+                "usage": {
+                    "in": getattr(usage, "input_tokens", 0),
+                    "out": getattr(usage, "output_tokens", 0),
+                    "cache_read": getattr(usage, "cache_read_input_tokens", 0),
+                },
+            },
+        )
+        self._set(job, "done", "Here is what the code does.")
 
     async def _run_ask(self, job: Job, box: str, on_done: OnDone | None) -> None:
         from hacklab.genie import GenieRefused, prompts_for
