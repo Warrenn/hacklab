@@ -1,42 +1,54 @@
 {
-  "request": "explain sketch",
-  "responses": [
+ "request": "explain sketch",
+ "responses": [
+  {
+   "title": "How Your Turret Obeys the Remote",
+   "story": [
+    "Picture the turret as a sleepy guard dog. When you turn it on, it wakes up, plugs in its three motors, switches on its invisible-light ear (the IR receiver), and walks to its home spot: turret stopped, barrel tilted to 100 degrees.",
+    "Then it just waits, checking again and again, a tiny pause each time. When you press a button, the remote blinks a secret pattern of invisible light. The ear catches it and turns it into a number, called the command code. Each button has its own number. The sketch then says 'ready for the next one' so it can hear your next press.",
+    "Now the guard dog looks up the number in its list of tricks. Left and right turn the whole turret for a short burst, then stop. Up and down tilt the barrel a small step, but only if it will not go past the safe limits. OK fires one dart. Star spins the drum for six darts at once. Button 1 nods yes, and button 2 shakes no.",
+    "After each trick, the turret goes back to waiting. Buttons it does not know are ignored. It also writes notes to the computer, like LEFT or FIRING, so you can follow along."
+   ],
+   "steps": [
     {
-      "title": "How Your Turret Obeys the Remote",
-      "story": [
-        "Picture the turret as a sleepy guard dog. When you turn it on, it wakes up, plugs in its three motors, switches on its invisible-light ear (the IR receiver), and walks to its home spot: turret stopped, barrel tilted to 100 degrees.",
-        "Then it just waits, checking again and again, a tiny pause each time. When you press a button, the remote blinks a secret pattern of invisible light. The ear catches it and turns it into a number, called the command code. Each button has its own number. The sketch then says 'ready for the next one' so it can hear your next press.",
-        "Now the guard dog looks up the number in its list of tricks. Left and right turn the whole turret for a short burst, then stop. Up and down tilt the barrel a small step, but only if it will not go past the safe limits. OK fires one dart. Star spins the drum for six darts at once. Button 1 nods yes, and button 2 shakes no.",
-        "After each trick, the turret goes back to waiting. Buttons it does not know are ignored. It also writes notes to the computer, like LEFT or FIRING, so you can follow along."
-      ],
-      "steps": [
-        {
-          "label": "Wake up",
-          "detail": "The turret plugs in its motors, turns on the IR ear, and goes to its home position."
-        },
-        {
-          "label": "Wait and listen",
-          "detail": "The loop keeps checking whether the IR receiver caught a signal."
-        },
-        {
-          "label": "Read the code",
-          "detail": "The invisible blink pattern becomes a number that matches one button."
-        },
-        {
-          "label": "Look it up",
-          "detail": "A switch list matches that number to a trick, like turn, tilt, or fire."
-        },
-        {
-          "label": "Do the trick",
-          "detail": "A motor runs for a set time or moves a set angle, then stops."
-        },
-        {
-          "label": "Back to waiting",
-          "detail": "The turret goes back to listening for your next button press."
-        }
-      ],
-      "metaphor": "The turret is like a guard dog that waits for a whistle, knows which whistle means which trick, does it, then sits and listens again.",
-      "watch_for": "Press OK once and count one dart, then press star and watch all six darts go, and see if the tilt stops at its limits when you hold up or down."
+     "label": "Wake up",
+     "detail": "The turret plugs in its motors, turns on the IR ear, and goes to its home position.",
+     "from_line": 122,
+     "to_line": 130
+    },
+    {
+     "label": "Wait and listen",
+     "detail": "The loop keeps checking whether the IR receiver caught a signal.",
+     "from_line": 148,
+     "to_line": 152
+    },
+    {
+     "label": "Read the code",
+     "detail": "The invisible blink pattern becomes a number that matches one button.",
+     "from_line": 149,
+     "to_line": 153
+    },
+    {
+     "label": "Look it up",
+     "detail": "A switch list matches that number to a trick, like turn, tilt, or fire.",
+     "from_line": 196,
+     "to_line": 202
+    },
+    {
+     "label": "Do the trick",
+     "detail": "A motor runs for a set time or moves a set angle, then stops.",
+     "from_line": 203,
+     "to_line": 210
+    },
+    {
+     "label": "Back to waiting",
+     "detail": "The turret goes back to listening for your next button press.",
+     "from_line": 150,
+     "to_line": 151
     }
-  ]
+   ],
+   "metaphor": "The turret is like a guard dog that waits for a whistle, knows which whistle means which trick, does it, then sits and listens again.",
+   "watch_for": "Press OK once and count one dart, then press star and watch all six darts go, and see if the tilt stops at its limits when you hold up or down."
+  }
+ ]
 }

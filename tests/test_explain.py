@@ -29,9 +29,14 @@ EXPLANATION = {
         "The remote is the whistle: every key is a different note.",
     ],
     "steps": [
-        {"label": "Listen", "detail": "The IR eye waits for a key."},
-        {"label": "Decide", "detail": "The switch picks the matching action."},
-        {"label": "Move", "detail": "A servo turns for a short moment."},
+        {"label": "Listen", "detail": "The IR eye waits for a key.", "from_line": 1, "to_line": 1},
+        {
+            "label": "Decide",
+            "detail": "The switch picks the matching action.",
+            "from_line": 2,
+            "to_line": 2,
+        },
+        {"label": "Move", "detail": "A servo turns for a short moment."},  # no lines: allowed
     ],
     "metaphor": "The servo is like a tap you open for a second, then close.",
     "watch_for": "Press 7 and count the shakes.",
@@ -41,6 +46,19 @@ EXPLANATION = {
 def test_explain_result_shape():
     r = ExplainResult(**EXPLANATION)
     assert r.title and len(r.story) == 2 and len(r.steps) == 3 and r.metaphor
+    # P8 round 3h: a step names the lines it is about so the page can embed them
+    assert (r.steps[0].from_line, r.steps[0].to_line) == (1, 1)
+    assert r.steps[2].from_line is None and r.steps[2].to_line is None
+    assert r.model_dump()["steps"][1]["to_line"] == 2
+
+
+def test_the_teaching_prompt_asks_for_the_lines_of_each_step(boxes_dir):
+    box = load_boxes(boxes_dir)["testbox"]
+    client = FakeGenieClient([EXPLANATION])
+    genie = Genie(client, "claude-test", box, "void loop() {}")
+    genie.explain("int a = 1;\nvoid loop() { a++; }\n")
+    system = client.calls[0]["system"][0]["text"]
+    assert "from_line" in system and "to_line" in system
 
 
 def test_genie_explain_uses_the_teaching_prompt_and_the_code(boxes_dir):
