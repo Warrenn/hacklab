@@ -1821,7 +1821,19 @@ Steps: 1 Undo clarity (red -> green); 2 discussion (unit + pwa + full stack);
 how-it-works; 4 preview republished; release 0.6.0. Parallelism: all touch
 static/index.html -> serial.
 
+Owner's picker notes (2026-10-31, round 2b, done the same day): the drawings
+lose their text and opaque background (the name is HTML, top centre of the
+card); no green tick, the selected card is the teal border; the picture is
+`object-fit: contain` inside a flexible box so it shrinks on a phone and grows
+to its natural 400x230 when there is room, never cropped; "Getting ready" is
+greyed (`.primary:disabled`) and the cards are disabled while the box is being
+selected; the header's "<box> · plugged in" is a status chip and a visible
+"Change box" button opens the picker (it used to be the chip itself). This
+departs from BoxPicker.dc.html (tick, name under the picture) by the owner's
+request. One iPad-profile test covers the card at 1194 and 390 px wide.
+
 ## Progress — P8 round 2
+- [x] Step 2b — picker cards, busy state, Change box button — completed 2026-10-31
 - [x] Step 1 — Undo clarity: disabled rescue buttons say why; Done hides Undo when there is nothing to undo; one iPad-profile pwa test walks all three Undo paths; browser specs now emulate an iPad (viewport, touch, Safari UA; WebKit project = the iPad engine) — completed 2026-10-31
 - [x] Step 2 — discussion mode: Ask.history (10 turns), genie sends earlier turns as messages, jobs report `answer`, Home chat panel with "Your answer" and "Start over", mock "which..." -> question, recorded clarify golden `clarify-which-key`, golden client matches the current turn — completed 2026-10-31
 - [ ] Step 3 — explanations (code, lines, how it works), auto-hide, Hide code removed

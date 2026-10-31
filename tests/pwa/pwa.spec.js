@@ -50,7 +50,7 @@ test.use({ ...IPAD });
 async function openPicker(page, url) {
   await page.goto(url);
   const picker = page.getByRole('heading', { name: 'Which box is plugged in?' });
-  const chip = page.getByRole('button', { name: /plugged in/ });
+  const chip = page.getByRole('button', { name: 'Change box' });
   await expect(picker.or(chip)).toBeVisible({ timeout: 15000 }); // first render waits for /api/status
   if (!(await picker.isVisible())) await chip.click();
   await expect(picker).toBeVisible();
@@ -66,6 +66,7 @@ test('box picker leads to Home when the AI helper is here', async ({ page }) => 
   await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible();
   await expect(page.getByText('AI helper is here')).toBeVisible();
   await expect(page.getByText('IR Turret · plugged in')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Change box' })).toBeVisible();   // the chip is status; this is the control
   await expect(page.getByText('Try one of these')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Undo last change' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Back to how it came' })).toBeVisible();
@@ -219,7 +220,10 @@ test("Let's go shows a busy state while the box is being selected", async ({ pag
   await openPicker(page, homeUrl);
   await page.getByRole('button', { name: 'IR Turret', exact: true }).click();
   await page.getByRole('button', { name: "Let's go" }).click();
-  await expect(page.getByRole('button', { name: 'Getting ready' })).toBeDisabled();
+  const busy = page.getByRole('button', { name: 'Getting ready' });
+  await expect(busy).toBeDisabled();
+  expect(parseFloat(await busy.evaluate((el) => getComputedStyle(el).opacity))).toBeLessThan(0.7);   // greyed out
+  await expect(page.getByRole('button', { name: 'Omnibot Forklift', exact: true })).toBeDisabled();  // no re-picking mid-flight
   await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 10000 });
 });
 
@@ -321,4 +325,36 @@ test('a question from the AI helper opens a discussion the kid can answer', asyn
   await page.getByRole('button', { name: 'Try something else' }).click();
   await expect(page.locator('.chat')).toHaveCount(0);                                 // a sketch answer ends the discussion
   await expect(page.getByPlaceholder(/shake its head/)).toBeVisible();
+});
+
+test('box picker cards: name on top, no tick, picture never cut off, at iPad and phone widths', async ({ page }) => {
+  await openPicker(page, homeUrl);
+  const card = page.getByRole('button', { name: 'IR Turret', exact: true });
+  await card.click();
+  await expect(card).toHaveAttribute('aria-pressed', 'true');
+  await expect(card.locator('.tick')).toHaveCount(0);                                       // selection by border, no checkmark
+  expect(await card.evaluate((el) => el.firstElementChild.className)).toBe('boxname');       // text first, on top
+  expect(await card.locator('.boxname').evaluate((el) => getComputedStyle(el).justifyContent)).toBe('center');
+  for (const width of [1194, 390]) {
+    await page.setViewportSize({ width, height: 834 });
+    const img = card.locator('img');
+    await expect(img).toBeVisible();
+    const [ib, pb] = [await img.boundingBox(), await card.locator('.photo').boundingBox()];
+    expect(ib.x).toBeGreaterThanOrEqual(pb.x - 1); expect(ib.x + ib.width).toBeLessThanOrEqual(pb.x + pb.width + 1);
+    expect(ib.y).toBeGreaterThanOrEqual(pb.y - 1); expect(ib.y + ib.height).toBeLessThanOrEqual(pb.y + pb.height + 1);
+    expect(await img.evaluate((el) => getComputedStyle(el).objectFit)).toBe('contain');
+    expect(await card.locator('.photo').evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+  }
+  // the drawing itself: no text, no opaque background
+  const svg = await page.evaluate(async () => (await fetch('/static/boxes/ir-turret.svg')).text());
+  expect(svg).not.toMatch(/<text/);
+  expect(svg).not.toMatch(/<rect width="400" height="230" fill/);
+});
+
+test('the header chip is status; "Change box" is the way back to the picker', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  await expect(page.getByText('IR Turret · plugged in')).toBeVisible();
+  await expect(page.getByRole('button', { name: /plugged in/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Change box' }).click();
+  await expect(page.getByRole('heading', { name: 'Which box is plugged in?' })).toBeVisible();
 });

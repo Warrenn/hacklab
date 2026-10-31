@@ -45,7 +45,7 @@ test.use({ ...IPAD });
 async function pickTurret(page) {
   await page.goto(url);
   const picker = page.getByRole('heading', { name: 'Which box is plugged in?' });
-  const chip = page.getByRole('button', { name: /plugged in/ });
+  const chip = page.getByRole('button', { name: 'Change box' });
   await expect(picker.or(chip)).toBeVisible({ timeout: 15000 }); // first render waits for /api/status
   if (!(await picker.isVisible())) await chip.click();
   await expect(picker).toBeVisible();
