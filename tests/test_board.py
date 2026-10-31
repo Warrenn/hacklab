@@ -67,6 +67,7 @@ def test_list_ports_parses_usb_ports_only():
     cli = ArduinoCli(
         "/opt/hacklab/bin/arduino-cli", "/opt/hacklab/arduino/arduino-cli.yaml", run=run
     )
+    cli.sysfs_tty = Path("/nonexistent/sys")  # take the arduino-cli fallback on Linux too
     ports = cli.list_ports()
     assert ports == [Port(address="/dev/ttyUSB0", vid="0x1a86", pid="0x7523", serial="")]
     assert run.calls[0][:3] == [
@@ -132,6 +133,7 @@ def test_upload_failure_has_avrdude_log(tmp_path: Path):
 
 def test_non_json_garbage_raises_cli_error(tmp_path: Path):
     cli = ArduinoCli("cli", None, run=Recorder((0, "not json")))
+    cli.sysfs_tty = tmp_path / "nosys"  # list_ports must reach arduino-cli, not sysfs
     with pytest.raises(CliError):
         cli.list_ports()
 
