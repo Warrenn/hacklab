@@ -15,15 +15,17 @@
   const locked = () => source === 'remote' && !st.helping;
   const render = (src, values) => Object.entries(values || {}).reduce(
     (s, [name, v]) => s.replace(new RegExp('(\\b' + name + '\\s*=\\s*)[-\\d.]+'), '$1' + v), src);
-  function runJob(kind, { fail = false, prompts = [], sketch = null, note = '', clarify = false } = {}) {
+  const EXPLANATION = { title: 'The box waits, then acts', story: ['Think of the box as a dog that sits very still, listening for a whistle.', 'Every key on the remote is a different whistle. When one arrives, the code looks it up and runs the matching trick, then goes back to listening.'], steps: [{ label: 'Wait', detail: 'loop() runs round and round, checking for a key.' }, { label: 'Hear a key', detail: 'The IR eye turns the flash of light into a number.' }, { label: 'Pick the trick', detail: 'switch matches the number to one case.' }, { label: 'Do it', detail: 'A helper function moves a servo for a short moment.' }], metaphor: 'A servo is like a tap: open it for a second and water runs, then close it.', watch_for: 'Press 7 and count how many times it shakes.' };
+  function runJob(kind, { fail = false, prompts = [], sketch = null, note = '', clarify = false, explanation = null } = {}) {
     const id = 'preview-' + (++st.seq);
-    const stages = (kind === 'ask' ? ['thinking'] : []).concat(['compiling', 'uploading', 'verifying']);
-    const job = { job_id: id, kind, state: 'queued', message_kid: MESSAGES.queued, log_ref: null, prompts: [], sketch_ref: null, answer: null };
+    const stages = kind === 'explain' ? ['thinking'] : (kind === 'ask' ? ['thinking'] : []).concat(['compiling', 'uploading', 'verifying']);
+    const job = { job_id: id, kind, state: 'queued', message_kid: MESSAGES.queued, log_ref: null, prompts: [], sketch_ref: null, answer: null, explanation: null };
     st.jobs[id] = job;
     let i = 0;
     const step = () => {
       if (i < stages.length) {
         job.state = stages[i++]; job.message_kid = MESSAGES[job.state]; emit({ ...job });
+        if (kind === 'explain') { setTimeout(() => { job.state = 'done'; job.explanation = explanation; job.message_kid = 'Here is what the code does.'; emit({ ...job }); }, 900); return; }
         if (clarify && job.state === 'thinking') { setTimeout(() => { job.state = 'done'; job.answer = 'clarify'; job.message_kid = 'Which key on the remote should start it?'; emit({ ...job }); }, 900); return; }
         if (fail && job.state === 'compiling') { setTimeout(() => { job.state = 'failed'; job.message_kid = MESSAGES.failed; emit({ ...job }); }, 900); return; }
         setTimeout(step, 1100); return;
@@ -57,6 +59,7 @@
     if (path === '/helping') { if (source !== 'remote') return json({ detail: 'Only a remote viewer can switch helping.' }, 403); st.helping = !!body.on; emit({ type: 'status' }); return json({ helping: st.helping }); }
     if (path === '/behaviours') return needBox() || json(box.behaviours);
     if (path === '/sketch/current') { const bad = needBox(); if (bad) return bad; const v = vs(); return json({ source: v[v.length - 1].source, version: v[v.length - 1].id, box: st.box }); }
+    if (path === '/explain') { const bad = needBox(); if (bad) return bad; const lines = body.scope === 'lines' ? { ...EXPLANATION, title: `Lines ${body.from} to ${body.to}: ${EXPLANATION.title}` } : EXPLANATION; return json({ job_id: runJob('explain', { explanation: lines }) }); }
     if (path.startsWith('/jobs/')) { const j = st.jobs[path.slice(6)]; return j ? json(j) : json({ detail: 'No such job.' }, 404); }
     if (path.startsWith('/concepts/')) { const c = box && box.concepts[path.slice(10)]; return c ? json(c) : json({ detail: 'No such concept.' }, 404); }
     const bad = needBox() || write(); if (bad) return bad;

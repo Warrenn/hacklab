@@ -245,6 +245,22 @@ build`; versions pinned in its package.json; node_modules is git-ignored, the
 bundle is committed) so the Pi needs no CDN and no Node. If the bundle fails
 to load the page falls back to a plain text area.
 
+## Explanations for the kid
+
+On "The code right now" page, "What does this code do?" asks the AI helper for a
+kid-level walk-through of the current sketch: a short story, a flow picture of
+3-6 steps, one everyday metaphor and something to try on the box. Tapping a
+line, then another, picks a range and "Explain lines a-b" does the same for just
+those lines. Explanations run as `explain` jobs (no flash), use a separate
+teaching prompt with the same safety rules and the same code-side guard, are
+logged like asks, and are cached beside the version
+(`data/<box>/versions/<id>/explain-*.json`) so re-reading is free. "How does the
+whole thing work?" is a static page (iPad, WiFi, the Pi, the USB cable, the box,
+the AI helper in the cloud) with no model call. When the screen is too narrow
+for both, the code steps aside while an explanation is open and comes back
+when it closes. The recorded answers live in `tests/golden/explain-*.json`
+(`scripts/record-golden.py --explain`).
+
 ## Boxes
 
 Everything box-specific lives in `boxes/<id>/` (TOML + Markdown + sketch

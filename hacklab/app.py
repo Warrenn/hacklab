@@ -90,6 +90,32 @@ def host_of(value: str) -> str:
     return (urlsplit(v).hostname or "").lower()
 
 
+class Explain(BaseModel):
+    scope: Literal["sketch", "lines"] = "sketch"
+    from_line: int | None = Field(default=None, alias="from", ge=1)
+    to_line: int | None = Field(default=None, alias="to", ge=1)
+
+    model_config = {"populate_by_name": True}
+
+
+MOCK_EXPLANATION = {  # the mock backend's canned explanation (the real one comes from the model)
+    "title": "The box waits, then acts",
+    "story": [
+        "Think of the box as a dog that sits very still, listening for a whistle.",
+        "Every key on the remote is a different whistle. When one arrives, the code looks it up "
+        "and runs the matching trick, then goes back to listening.",
+    ],
+    "steps": [
+        {"label": "Wait", "detail": "loop() runs round and round, checking for a key."},
+        {"label": "Hear a key", "detail": "The IR eye turns the flash of light into a number."},
+        {"label": "Pick the trick", "detail": "switch matches the number to one case."},
+        {"label": "Do it", "detail": "A helper function moves a servo for a short moment."},
+    ],
+    "metaphor": "A servo is like a tap: open it for a second and water runs, then close it.",
+    "watch_for": "Press 7 and count how many times it shakes.",
+}
+
+
 class HelpingBody(BaseModel):
     on: bool
 
@@ -400,6 +426,21 @@ def create_app(
             "prompts": [],  # mock-only; the real runner fills prompts from the genie
         }
         return await start("ask", payload, src)
+
+    @app.post("/api/explain")
+    async def explain(body: Explain, request: Request):
+        """Explain the current code (or a line range) for the kid: a job, no flash. Read-only,
+        so a remote viewer may ask too (it costs an API call; the Console budget bounds it)."""
+        box = box_or_409()
+        if body.scope == "lines":
+            if body.from_line is None or body.to_line is None or body.to_line < body.from_line:
+                raise HTTPException(422, "Pick a first and a last line, in order.")
+        if store and genie_for(box) is None:
+            raise HTTPException(409, "The AI helper is away right now.")
+        payload: dict[str, Any] = {"scope": body.scope, "explanation": MOCK_EXPLANATION}
+        if body.scope == "lines":
+            payload.update({"from": body.from_line, "to": body.to_line})
+        return await start("explain", payload, source(request))
 
     @app.get("/api/jobs/{job_id}")
     def job(job_id: str):

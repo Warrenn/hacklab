@@ -19,7 +19,13 @@ def golden(name: str) -> list[dict]:
 
 @pytest.mark.parametrize("name", [p.stem for p in sorted(GOLDEN.glob("*.json"))])
 def test_every_golden_parses_as_a_genie_result(name):
+    from hacklab.genie import ExplainResult
+
     for r in golden(name):
+        if name.startswith("explain-"):  # P8: explanation goldens have their own shape
+            res = ExplainResult(**r)
+            assert res.title and res.story and res.steps
+            continue
         res = GenieResult(**r)
         assert res.kind in {"sketch", "clarify", "explain"} and res.message_kid
 

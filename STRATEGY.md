@@ -1836,7 +1836,7 @@ request. One iPad-profile test covers the card at 1194 and 390 px wide.
 - [x] Step 2b — picker cards, busy state, Change box button — completed 2026-10-31
 - [x] Step 1 — Undo clarity: disabled rescue buttons say why; Done hides Undo when there is nothing to undo; one iPad-profile pwa test walks all three Undo paths; browser specs now emulate an iPad (viewport, touch, Safari UA; WebKit project = the iPad engine) — completed 2026-10-31
 - [x] Step 2 — discussion mode: Ask.history (10 turns), genie sends earlier turns as messages, jobs report `answer`, Home chat panel with "Your answer" and "Start over", mock "which..." -> question, recorded clarify golden `clarify-which-key`, golden client matches the current turn — completed 2026-10-31
-- [ ] Step 3 — explanations (code, lines, how it works), auto-hide, Hide code removed
+- [x] Step 3 — explanations: `explain` job (teaching persona, typed ExplainResult with Step boxes, cached per version, guarded, logged), "What does this code do?" and tap-a-line/range "Explain lines a-b" on the code page, static "How does the whole thing work?" page with an inline SVG, code steps aside under 1100 px while an explanation is open, "Hide code" removed; two live explanation goldens (sleepy guard dog; mail sorter) drive the full-stack test — completed 2026-10-31
 - [ ] Step 4 — preview republished; release 0.6.0 on the Pi
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
