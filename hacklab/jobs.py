@@ -349,7 +349,7 @@ class RealJobRunner:
 
         scope = job.payload.get("scope", "sketch")
         lines = (int(job.payload["from"]), int(job.payload["to"])) if scope == "lines" else None
-        # explain2-: the shape changed (steps carry line ranges); older cached answers are not served
+        # explain2-: the shape changed (steps carry line ranges); older caches are not served
         key = f"explain2-{scope}" + (f"-{lines[0]}-{lines[1]}" if lines else "")
         cur = self.store.current(box)
         cache = self.store.version_dir(box, cur) / f"{key}.json" if cur else None
