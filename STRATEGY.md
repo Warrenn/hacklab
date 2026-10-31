@@ -263,10 +263,13 @@ GET  /api/behaviours        [{id, title, description, tweakables}]
 POST /api/flash/behaviour   {id, tweakables?}   → job_id
 POST /api/flash/template    {template_id, values} → job_id
 POST /api/flash/sketch      {source}            → job_id  (stage 3 editor)
-POST /api/ask               {text}              → job_id  (genie)
+POST /api/ask               {text, history?}    → job_id  (genie answers: ready|clarify|explain; never flashes)
+POST /api/go                {job_id}            → job_id  (flashes the plan behind a ready answer; 409 otherwise)
+POST /api/explain           {scope, from?, to?} → job_id  (teaching answer, cached per version)
 GET  /api/jobs/{id}         {state: queued|thinking|compiling|uploading|
                              verifying|done|failed, message_kid, log_ref,
-                             prompts: [{id, question}], sketch_ref}
+                             prompts: [{id, question}], sketch_ref,
+                             answer: ready|clarify|explain|sketch|null, explanation}
 POST /api/undo                                  → job_id
 POST /api/reset                                 → job_id  (per active box)
 GET  /api/sketch/current    {source, version, box}
@@ -1884,7 +1887,7 @@ Parallelism: all steps touch static/index.html or the ask job -> serial.
 ## Progress — P8 round 3
 - [x] Step 1 — server: `answer: ready` holds the plan (Job.result); `/api/go` flashes it with no model call, 409 unless a ready answer for the current box; mock and existing ask tests go through Go! — completed 2026-10-31
 - [x] Step 2 — page: textarea draft lives in S.draft and survives every render (focus and caret restored), "Try one of these" hides while typing, Send asks and the kid stays on Home with a thinking bubble, Go! enabled only on a ready answer with an empty draft, suggestions open the discussion; pwa tests updated + one new draft/gate test — completed 2026-10-31
-- [ ] Step 3 — full stack, preview v6, DESIGN decision log, API contract
+- [x] Step 3 — full stack (recorded sketch golden ends in ready, Go! flashes it; clarify golden gates Go!), preview republished (v6), DESIGN decision log row, API contract (/api/go, answer field) — completed 2026-10-31
 - [ ] Step 4 — release 0.7.0 on the Pi, live ask -> ready -> Go!
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
