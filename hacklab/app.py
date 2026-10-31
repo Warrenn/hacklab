@@ -239,10 +239,17 @@ def create_app(
             try:
                 nodes = await asyncio.to_thread(flasher.board.device_nodes)
                 if last is not None and nodes != last:
+                    # Push now, and once more after a short settle: a freshly plugged board shows
+                    # up in /dev before its USB identity is readable, so the first detection
+                    # can say "nothing" ("connecting was slow", owner 2026-10-31).
                     box = state["box"]
-                    await asyncio.to_thread(flasher.detect, True, spec_for(box) if box else None)
-                    runner.broadcast({"type": "status"})
-                last = nodes
+                    spec = spec_for(box) if box else None
+                    for settle in (0.0, 1.5):
+                        if settle:
+                            await asyncio.sleep(settle)
+                        await asyncio.to_thread(flasher.detect, True, spec)
+                        runner.broadcast({"type": "status"})
+                last = nodes  # pre-settle reading: a change during the settle is seen next tick
             except Exception:  # keep watching; a bad listing must not kill the watcher
                 log.exception("board watch")
             await asyncio.sleep(cfg.watch_interval)
