@@ -51,3 +51,9 @@ goes into STRATEGY.md "P7 notes" with what was seen.
 - [ ] Show the nephew: ask, trick, Undo, Back to how it came. Nothing else.
 - [ ] Show the parent the family card and the two rescue buttons.
 - [ ] Note the router model and whether mDNS worked, in STRATEGY P7 notes.
+
+## Power (added 2026-10-31)
+- [ ] Use a 5 V / 2.5 A supply and a short, thick USB cable for the Pi. On the Pi,
+  `vcgencmd get_throttled` must print `throttled=0x0`; `0x50005` means the supply is
+  too weak and the Pi can reset by itself ("Undervoltage detected!" in the log).
+- [ ] If the boxes draw from the Pi's USB, put them behind a powered hub.

@@ -2084,7 +2084,20 @@ Steps: 1 red -> green; 2 preview v18, release 0.7.13 on the Pi.
 ## Progress — P8 round 3i
 - [x] Step 1 — button.boxbtn in the header: drawing (retryPic), "<name> · plugged in", arrow, 2 px border, teal / amber faces, aria-label "Change box: …"; hidden on the picker; brand unchanged; pwa test; 63 pw on WebKit + Chromium; decision log — completed 2026-10-31
 - [x] Step 2 — preview v18; release 0.7.13 on the Pi (healthy); live at hacklab.local: the header button showed the synthesizer's drawing, "Laser Synthesizer · not plugged in" on an amber face with a 2 px border, opened the picker (absent on the picker), the mark opened it too — completed 2026-10-31
-- [ ] Step 3 — header order: AI chip first, the box button at the right edge (cosmetic: no new test, the owner's rule); preview v19, release 0.7.14
+- [x] Step 3 — header order: AI chip first, the box button at the right edge (cosmetic: no new test, the owner's rule); preview v19; release 0.7.14 on the Pi (healthy); live: AI chip ends at 1307 px, box button 1319-1696 px of 1728 — completed 2026-10-31
+
+Owner's rule (2026-10-31): minor cosmetic changes (ordering, spacing, colours)
+ship without a new test; TDD stays for behaviour.
+
+## Pi power (found 2026-10-31 while checking 0.7.14, owner item)
+
+The Pi rebooted by itself around 16:48 (uptime 4 min at 16:54). The kernel
+logs "Undervoltage detected!" repeatedly (11 times in the first 6 minutes),
+`vcgencmd get_throttled` = 0x50005: under-voltage now, throttled now, both
+seen since boot; no box was on USB. The previous boot's journal did not
+survive the hard reset. A brownout reset is the likely cause of the reboot.
+Owner: the Pi 3B needs a 5 V / 2.5 A supply and a good cable (or a powered
+hub for the boxes); the field checklist should say so. Not a software item.
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
