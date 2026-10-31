@@ -1768,7 +1768,7 @@ index.html -> serial, in order.
 - [x] Step 3 — remembered box across restarts (`data/selected.json`, real appliance only; a missing box falls back to the picker) — completed 2026-10-31
 - [x] Step 4 — vendored CodeMirror 6 editor (`static/vendor/editor.js`, 452 KB, built from `vendor/editor/`) with C++ colours, bracket matching and completions seeded from the box's helpers/keys and the sketch's identifiers; Done/Tweak code views coloured per line with the tweakable marks kept — completed 2026-10-31
 - [x] Step 5 — recorded deferrals: job cancel (no safe cancel mid-upload), box pictures (owner's photos) — completed 2026-10-31
-- [ ] Step 6 — preview republished; release 0.5.0 on the Pi
+- [x] Step 6 — preview republished (v2); release 0.5.0 on the Pi (healthy; editor bundle served; status carries note/time; selected box survived a service restart) — completed 2026-10-31
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
