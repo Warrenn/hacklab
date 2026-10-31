@@ -1651,10 +1651,14 @@ have to carve out comitup's hotspot DHCP/DNS and mDNS; risk to the fallback).
   GETs and send the page's own origin on its POSTs, so the PWA is unaffected
   (mock + full-stack browser suites green). A router that hands out another
   name (e.g. `hacklab.lan`) goes in `[app] allowed_hosts`.
-- Left to the owner (account/lockout decisions): sshd password authentication
-  and the imager's `admin ALL=(ALL) NOPASSWD: ALL`; an input firewall (would
-  have to carve out comitup's hotspot DHCP/DNS and mDNS; a mistake here breaks
-  the WiFi fallback).
+- Owner approved 2026-10-31, done: sshd `PasswordAuthentication no` (drop-in
+  `/etc/ssh/sshd_config.d/10-hacklab.conf`) and `admin ALL=(ALL) ALL` (password
+  required) replacing the imager's NOPASSWD file. Checked first that the Mac's
+  key already logs in as admin and that Tailscale SSH (its own server) is
+  unaffected; verified password auth refused, key auth and Tailscale root OK.
+  install.sh does the same on a re-image. Still left to the owner: an input
+  firewall (would have to carve out comitup's hotspot DHCP/DNS and mDNS; a
+  mistake here breaks the WiFi fallback).
 - Not done, by choice: one-active-ask-per-box throttling (the UI already
   switches to Working on submit; the Console limit bounds spend).
 
