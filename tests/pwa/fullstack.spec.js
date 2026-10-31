@@ -68,7 +68,7 @@ test('the whole loop: ask -> real compile/flash on the emulated board -> Done wi
   await expect(doneScreen(page)).toBeVisible({ timeout: 30000 });
   // the kid message is the recorded model answer, not page copy; prompts come from the box's concepts
   await expect(page.locator('main')).toContainText(/Press 7|press 7/);
-  await expect(page.getByText('Curious?')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Want to/ }).first()).toBeVisible();   // the model's curiosity prompts, as chips
   await page.getByRole('button', { name: /Want to/ }).first().click();
   await expect(page.locator('main')).not.toContainText(/http/);
   // the code shown is the assembled skeleton with the model's rule inside the real stock sketch

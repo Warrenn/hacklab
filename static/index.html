@@ -93,7 +93,8 @@ h1{margin:0;font-size:40px;font-weight:900;line-height:1.1}
 .explain{background:var(--panel);border-radius:18px;padding:18px 26px;font-size:19px;font-weight:700;color:var(--muted);max-width:760px}
 .explain.warm{background:var(--peach);color:var(--ink);line-height:1.45}
 .faint{font-size:16px;font-weight:700;color:var(--faint)}
-.donehead{display:flex;align-items:center;gap:16px}
+.donehead{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.donehead .sub{white-space:nowrap}
 .donehead .tick{width:60px;height:60px}
 .donehead h1{font-size:30px;line-height:1.2}
 .prompt{display:flex;align-items:center;gap:14px;text-align:left;font-size:19px;font-weight:800;padding:16px 20px;border-radius:16px;border:2px solid var(--line);background:var(--card)}
@@ -430,16 +431,18 @@ function done() {
   const own = (S.boxes.find((b) => b.id === S.status?.box) || {}).concepts || [];
   const prompts = (job?.prompts?.length ? job.prompts : own.slice(0, 3)).map((p) => `<button class="prompt" data-act="concept" data-id="${esc(p.id)}"><span class="q">?</span><span>${esc(p.question)}</span></button>`).join('');
   const concept = S.concept ? `<div class="explain warm"><strong>${esc(S.concept.title)}.</strong> ${esc(S.concept.explanation)}</div>` : '';
-  const head = job ? `<div class="donehead"><span class="tick">${I.tick(32)}</span><h1>${esc(job.message_kid)}</h1></div>` : '<div class="donehead"><h1>The code right now</h1></div>';
   const sub = job ? (n ? `That was change ${n} since it came.` : 'It is back to how it came.') : `Version ${esc(S.status?.current_version)}.`;
+  // the version / change line sits beside the heading (owner, 2026-10-31)
+  const head = `<div class="donehead">${job ? `<span class="tick">${I.tick(32)}</span><h1>${esc(job.message_kid)}</h1>` : '<h1>The code right now</h1>'}<span class="sub">${sub}</span></div>`;
   const actions = `<div class="actions"><button class="primary wide" data-act="home">Try something else</button>${n ? '<button class="ghost" data-act="undo">Undo</button>' : ''}</div>`;
   const twk = tweakable();
+  const foot = `<div class="codefoot"><span>Tap a line to ask about it. The highlighted numbers are the ones you can change yourself. ${twk ? `<button class="try-it" data-act="tweak" data-id="${esc(twk.id)}">Try it</button>` : ''}</span>
+      <button data-act="editor">Level 3: edit all the code</button></div>`;
   const code = `<div class="codehead"><span class="lead">The code that does it</span>
       <div class="codelinks"><button class="ai" data-act="explaincode" ${dis()}>What does this code do?</button><button data-act="how">How does the whole thing work?</button></div></div>
       ${selbar()}
       <pre>${highlight(S.sketch?.source || '')}</pre>
-      <div class="codefoot"><span>Tap a line to ask about it. The highlighted numbers are the ones you can change yourself. ${twk ? `<button class="try-it" data-act="tweak" data-id="${esc(twk.id)}">Try it</button>` : ''}</span>
-      <button data-act="editor">Level 3: edit all the code</button></div>`;
+      ${foot}`;
   // An open explanation needs the width: two columns, code beside it.
   if (S.explanation) {
     return `${header({ chips: false })}<main class="explaining">
@@ -447,11 +450,14 @@ function done() {
     <aside class="col5" style="gap:12px">${code}</aside></main>`;
   }
   // Otherwise the page stacks and the code gets all the room (owner, 2026-10-31): message and
-  // buttons in one row, the change line and the Curious? prompts in the next, code below.
+  // buttons in one row; a row of chips (the two code questions first, then the prompts); code below.
+  const ask = `<button class="prompt" data-act="explaincode" ${dis()}><span class="q">?</span><span>What does this code do?</span></button><button class="prompt" data-act="how"><span class="q">?</span><span>How does the whole thing work?</span></button>`;
   return `${header({ chips: false })}<main><section class="col12">
     <div class="toprow">${head}${actions}</div>
-    <div class="curious"><p class="sub">${sub}</p>${prompts ? `<span class="lead">Curious?</span>${prompts}` : ''}</div>${concept}
-    ${code}</section></main>`;
+    <div class="curious">${ask}${prompts}</div>${concept}
+    ${selbar()}
+    <pre>${highlight(S.sketch?.source || '')}</pre>
+    ${foot}</section></main>`;
 }
 function tweak() {
   const t = S.tweak;

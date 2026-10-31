@@ -2000,9 +2000,17 @@ chips on the code page opened from Home, and no control on Home / the code
 page has an underline or no border.
 Steps: 1 red -> green; 2 preview v12, release 0.7.6 on the Pi.
 
+Tweaks (owner, same day): "Version 0000." / "That was change N since it
+came." sits beside the heading in the top row (same font); "The code that
+does it" and "Curious?" labels go; "What does this code do?" and "How does
+the whole thing work?" are chips in the same style as the prompts, first in
+that row. The explaining (two-column) state is unchanged.
+
 ## Progress — P8 round 3f
 - [x] Step 1 — /api/boxes entries carry concepts [{id, question}], the code page falls back to the box's own three, one pill face for Show me the code / Start over / Try it / Level 3 (no underlined text buttons left); tighter rhythm on the viewport-high page; unit + pwa tests; 61 pw on WebKit + Chromium — completed 2026-10-31
 - [x] Step 2 — preview v12; release 0.7.6 on the Pi (healthy); code page at hacklab.local on the Laser Synthesizer: Curious? with the box's three questions, Level 3 and the code links with button faces, code 1664 px wide, no page scroll — completed 2026-10-31
+- [x] Step 3 — tweaks: version / change line beside the heading, "The code that does it" and "Curious?" gone, the two code questions are the first chips in the prompt row; pwa tests updated; 61 pw on WebKit + Chromium — completed 2026-10-31
+- [ ] Step 4 — preview v13, release 0.7.7 live on the Pi
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 

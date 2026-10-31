@@ -93,7 +93,7 @@ test('asking walks the Working stages over SSE and lands on Done, then Undo', as
   await expect(page.getByText('“Make it nod when I press 1”')).toBeVisible();
   await expect(page.getByText('Turning the code into robot language.')).toBeVisible({ timeout: 10000 });
   await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
-  await expect(page.getByText('The code that does it')).toBeVisible();  // (curiosity prompts: full-stack spec)
+  await expect(page.getByRole('button', { name: /What does this code do\?$/ })).toBeVisible();  // (curiosity prompts: full-stack spec)
   await expect(page.locator('pre')).toContainText('void loop');
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 15000 });
@@ -450,7 +450,7 @@ test('the code page gives the room to the code: full-width, viewport-high panel;
 test('Curious? is always on the code page, and nothing that acts looks like a hyperlink', async ({ page }) => {
   await pickTurret(page, homeUrl);
   const noLinkLook = async (name) => {
-    const b = page.getByRole('button', { name, exact: true });
+    const b = page.getByRole('button', { name: new RegExp(name.replace(/[?]/g, '\\?') + '$') });   // chips carry a "?" icon before the words
     await expect(b).toBeVisible();
     const st = await b.evaluate((el) => { const c = getComputedStyle(el); return { underline: c.textDecorationLine, border: parseFloat(c.borderTopWidth), bg: c.backgroundColor }; });
     expect(st.underline, name).toBe('none');
@@ -459,9 +459,18 @@ test('Curious? is always on the code page, and nothing that acts looks like a hy
   await noLinkLook('Show me the code');
   await page.getByRole('button', { name: 'Show me the code' }).click();
   await expect(page.getByRole('heading', { name: 'The code right now' })).toBeVisible();
-  await expect(page.getByText('Curious?')).toBeVisible();                                     // no fresh job: the box's own prompts
-  await expect(page.locator('.prompt').first()).toBeVisible();
-  await page.locator('.prompt').first().click();
+  // owner's tweaks: no "Curious?" / "The code that does it" labels; the version line sits beside the heading;
+  // the two code questions are chips in the prompt row, first, then the box's own prompts (no fresh job here)
+  await expect(page.getByText('Curious?')).toHaveCount(0);
+  await expect(page.getByText('The code that does it')).toHaveCount(0);
+  const [h1, ver] = await Promise.all([page.getByRole('heading', { name: 'The code right now' }).boundingBox(), page.getByText(/^Version \w+\.$/).boundingBox()]);
+  expect(Math.abs(ver.y + ver.height / 2 - (h1.y + h1.height / 2))).toBeLessThan(30);     // same row
+  expect(ver.x).toBeGreaterThan(h1.x + h1.width - 1);                                        // to its right
+  const chips = page.locator('.prompt');
+  await expect(chips.nth(0)).toHaveText(/What does this code do\?/);
+  await expect(chips.nth(1)).toHaveText(/How does the whole thing work\?/);
+  expect(await chips.count()).toBeGreaterThanOrEqual(3);
+  await chips.nth(2).click();
   await expect(page.locator('.explain.warm')).toBeVisible();
   for (const name of ['Try it', 'Level 3: edit all the code', 'What does this code do?', 'How does the whole thing work?']) await noLinkLook(name);
   await page.getByRole('button', { name: 'Try something else' }).click();
