@@ -1979,7 +1979,7 @@ scroll, buttons in the top row, "Curious?" prompts in a row above the code.
 - [x] Step 1 — 4/8 columns (7/5 while explaining), #app.fill makes the code page viewport-high with the code scrolling inside, message at 30 px, phone rule keeps one column; pwa layout test; 59 pw tests on WebKit + Chromium; DESIGN decision log — completed 2026-10-31
 - [x] Step 2 — preview v10; release 0.7.4 on the Pi (healthy); code page at hacklab.local (1728x940): code panel 1101x680 scrolling inside, left column 539, no page scroll — completed 2026-10-31
 - [x] Step 3 — take 2: no side column; top row message + buttons, second row change line + Curious? prompts, code title + links on one row, code full width filling the page; explaining state keeps 7/5; pwa layout test rewritten; 59 pw tests on WebKit + Chromium — completed 2026-10-31
-- [ ] Step 4 — preview v11, release 0.7.5 live on the Pi
+- [x] Step 4 — preview v11; release 0.7.5 on the Pi (healthy); code page at hacklab.local (1728x940): code panel 1664x586 full width, buttons in the top row, no page scroll — completed 2026-10-31
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
