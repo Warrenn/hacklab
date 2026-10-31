@@ -1662,12 +1662,26 @@ have to carve out comitup's hotspot DHCP/DNS and mDNS; risk to the fallback).
 - Not done, by choice: one-active-ask-per-box throttling (the UI already
   switches to Working on submit; the Console limit bounds spend).
 
+## P7b firewall (owner present, 2026-10-31)
+
+`provisioning/nftables.conf`: table `inet hacklab`, input policy drop; allows lo,
+established/related, ICMP/ICMPv6/IGMP, tailscale0 and UDP 41641, TCP 22 and 80
+from anywhere, UDP 5353 (mDNS), UDP 68/546 (DHCP client), and on wlan0 only UDP
+53/67 + TCP 53 for comitup's hotspot dnsmasq; forward policy drop. No `flush
+ruleset`, so Tailscale's own tables are untouched; a drop-in makes
+`systemctl stop nftables` remove only our table. Procedure: apply live with a
+20-minute `systemd-run` rollback timer, verify SSH/HTTP/mDNS/ping from the Mac,
+then the hotspot fallback test with the owner on the phone (delete the home WiFi
+profile, join hacklab-setup, portal, re-enter the password), then cancel the
+timer and enable nftables.service. install.sh carries it for re-images.
+
 ## Progress — P7b
 - [x] Step 1 — host/origin middleware + body limits (tests/test_hostguard.py, 5) — completed 2026-10-31
 - [x] Step 2 — unit tightened in provisioning and on the Pi (bounding set = net_bind_service, address families, syscall arch, Protect*); real flash OK: Back to how it came on the Forklift under the new unit (also reverted my earlier accidental Undo; Forklift on 0000) — completed 2026-10-31
 - [x] Step 3 — rpcbind off (only :22 and :80 listen now), unattended-upgrades on, 4 pending security updates applied through the apt-upgrade IoT job (SUCCEEDED); install.sh carries both — completed 2026-10-31
 - [x] Step 4 — pip-audit of the Pi venv (29 packages): no known vulnerabilities — completed 2026-10-31
 - [x] Step 5 — release 0.4.1 on the Pi (healthy; own names 200, foreign Host 400, cross-site POST 403, verified over Tailscale and hacklab.local); owner list reported — completed 2026-10-31
+- [x] Step 6 — input firewall applied behind a rollback timer; hotspot fallback re-tested with the owner on the phone (profile deleted 10:04, portal probe served from 10.41.0.x at 10:06:35, back on home WiFi and hacklab.local after 89 s); timer cancelled, nftables.service enabled; stop/start touches only our table — completed 2026-10-31
 
 ## Progress — P7
 - [x] Step 1 — guard (tests red -> green), wired into the runner — completed 2026-10-31

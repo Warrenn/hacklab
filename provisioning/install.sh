@@ -23,6 +23,13 @@ run systemctl disable --now rpcbind.socket rpcbind.service 2>/dev/null || true
 # and the imager's passwordless sudo for the login user becomes password-required.
 run bash -c 'printf "%s\n" "PasswordAuthentication no" "KbdInteractiveAuthentication no" "PermitRootLogin prohibit-password" > /etc/ssh/sshd_config.d/10-hacklab.conf'
 run bash -c 'sshd -t && systemctl reload ssh'
+# P7b: input firewall (see provisioning/nftables.conf). Enabled only after the hotspot
+# fallback was tested with it on 2026-10-31.
+run install -m 644 "$REPO_DIR/provisioning/nftables.conf" /etc/nftables.conf
+run install -d /etc/systemd/system/nftables.service.d
+run install -m 644 "$REPO_DIR/provisioning/systemd/nftables.service.d-hacklab.conf" /etc/systemd/system/nftables.service.d/hacklab.conf
+run systemctl daemon-reload
+run bash -c 'nft -c -f /etc/nftables.conf && systemctl enable --now nftables'
 for f in /etc/sudoers.d/*-nopasswd; do
   [ -f "$f" ] || continue
   run bash -c "sed 's/NOPASSWD: //' '$f' > '${f%-nopasswd}-passwd' && visudo -cf '${f%-nopasswd}-passwd' && rm -f '$f'"
