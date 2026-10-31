@@ -254,6 +254,8 @@ class GoldenGenieClient(FakeGenieClient):
         for f in sorted(
             (Path(__file__).resolve().parent.parent / "tests" / "golden").glob("*.json")
         ):
+            if f.stem.startswith("explain-"):  # ExplainResult goldens are picked by scope in _parse
+                continue
             d = json.loads(f.read_text())
             good = [r for r in d["responses"] if "fire() break" not in r.get("cases", "")]
             if good:

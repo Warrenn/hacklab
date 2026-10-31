@@ -1,0 +1,37 @@
+{
+  "request": "explain (169, 205)",
+  "responses": [
+    {
+      "title": "The Button-Sorting Switch Statement",
+      "story": [
+        "Picture a mail sorter at a post office. A letter comes in, the sorter reads the address, and it drops into the right bin. Lines 169 to 205 are that sorter. The letter is the number of the button you just pressed on the remote. The code reads that number and picks one action to run.",
+        "Each case line is one bin. If the button is up, the box runs upMove(1) and tilts up one step. Down, left and right work the same way. OK fires one dart with fire(). Star fires all six darts with fireAll(). Button 1 makes the turret nod yes, and button 2 makes it shake its head no.",
+        "After each action comes the word break. That means the sorting is finished and the box leaves the switch. Without break, the box would keep sliding into the next bin and do extra moves you did not ask for. If you press a button with no case, like 5, the sorter finds no bin and nothing moves."
+      ],
+      "steps": [
+        {
+          "label": "Read button",
+          "detail": "The box looks at the command number from the remote, which is the code for the button you pressed."
+        },
+        {
+          "label": "Match a case",
+          "detail": "It compares that number with each case until one matches, like finding the right bin."
+        },
+        {
+          "label": "Run the action",
+          "detail": "The matching case calls a helper such as upMove, fire or shakeHeadYes."
+        },
+        {
+          "label": "Break out",
+          "detail": "The word break ends the switch so no other action runs by mistake."
+        },
+        {
+          "label": "Wait again",
+          "detail": "The loop goes around and the box listens for your next button press."
+        }
+      ],
+      "metaphor": "The switch is a mail sorter that reads one address and drops the letter into exactly one bin.",
+      "watch_for": "Press OK for one dart, star for all six, 1 for a nod and 2 for a shake, then press 5 and see that nothing happens because it has no case."
+    }
+  ]
+}

@@ -67,25 +67,26 @@ def test_check_text_catches_links_emoji_and_leaks_in_any_text():
 
 async def test_explain_job_returns_the_explanation_and_caches_it(tmp_path, boxes_dir):
     fb, store, runner, client = make(tmp_path, boxes_dir, [EXPLANATION, EXPLANATION])
-    job = await wait_done(runner, await runner.submit("explain", {"box": "testbox", "scope": "sketch"}))
+    whole = {"box": "testbox", "scope": "sketch"}
+    job = await wait_done(runner, await runner.submit("explain", whole))
     assert job.state == "done" and job.explanation["title"] == EXPLANATION["title"]
     assert fb.uploads == 0 and len(client.calls) == 1
     # same version, same scope: served from the cache, no second API call
-    again = await wait_done(runner, await runner.submit("explain", {"box": "testbox", "scope": "sketch"}))
+    again = await wait_done(runner, await runner.submit("explain", whole))
     assert again.explanation == job.explanation and len(client.calls) == 1
     cached = store.version_dir("testbox", store.current("testbox")) / "explain-sketch.json"
     assert json.loads(cached.read_text())["title"] == EXPLANATION["title"]
     # a different range is a different explanation
-    lines = await wait_done(
-        runner, await runner.submit("explain", {"box": "testbox", "scope": "lines", "from": 2, "to": 3})
-    )
+    some = {"box": "testbox", "scope": "lines", "from": 2, "to": 3}
+    lines = await wait_done(runner, await runner.submit("explain", some))
     assert lines.state == "done" and len(client.calls) == 2
 
 
 async def test_explain_job_declines_a_bad_explanation(tmp_path, boxes_dir):
     bad = {**EXPLANATION, "story": ["Watch https://example.com for more."]}
     fb, store, runner, client = make(tmp_path, boxes_dir, [bad])
-    job = await wait_done(runner, await runner.submit("explain", {"box": "testbox", "scope": "sketch"}))
+    whole = {"box": "testbox", "scope": "sketch"}
+    job = await wait_done(runner, await runner.submit("explain", whole))
     assert job.state == "failed" and "Pick a trick" in job.message_kid
 
 
@@ -94,9 +95,11 @@ def test_api_explain_validates_and_the_mock_backend_answers(tmp_path, boxes_dir)
     with TestClient(create_app(cfg)) as c:
         assert c.post("/api/explain", json={"scope": "sketch"}).status_code == 409  # no box yet
         c.post("/api/box", json={"id": "testbox"})
-        assert c.post("/api/explain", json={"scope": "lines", "from": 5, "to": 2}).status_code == 422
+        backwards = {"scope": "lines", "from": 5, "to": 2}
+        assert c.post("/api/explain", json=backwards).status_code == 422
         assert c.post("/api/explain", json={"scope": "what"}).status_code == 422
-        job_id = c.post("/api/explain", json={"scope": "lines", "from": 2, "to": 4}).json()["job_id"]
+        some = {"scope": "lines", "from": 2, "to": 4}
+        job_id = c.post("/api/explain", json=some).json()["job_id"]
         for _ in range(200):
             j = c.get(f"/api/jobs/{job_id}").json()
             if j["state"] in ("done", "failed"):

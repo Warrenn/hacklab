@@ -358,3 +358,42 @@ test('the header chip is status; "Change box" is the way back to the picker', as
   await page.getByRole('button', { name: 'Change box' }).click();
   await expect(page.getByRole('heading', { name: 'Which box is plugged in?' })).toBeVisible();
 });
+
+test('the code page explains itself: What does this code do, lines, how it all works; code steps aside when narrow', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  await page.getByRole('button', { name: 'Show me the code' }).click();
+  await expect(page.getByRole('button', { name: 'Hide code' })).toHaveCount(0);          // owner: gone
+  // whole-sketch explanation: story, flow picture, metaphor, try-it line
+  await page.getByRole('button', { name: 'What does this code do?' }).click();
+  await expect(page.getByText('“What does this code do?”')).toBeVisible();
+  const xp = page.getByRole('region', { name: 'What the code does' });
+  await expect(xp).toBeVisible({ timeout: 15000 });
+  await expect(xp.getByRole('heading', { name: 'The box waits, then acts' })).toBeVisible();
+  await expect(xp.locator('.flow .step')).toHaveCount(4);
+  await expect(xp.locator('.metaphor')).toContainText('tap');
+  await expect(xp).toContainText('Try it: Press 7');
+  await expect(page.locator('pre')).toBeVisible();                                        // iPad landscape: room for both
+  // narrow screen: the code steps aside while explaining, and comes back on Close
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('pre')).toBeHidden();
+  await xp.getByRole('button', { name: 'Close' }).click();
+  await expect(page.locator('pre')).toBeVisible();
+  await page.setViewportSize({ width: 1194, height: 834 });
+  // tap two lines -> a range -> explain just those
+  const lines = page.locator('pre .ln');
+  await lines.nth(2).click();
+  await expect(page.getByText(/Line 3 picked/)).toBeVisible();
+  await lines.nth(5).click();
+  await expect(page.getByText('Lines 3 to 6 picked.')).toBeVisible();
+  await expect(page.locator('pre .ln.sel')).toHaveCount(4);
+  await page.getByRole('button', { name: 'Explain lines 3-6' }).click();
+  await expect(page.getByRole('region', { name: 'What the code does' })).toBeVisible({ timeout: 15000 });
+  // how the whole thing works: static page with the picture, and back
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'How does the whole thing work?' }).click();
+  await expect(page.getByRole('img', { name: /iPad to Hack Lab to the box/ })).toBeVisible();
+  await expect(page.getByText(/USB cable/).first()).toBeVisible();
+  await expect(page.locator('main')).not.toContainText(/http/);
+  await page.getByRole('button', { name: 'Back to the code' }).click();
+  await expect(page.getByRole('heading', { name: 'The code right now' })).toBeVisible();
+});

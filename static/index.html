@@ -133,6 +133,29 @@ pre .tok-keyword{color:#C9A7FF}pre .tok-typeName,pre .tok-standard{color:#7FD1FF
 .bubble{max-width:92%;padding:12px 16px;border-radius:16px;font-size:19px;font-weight:700;line-height:1.35}
 .bubble.kid{align-self:flex-end;background:#fff;border:2px solid var(--line)}
 .bubble.helper{align-self:flex-start;background:var(--teal-soft);color:var(--teal-dark)}
+.xp{display:flex;flex-direction:column;gap:14px;background:var(--panel);border-radius:22px;padding:22px}
+.xp h2{margin:0;font-size:28px;font-weight:900;line-height:1.15}
+.xp p{margin:0;font-size:19px;font-weight:600;line-height:1.5}
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px}
+.flow .step{flex:1 1 150px;min-width:0;background:#fff;border:2px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.flow .step b{font-size:18px;font-weight:900}
+.flow .step span{font-size:15px;font-weight:600;color:var(--muted);line-height:1.35}
+.flow .arrow{align-self:center;color:var(--accent);font-size:26px;font-weight:900}
+.xp .metaphor{background:var(--peach);border-radius:16px;padding:14px 18px;font-size:19px;font-weight:700;line-height:1.4}
+.xp .watch{font-size:17px;font-weight:800;color:var(--teal-dark)}
+.codelinks{display:flex;gap:10px;flex-wrap:wrap}
+.codelinks button{font:inherit;font-size:16px;font-weight:800;padding:10px 14px;border-radius:999px;border:2px solid var(--line);background:#fff;color:var(--ink)}
+.codelinks button.ai{border-color:var(--teal);color:var(--teal-dark);background:var(--teal-soft)}
+pre .ln{display:block;min-height:1.55em;cursor:pointer;border-radius:4px;margin:0 -6px;padding:0 6px}
+pre .ln:hover{background:#2A2F52}
+pre .ln.sel{background:#3A3F63;box-shadow:inset 3px 0 0 var(--accent)}
+.selbar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--amber-bg);border:2px solid var(--amber-line);border-radius:14px;padding:10px 14px;font-size:16px;font-weight:800;color:var(--amber-dark)}
+.selbar .primary{font-size:16px;padding:10px 16px;border-radius:12px}
+.how{display:flex;flex-direction:column;gap:18px;max-width:900px}
+.how svg{width:100%;height:auto;display:block}
+.how ol{margin:0;padding-left:26px;font-size:19px;font-weight:600;line-height:1.5;display:flex;flex-direction:column;gap:8px}
+/* Explanation mode: when the screen is too narrow for both, the code steps aside and comes back after. */
+@media (max-width:1100px){ main.explaining aside pre, main.explaining aside .selbar, main.explaining aside .codefoot{display:none} }
 .remotebar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 24px;background:#FFF4E5;color:#8A5A00;font-weight:800}
 .ghost.small,.remotebar .small{padding:8px 14px;font-size:15px}
 .helping{padding:8px 24px;background:#E6F7F2;color:#0B6B57;font-weight:800;text-align:center}
@@ -146,7 +169,8 @@ pre .tok-keyword{color:#C9A7FF}pre .tok-typeName,pre .tok-standard{color:#7FD1FF
 // One screen router keyed on state. All kid-facing copy either comes from the
 // server (message_kid, titles, prompts) or is copied verbatim from docs/screens.
 const S = { status: null, boxes: [], behaviours: [], sketch: null, job: null, asked: '', screen: 'picker',
-            picked: null, tweak: null, concept: null, showCode: true, editor: '', busy: false, chat: [] };
+            picked: null, tweak: null, concept: null, showCode: true, editor: '', busy: false, chat: [],
+            explanation: null, sel: null, back: 'home' };
 const $app = document.getElementById('app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const api = async (path, body) => {
@@ -261,7 +285,49 @@ function highlight(src, values) {
     }
     return out;
   });
-  return lines.join('\n');
+  const [a, b] = S.sel ? [Math.min(S.sel.a, S.sel.b ?? S.sel.a), Math.max(S.sel.a, S.sel.b ?? S.sel.a)] : [0, -1];
+  return lines.map((l, i) => `<span class="ln ${i + 1 >= a && i + 1 <= b ? 'sel' : ''}" data-ln="${i + 1}">${l}</span>`).join('');
+}
+// "What does this code do?" / "Explain lines a-b": the AI helper's story, a flow picture, a metaphor.
+function explanation() {
+  const x = S.explanation;
+  if (!x) return '';
+  const steps = (x.steps || []).map((s, i) => `${i ? '<div class="arrow" aria-hidden="true">&rarr;</div>' : ''}<div class="step"><b>${esc(s.label || '')}</b><span>${esc(s.detail || '')}</span></div>`).join('');
+  return `<div class="xp" role="region" aria-label="What the code does">
+    <div class="row"><h2>${esc(x.title)}</h2><button class="pill" data-act="closeexplain">Close</button></div>
+    ${(x.story || []).map((p) => `<p>${esc(p)}</p>`).join('')}
+    ${steps ? `<div class="flow">${steps}</div>` : ''}
+    ${x.metaphor ? `<div class="metaphor">${esc(x.metaphor)}</div>` : ''}
+    ${x.watch_for ? `<div class="watch">Try it: ${esc(x.watch_for)}</div>` : ''}</div>`;
+}
+function selbar() {
+  if (!S.sel) return '';
+  const a = Math.min(S.sel.a, S.sel.b ?? S.sel.a), b = Math.max(S.sel.a, S.sel.b ?? S.sel.a);
+  const label = S.sel.b == null ? `Line ${a} picked. Tap another line to pick a range, or explain just this one.` : `Lines ${a} to ${b} picked.`;
+  return `<div class="selbar"><span>${label}</span><span style="display:flex;gap:8px"><button class="primary" data-act="explainlines" ${dis()}>${S.sel.b == null ? `Explain line ${a}` : `Explain lines ${a}-${b}`}</button><button class="pill" data-act="clearsel">Clear</button></span></div>`;
+}
+// Static "How does the whole thing work?": the kid, the iPad, the Pi, the box, the AI helper.
+function howItWorks() {
+  const name = esc(boxName());
+  const svg = `<svg viewBox="0 0 900 300" role="img" aria-label="iPad to Hack Lab to the box, with the AI helper in the cloud" xmlns="http://www.w3.org/2000/svg" fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" font-family="system-ui,sans-serif" font-weight="800">
+    <rect x="30" y="110" width="170" height="120" rx="16" stroke="#1B1F3A"/><rect x="48" y="126" width="134" height="88" rx="6" fill="#F3F4F8" stroke="none"/><text x="115" y="262" text-anchor="middle" font-size="18" fill="#1B1F3A">iPad</text>
+    <path d="M215 170h110" stroke="#0FA3A3" stroke-dasharray="10 10"/><text x="270" y="155" text-anchor="middle" font-size="15" fill="#0B7A7A">WiFi</text>
+    <rect x="340" y="120" width="190" height="100" rx="16" stroke="#FF6B1A"/><circle cx="375" cy="150" r="7" fill="#FF6B1A" stroke="none"/><text x="445" y="178" text-anchor="middle" font-size="18" fill="#C44E0B">Hack Lab brain</text><text x="445" y="262" text-anchor="middle" font-size="15" fill="#5B6078">small computer</text>
+    <path d="M545 170h110" stroke="#1B1F3A"/><text x="600" y="155" text-anchor="middle" font-size="15" fill="#5B6078">USB cable</text>
+    <rect x="670" y="105" width="200" height="130" rx="16" stroke="#1B1F3A"/><rect x="700" y="135" width="140" height="40" rx="8" fill="#F3F4F8" stroke="none"/><circle cx="770" cy="205" r="14" fill="#F3F4F8" stroke="none"/><text x="770" y="262" text-anchor="middle" font-size="18" fill="#1B1F3A">${name}</text>
+    <path d="M445 115V70" stroke="#0FA3A3" stroke-dasharray="10 10"/><ellipse cx="445" cy="45" rx="90" ry="30" fill="#E6F7F7" stroke="#0FA3A3"/><text x="445" y="51" text-anchor="middle" font-size="16" fill="#0B7A7A">the AI helper</text>
+  </svg>`;
+  return `${header({ back: S.back, title: 'How does the whole thing work?', chips: false })}<main style="display:flex;justify-content:center"><div class="how">
+    ${svg}
+    <ol>
+      <li><b>You</b> tap or say what the ${name} should do on the iPad. The iPad is just the window; it does no thinking.</li>
+      <li>The words travel over the home <b>WiFi</b> to the <b>Hack Lab brain</b>, a small computer the size of a deck of cards.</li>
+      <li>The brain asks <b>the AI helper</b> (a computer program far away, on the internet) to write the few lines of code your idea needs. If the internet is off, the tricks and the sliders still work without it.</li>
+      <li>The brain <b>builds</b> the code: it turns the words into the ones and zeros the ${name}'s tiny chip understands.</li>
+      <li>It sends them down the <b>USB cable</b>. The chip forgets its old program and keeps the new one, even when unplugged.</li>
+      <li>The ${name} runs the new program straight away. <b>Undo</b> sends the previous one back down the cable.</li>
+    </ol>
+    <div class="actions"><button class="primary wide" data-act="${S.back}">${S.back === 'done' ? 'Back to the code' : 'Back home'}</button></div></div></main>`;
 }
 
 // ---------- screens ----------
@@ -301,7 +367,7 @@ function working() {
   const job = S.job || {};
   const name = esc(boxName());
   const labels = { thinking: 'Thinking', compiling: 'Building the code', uploading: `Sending to ${name}`, verifying: 'Watch it!' };
-  const stages = job.kind === 'ask' ? STAGE_ORDER : STAGE_ORDER.slice(1);
+  const stages = job.kind === 'ask' ? STAGE_ORDER : job.kind === 'explain' ? ['thinking'] : STAGE_ORDER.slice(1);
   const idx = stages.indexOf(job.state);
   const at = idx >= 0 ? idx : job.state === 'queued' ? -1 : stages.length;
   const items = stages.map((s, i) => {
@@ -313,7 +379,7 @@ function working() {
     <div class="lead" style="font-size:20px">You asked</div><div class="quote">“${esc(S.asked)}”</div>
     <ol class="stages">${items}</ol>
     <div class="explain">${esc(job.message_kid || '')}</div>
-    <div class="faint">Usually takes about half a minute</div></main>`;
+    <div class="faint">${job.kind === 'explain' ? 'Usually takes a few seconds' : 'Usually takes about half a minute'}</div></main>`;
 }
 function failed() {
   return `${header({ chips: false })}<main class="center">
@@ -330,14 +396,16 @@ function done() {
   const head = job ? `<div class="donehead"><span class="tick">${I.tick(32)}</span><h1>${esc(job.message_kid)}</h1></div>
       <p class="sub">${n ? `That was change ${n} since it came.` : 'It is back to how it came.'}</p>` : `<h1>The code right now</h1><p class="sub">Version ${esc(S.status?.current_version)}.</p>`;
   const twk = tweakable();
-  return `${header({ chips: false })}<main>
+  return `${header({ chips: false })}<main class="${S.explanation ? 'explaining' : ''}">
     <section class="col7" style="gap:18px">${head}
-      ${prompts ? `<div class="lead" style="margin-top:6px">Curious?</div><div class="list" style="gap:10px">${prompts}</div>` : ''}${concept}
+      ${S.explanation ? explanation() : `${prompts ? `<div class="lead" style="margin-top:6px">Curious?</div><div class="list" style="gap:10px">${prompts}</div>` : ''}${concept}`}
       <div class="actions"><button class="primary wide" data-act="home">Try something else</button>${n ? '<button class="ghost" data-act="undo">Undo</button>' : ''}</div></section>
     <aside class="col5" style="gap:12px">
-      <div class="row"><div class="lead">The code that does it</div><button class="pill" data-act="togglecode">${S.showCode ? 'Hide code' : 'Show code'}</button></div>
-      ${S.showCode ? `<pre>${highlight(S.sketch?.source || '')}</pre>` : ''}
-      <div class="codefoot"><span>The highlighted numbers are the ones you can change yourself. ${twk ? `<button class="try-it" data-act="tweak" data-id="${esc(twk.id)}">Try it</button>` : ''}</span>
+      <div class="lead">The code that does it</div>
+      <div class="codelinks"><button class="ai" data-act="explaincode" ${dis()}>What does this code do?</button><button data-act="how">How does the whole thing work?</button></div>
+      ${selbar()}
+      <pre>${highlight(S.sketch?.source || '')}</pre>
+      <div class="codefoot"><span>Tap a line to ask about it. The highlighted numbers are the ones you can change yourself. ${twk ? `<button class="try-it" data-act="tweak" data-id="${esc(twk.id)}">Try it</button>` : ''}</span>
       <button data-act="editor">Level 3: edit all the code</button></div></aside></main>`;
 }
 function tweak() {
@@ -390,7 +458,7 @@ function editorText() {
 }
 
 // ---------- state + actions ----------
-const SCREENS = { picker, home, offline, working, failed, done, tweak, editor };
+const SCREENS = { picker, home, offline, working, failed, done, tweak, editor, how: howItWorks };
 function render() {
   if (cm) { cm.destroy(); cm = null; }
   $app.innerHTML = SCREENS[S.screen]();
@@ -438,6 +506,7 @@ async function finishJob() {
   try {
     await refresh();
     if (S.job.state === 'failed') S.screen = 'failed';
+    else if (S.job.kind === 'explain') { S.explanation = S.job.explanation; S.sel = null; S.job = S.prevJob || null; S.screen = 'done'; }
     else if (S.job.kind === 'ask' && (S.job.answer === 'clarify' || S.job.answer === 'explain')) {
       // The helper asked back (or explained without changing anything): keep talking on Home.
       S.chat = [...S.chat, { role: 'kid', text: S.asked }, { role: 'helper', text: S.job.message_kid }];
@@ -485,8 +554,12 @@ const ACTIONS = {
   startover: () => { S.chat = []; render(); },
   home: () => { S.screen = homeScreen(); render(); },
   done: () => { S.screen = 'done'; render(); },
-  code: () => { S.job = null; S.concept = null; S.screen = 'done'; render(); },
-  togglecode: () => { S.showCode = !S.showCode; render(); },
+  code: () => { S.job = null; S.concept = null; S.explanation = null; S.sel = null; S.screen = 'done'; render(); },
+  explaincode: () => { S.prevJob = S.job; startJob('explain', '/explain', { scope: 'sketch' }, 'What does this code do?'); },
+  explainlines: () => { const a = Math.min(S.sel.a, S.sel.b ?? S.sel.a), b = Math.max(S.sel.a, S.sel.b ?? S.sel.a); S.prevJob = S.job; startJob('explain', '/explain', { scope: 'lines', from: a, to: b }, `What do lines ${a} to ${b} do?`); },
+  closeexplain: () => { S.explanation = null; render(); },
+  clearsel: () => { S.sel = null; render(); },
+  how: () => { S.back = S.screen === 'done' ? 'done' : 'home'; S.screen = 'how'; render(); },
   behaviour: (id, el) => {
     S.lastBehaviour = id;
     const b = S.behaviours.find((x) => x.id === id);
@@ -503,6 +576,13 @@ const ACTIONS = {
   concept: async (id) => { S.concept = await api('/concepts/' + id).catch(() => null); render(); },
 };
 $app.addEventListener('click', (e) => {
+  const ln = e.target.closest('pre .ln');
+  if (ln && S.screen === 'done') {
+    const n = Number(ln.dataset.ln);
+    S.sel = !S.sel || S.sel.b != null ? { a: n, b: null } : { a: S.sel.a, b: n };
+    render();
+    return;
+  }
   const el = e.target.closest('[data-act]');
   if (el && !el.disabled) ACTIONS[el.dataset.act](el.dataset.id, el);
 });
