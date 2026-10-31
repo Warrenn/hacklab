@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from hacklab.app import create_app
-from hacklab.board import ArduinoCli, FakeBoard
+from hacklab.board import ArduinoCli, FakeBoard, Port
 from hacklab.config import Config
 from tests.conftest import write_box
 
@@ -59,3 +59,36 @@ def test_unplug_refreshes_status_and_pushes_event(tmp_path: Path):
             time.sleep(0.02)
         assert c.get("/api/status").json()["board_connected"] is True
         assert {"type": "status"} in drain(q)
+
+
+def fake_sysfs(root: Path, name: str, vid: str, pid: str, serial: str | None):
+    """/sys/class/tty/<name>/device -> .../<usb>/<usb>:1.0[/<name>], idVendor two levels up."""
+    usb = root / "devices" / "1-1.2"
+    iface = usb / "1-1.2:1.0" / name
+    iface.mkdir(parents=True)
+    (usb / "idVendor").write_text(vid + "\n")
+    (usb / "idProduct").write_text(pid + "\n")
+    if serial is not None:
+        (usb / "serial").write_text(serial + "\n")
+    cls = root / "class" / "tty" / name
+    cls.mkdir(parents=True)
+    (cls / "device").symlink_to(iface)
+    return root / "class" / "tty"
+
+
+def test_cli_lists_ports_from_sysfs_without_arduino_cli(tmp_path: Path):
+    cli = ArduinoCli("/nonexistent/arduino-cli", None)  # would fail if board list ran
+    cli.sysfs_tty = fake_sysfs(tmp_path, "ttyUSB0", "1A86", "7523", None)
+    assert cli.list_ports() == [Port("/dev/ttyUSB0", "0x1a86", "0x7523", "")]
+    cli.sysfs_tty = fake_sysfs(tmp_path / "b", "ttyACM0", "303a", "1001", "esp-1")
+    assert cli.list_ports() == [Port("/dev/ttyACM0", "0x303a", "0x1001", "esp-1")]
+
+
+def test_cli_sysfs_ignores_ttys_without_a_usb_parent(tmp_path: Path):
+    cli = ArduinoCli("/nonexistent/arduino-cli", None)
+    tty = tmp_path / "class" / "tty"
+    (tty / "ttyAMA0").mkdir(parents=True)  # the Pi's own UART: no idVendor anywhere above
+    (tty / "ttyAMA0" / "device").symlink_to(tmp_path / "devices" / "soc")
+    (tmp_path / "devices" / "soc").mkdir(parents=True)
+    cli.sysfs_tty = tty
+    assert cli.list_ports() == []
