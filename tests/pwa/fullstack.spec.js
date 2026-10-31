@@ -76,7 +76,9 @@ test('the whole loop: ask -> real compile/flash on the emulated board -> Done wi
   await expect(page.locator('pre')).toContainText('IrReceiver.decode()');
   await expect(page.locator('pre')).not.toContainText('//@@');
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 30000 });
+  await expect(doneScreen(page)).toBeVisible({ timeout: 30000 });                              // ends like every flash
+  await expect(page.getByText('It is back to how it came.')).toBeVisible();
+  await page.getByRole('button', { name: 'Try something else' }).click();
   await expect(page.getByText('How it came', { exact: true })).toBeVisible();
   // the store on disk agrees: baseline only after the undo
   const versions = fs.readdirSync(path.join(dataDir, 'ir-turret', 'versions'));
@@ -127,7 +129,10 @@ test('Back to how it came restores the stock sketch after several changes', asyn
     await page.getByRole('button', { name: 'Try something else' }).click();
   }
   await page.getByRole('button', { name: 'Back to how it came' }).click();
-  await expect(page.getByText('How it came', { exact: true })).toBeVisible({ timeout: 30000 });
+  await expect(doneScreen(page)).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText('It is back to how it came.')).toBeVisible();
+  await page.getByRole('button', { name: 'Try something else' }).click();
+  await expect(page.getByText('How it came', { exact: true })).toBeVisible();
   expect(fs.readdirSync(path.join(dataDir, 'ir-turret', 'versions'))).toEqual(['0000']);
 });
 
@@ -182,7 +187,12 @@ test('Level 2 on the Turret\'s own code: a CrunchLabs number is changed, compile
 
 test('What just changed? explains the AI helper\'s change from the recorded answer', async ({ page }) => {
   await pickTurret(page);
-  await page.getByRole('button', { name: 'Back to how it came' }).click().catch(() => {});
+  const reset = page.getByRole('button', { name: 'Back to how it came' });
+  if (await reset.isEnabled().catch(() => false)) {
+    await reset.click();
+    await expect(doneScreen(page)).toBeVisible({ timeout: 60000 });
+    await page.getByRole('button', { name: 'Try something else' }).click();
+  }
   await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 60000 });
   await page.getByPlaceholder(/shake its head/).fill('make it shake its head when I press 7');
   await page.getByRole('button', { name: 'Send' }).click();

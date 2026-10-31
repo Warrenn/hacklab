@@ -26,6 +26,8 @@ button.brand{background:none;border:0;padding:0;text-align:left}
 .chips{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .chip{display:inline-flex;align-items:center;gap:10px;padding:10px 16px;border-radius:999px;background:var(--chip);font-weight:800;font-size:17px;border:0;text-decoration:none}
 .chip .dot{width:12px;height:12px;border-radius:50%;background:var(--teal);display:inline-block}
+.chip .short,.boxbtn .short{display:none}
+.chip .short svg{vertical-align:-2px;margin-left:4px}
 .chip.off .dot{background:var(--faint)}
 .chip.ai{background:var(--teal-soft);color:var(--teal-dark)}
 .chip.away{background:var(--amber);color:var(--amber-dark)}
@@ -55,7 +57,6 @@ main{flex:1;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px
 #app.fill pre{max-height:none}
 h1{margin:0;font-size:40px;font-weight:900;line-height:1.1}
 .lead{font-size:18px;font-weight:800;color:var(--muted)}
-.notice{background:var(--teal-soft);color:var(--teal-dark);border-radius:14px;padding:12px 16px;font-size:18px;font-weight:800}
 .sub{margin:0;font-size:20px;font-weight:700;color:var(--muted);line-height:1.4}
 .ask{display:flex;gap:12px;align-items:flex-end}
 .ask textarea{flex:1;font:inherit;font-size:24px;font-weight:600;line-height:1.3;padding:16px 22px;border:3px solid #D9DCE6;border-radius:18px;min-width:0;resize:none;min-height:72px;max-height:40vh;overflow:auto}
@@ -139,7 +140,10 @@ footer{padding:16px 32px 24px;display:flex;justify-content:center}
   #app.fill pre{max-height:40vh}
   h1{font-size:30px}
   .brand{font-size:22px}
-  .boxbtn .thumb{display:none}
+  .boxbtn{font-size:15px;gap:8px;padding:5px 10px 5px 6px}
+  .boxbtn .thumb{width:38px;height:24px}
+  .boxbtn .long,.chip .long{display:none}
+  .chip .short{display:inline-flex;align-items:center}
   .ask{flex-direction:column}
   .grid3{grid-template-columns:1fr}
   .photo,.photo img{min-height:160px;height:160px}
@@ -197,7 +201,7 @@ pre .ln.sel{background:#3A3F63;box-shadow:inset 3px 0 0 var(--accent)}
 // server (message_kid, titles, prompts) or is copied verbatim from docs/screens.
 const S = { status: null, boxes: [], behaviours: [], sketch: null, job: null, asked: '', screen: 'picker',
             picked: null, tweak: null, concept: null, showCode: true, editor: '', busy: false, chat: [],
-            explanation: null, sel: null, back: 'home', draft: '', ready: null, thinking: false, numbers: null, notice: '' };
+            explanation: null, sel: null, back: 'home', draft: '', ready: null, thinking: false, numbers: null };
 const $app = document.getElementById('app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const api = async (path, body) => {
@@ -230,6 +234,7 @@ const tweakable = () => S.behaviours.find((b) => b.id === S.lastBehaviour && b.t
 
 // ---------- icons (inline, no external assets) ----------
 const I = {
+  cross: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   logo: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>',
   tick: (s) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>`,
   arrow: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF6B1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
@@ -248,9 +253,11 @@ function header(opts = {}) {
   // an arrow; teal when plugged in, amber when not. The Hack Lab mark opens the picker too.
   const pic = (S.boxes.find((b) => b.id === st.box) || {}).picture || '';
   const boxChip = st.box && S.screen !== 'picker'
-    ? `<button class="boxbtn ${st.board_connected ? '' : 'off'}" data-act="picker" aria-label="Change box: ${esc(boxName())}, ${plugged}"><img class="thumb" alt="" src="${esc(pic)}" data-src="${esc(pic)}" onerror="retryPic(this)"><span>${esc(boxName())} · ${plugged}</span>${I.arrow}</button>`
+    ? `<button class="boxbtn ${st.board_connected ? '' : 'off'}" data-act="picker" aria-label="Change box: ${esc(boxName())}, ${plugged}"><img class="thumb" alt="" src="${esc(pic)}" data-src="${esc(pic)}" onerror="retryPic(this)"><span class="long">${esc(boxName())} · ${plugged}</span>${I.arrow}</button>`
     : '';
-  const aiChip = opts.ai === false ? '' : st.ai_available ? '<span class="chip ai">AI helper is here</span>' : '<span class="chip away">AI helper is away</span>';
+  const aiChip = opts.ai === false ? '' : st.ai_available
+    ? `<span class="chip ai" aria-label="AI helper is here"><span class="long">AI helper is here</span><span class="short" aria-hidden="true">AI ${I.tick(16)}</span></span>`
+    : `<span class="chip away" aria-label="AI helper is away"><span class="long">AI helper is away</span><span class="short" aria-hidden="true">AI ${I.cross}</span></span>`;
   const left = opts.back
     ? `<button class="back" data-act="${opts.back}" aria-label="Back">${I.back}</button><div style="font-size:26px;font-weight:900">${opts.title}</div>`
     : `<div class="logo">${I.logo}</div><div>Hack Lab</div>`;
@@ -419,7 +426,6 @@ function home() {
   return `${header()}<main>
     <section class="col7"><h1>What should the ${name} do?</h1>
       <label class="lead" for="ask">Say it or type it. Tap the mic on your keyboard to talk.</label>
-      ${S.notice ? `<div class="notice" role="status">${esc(S.notice)}</div>` : ''}
       ${chat()}
       <form class="ask" data-form="ask"><textarea id="ask" rows="2" placeholder="${S.chat.length ? 'Your answer' : esc((S.boxes.find((b) => b.id === S.status?.box) || {}).ask_placeholder || 'What should it do?')}" autocomplete="off" enterkeyhint="enter"></textarea><button class="ghost" type="submit" ${dis(S.thinking)}>Send</button><button class="primary" type="button" data-act="flash" ${dis(!goReady())}>Go!</button></form>
       ${S.chat.length ? '' : `<div id="tries" ${S.draft.trim() ? 'hidden' : ''}><div class="lead" style="margin-top:8px">Try one of these</div><div class="list">${tries()}</div></div>`}</section>
@@ -578,7 +584,7 @@ async function refresh() {
   if (was !== undefined && S.status.box !== was) {
     // A different box, however it was picked (here, by a remote helper, after a restart): the
     // discussion, the held plan and the half-typed request belonged to the old one.
-    S.chat = []; S.ready = null; S.draft = ''; S.notice = '';
+    S.chat = []; S.ready = null; S.draft = '';
   }
   if (!S.boxes.length) S.boxes = await api('/boxes').catch(() => []);
   if (S.status.box) {
@@ -588,7 +594,6 @@ async function refresh() {
 async function startJob(kind, path, body, asked) {
   S.asked = asked;
   S.concept = null;
-  S.notice = '';
   try {
     const { job_id } = await api(path, body);
     S.job = { job_id, kind, state: 'queued', message_kid: 'Getting ready.' };
@@ -634,11 +639,9 @@ async function finishJob() {
     else if (S.job.kind === 'explain') { S.explanation = S.job.explanation; S.sel = null; S.job = S.prevJob || null; S.screen = 'done'; }
     else {
       if (S.job.kind === 'ask') { S.chat = []; S.ready = null; }
-      // Undo and Back to how it came land on Home: say plainly that they finished (owner, 2026-10-31: on
-      // an iPhone the silent return read as "it did not complete").
-      if (S.job.kind === 'reset') S.notice = `Done! The ${boxName()} is back to how it came.`;
-      if (S.job.kind === 'undo') S.notice = 'Done! The last change is undone.';
-      S.screen = S.job.kind === 'undo' || S.job.kind === 'reset' ? homeScreen() : 'done';
+      // Every flash ends on the Done screen, Undo and Back to how it came included (owner, 2026-10-31:
+      // on an iPhone the earlier silent return to Home read as "it did not complete").
+      S.screen = 'done';
     }
     render();
   } finally { finishing = false; }

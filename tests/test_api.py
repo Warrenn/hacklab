@@ -110,6 +110,12 @@ def test_flash_behaviour_walks_to_done_and_adds_a_version(client):
     assert client.get("/api/status").json()["versions_count"] == 2
 
 
+def test_the_page_is_never_cached_by_a_phone(client):
+    # Safari on the owner's iPhone kept showing an old page after a release (2026-10-31)
+    r = client.get("/")
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-cache"
+
+
 def test_ask_walks_through_thinking_and_offers_prompts(client):
     client.post("/api/box", json={"id": "testbox"})
     assert client.post("/api/ask", json={"text": ""}).status_code == 422
