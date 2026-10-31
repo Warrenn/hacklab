@@ -10,7 +10,7 @@ from hacklab.app import create_app
 from hacklab.board import FakeBoard
 from hacklab.config import Config
 from hacklab.genie import FakeGenieClient
-from tests.test_ask_runner import make, wait_done
+from tests.test_ask_runner import ask_go, make, wait_done
 from tests.test_genie import golden
 
 pytestmark = pytest.mark.anyio
@@ -46,9 +46,7 @@ async def test_clarify_answer_ends_the_job_without_flashing_and_says_so(tmp_path
 async def test_reply_sends_the_earlier_turns_to_the_model(tmp_path, boxes_dir):
     fb, store, runner, client = make(tmp_path, boxes_dir, golden("shake-head-on-7"))
     hist = [{"role": "kid", "text": "make it move"}, {"role": "helper", "text": "Which key?"}]
-    job = await wait_done(
-        runner, await runner.submit("ask", {"box": "testbox", "text": "key 7", "history": hist})
-    )
+    job = await ask_go(runner, {"box": "testbox", "text": "key 7", "history": hist})
     assert job.state == "done" and job.answer == "sketch" and fb.uploads == 1
     msgs = client.calls[0]["messages"]
     assert [m["role"] for m in msgs] == ["user", "assistant", "user"]

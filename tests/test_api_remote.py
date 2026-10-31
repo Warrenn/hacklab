@@ -39,6 +39,16 @@ def settle(c, job_id, timeout=5.0):
     raise AssertionError("job did not finish")
 
 
+def ask_go(client, text, **kw):
+    """Ask, then press Go! on a ready answer (P8 round 3: the ask alone never flashes)."""
+    job = settle(client, client.post("/api/ask", json={"text": text}, **kw).json()["job_id"])
+    if job["answer"] == "ready":
+        job = settle(
+            client, client.post("/api/go", json={"job_id": job["job_id"]}, **kw).json()["job_id"]
+        )
+    return job
+
+
 def test_status_reports_source_and_helping(app):
     with TestClient(app) as c:
         st = c.get("/api/status").json()
@@ -76,9 +86,7 @@ def test_helping_toggle_only_from_remote(app):
         assert r.status_code == 200 and r.json()["helping"] is True
         assert c.get("/api/status").json()["helping"] is True  # the kid's screen sees it
         assert c.post("/api/box", json={"id": "testbox"}, headers=REMOTE).status_code == 200
-        j = settle(
-            c, c.post("/api/ask", json={"text": "fire on 3"}, headers=REMOTE).json()["job_id"]
-        )
+        j = ask_go(c, "fire on 3", headers=REMOTE)
         assert j["state"] == "done"
         assert c.post("/api/helping", json={"on": False}, headers=REMOTE).json()["helping"] is False
         assert c.post("/api/undo", headers=REMOTE).status_code == 403
@@ -98,7 +106,7 @@ def test_flips_are_logged_and_jobs_carry_source(app, tmp_path):
     with TestClient(app) as c:
         c.post("/api/helping", json={"on": True}, headers=REMOTE)
         c.post("/api/box", json={"id": "testbox"}, headers=REMOTE)
-        settle(c, c.post("/api/ask", json={"text": "fire on 3"}, headers=REMOTE).json()["job_id"])
+        ask_go(c, "fire on 3", headers=REMOTE)
     flips = (tmp_path / "data" / "helping.jsonl").read_text()
     assert '"on": true' in flips and '"peer"' in flips
     asks = (tmp_path / "data" / "testbox" / "logs" / "asks.jsonl").read_text()

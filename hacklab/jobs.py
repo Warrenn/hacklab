@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 KID_AWAY = "The AI helper is away right now. Pick a trick instead."
 KID_DECLINED = "The AI helper can't help with that one. Pick a trick instead."
 MOCK_QUESTION = "Which key on the remote should start it?"  # mock backend's clarify answer
+MOCK_READY = "I know what to do. Press Go! and watch the box."  # mock backend's ready answer
 KID_GAVE_UP = (
     "The AI helper tried three times and the code would not build. "
     "Try saying it another way, or pick a trick."
@@ -65,8 +66,11 @@ class Job:
     log_ref: str | None = None
     prompts: list[dict[str, str]] = field(default_factory=list)
     sketch_ref: str | None = None
-    answer: str | None = None  # ask jobs: what the helper came back with (sketch|clarify|explain)
+    answer: str | None = (
+        None  # ask jobs: what the helper came back with (ready|clarify|explain|sketch)
+    )
     explanation: dict[str, Any] | None = None  # explain jobs: ExplainResult as a dict
+    result: Any = None  # ask jobs: the held GenieResult behind a "ready" answer (server-side only)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -141,7 +145,10 @@ class FakeJobRunner:
             q.put_nowait(event)
 
     async def _run(self, job: Job, on_done: OnDone | None) -> None:
-        for stage in STAGES[job.kind]:
+        stages = STAGES[job.kind]
+        if job.kind == "ask":  # P8 round 3: the ask answers; the go job (payload "go") flashes
+            stages = stages[1:] if job.payload.get("go") else stages[:1]
+        for stage in stages:
             self._set(job, stage)
             await asyncio.sleep(self.delay)
             if stage == "thinking" and job.kind == "explain":
@@ -160,6 +167,12 @@ class FakeJobRunner:
                 job.log_ref = f"{job.id}.log"
                 self._set(job, "failed")
                 return
+        if job.kind == "ask" and not job.payload.get("go"):
+            job.answer = "ready"
+            job.state = "done"
+            job.message_kid = MOCK_READY
+            self._publish(job)
+            return
         job.sketch_ref = f"{job.id}.ino"
         job.prompts = job.payload.get("prompts", [])
         if job.kind == "ask":
@@ -396,8 +409,13 @@ class RealJobRunner:
         from hacklab.guard import check
         from hacklab.skeleton import assemble
 
-        text = job.payload.get("text", "")
-        history = job.payload.get("history") or []
+        # P8 round 3: an ask runs the model and holds a sketch answer as "ready" (job.result);
+        # the go job (payload "go" = that job's id) flashes it, re-asking only on a compile error.
+        plan = self.jobs.get(job.payload.get("go") or "")
+        text = (plan or job).payload.get("text", "")
+        history = (plan or job).payload.get("history") or []
+        result = plan.result if plan else None
+        entry: dict[str, Any] = {"request": text, "box": box, "kind": "flash", "attempts": 0}
         t0 = time.time()
         src = (
             "tailscale" if job.payload.get("origin") == "remote" else "local"
@@ -413,58 +431,68 @@ class RealJobRunner:
         loop = asyncio.get_running_loop()
         progress = lambda stage: loop.call_soon_threadsafe(self._set, job, stage)  # noqa: E731
         for attempt in range(1, 4):
-            try:
-                result, usage = await asyncio.to_thread(genie.ask, text, current, error, history)
-            except GenieRefused as exc:
-                log.append(f"refused: {exc}")
-                job.log_ref = self._write_log(box, job, "\n".join(log))
-                self._log_ask(
-                    box, {"request": text, "box": box, "kind": "refusal", "attempts": attempt}
-                )
-                self._set(job, "failed", KID_DECLINED)
-                return
-            except Exception as exc:  # noqa: BLE001 - network/API trouble => helper is away
-                log.append(f"api error: {type(exc).__name__}: {exc}")
-                job.log_ref = self._write_log(box, job, "\n".join(log))
-                self._log_ask(
-                    box, {"request": text, "box": box, "kind": "error", "error": str(exc)[:300]}
-                )
-                self.mark_away()
-                self._set(job, "failed", KID_AWAY)
-                return
-            if self.ledger:
-                self.ledger.record(genie.model, usage)
-            entry = {
-                "request": text,
-                "box": box,
-                "source": src,
-                "kind": result.kind,
-                "attempts": attempt,
-                "usage": {
-                    "in": getattr(usage, "input_tokens", 0),
-                    "out": getattr(usage, "output_tokens", 0),
-                    "cache_read": getattr(usage, "cache_read_input_tokens", 0),
-                },
-            }
-            problems = check(result)  # P7 guard: the persona's rules, enforced in code
-            if problems and result.kind != "sketch":
-                log.append("guard: " + "; ".join(problems))
-                job.log_ref = self._write_log(box, job, "\n".join(log))
-                self._log_ask(box, {**entry, "kind": "guard", "problems": problems})
-                self._set(job, "failed", KID_DECLINED)
-                return
-            if problems:
-                log.append(f"[attempt {attempt}] guard: " + "; ".join(problems))
-                error = "(not the compiler) The answer broke these rules:\n- " + "\n- ".join(
-                    problems
-                )
-                continue
-            job.answer = result.kind
-            if result.kind != "sketch":
-                job.prompts = []
-                self._log_ask(box, {**entry, "duration_s": round(time.time() - t0, 1)})
-                self._set(job, "done", result.message_kid)
-                return
+            if result is None:
+                try:
+                    result, usage = await asyncio.to_thread(
+                        genie.ask, text, current, error, history
+                    )
+                except GenieRefused as exc:
+                    log.append(f"refused: {exc}")
+                    job.log_ref = self._write_log(box, job, "\n".join(log))
+                    self._log_ask(
+                        box, {"request": text, "box": box, "kind": "refusal", "attempts": attempt}
+                    )
+                    self._set(job, "failed", KID_DECLINED)
+                    return
+                except Exception as exc:  # noqa: BLE001 - network/API trouble => helper is away
+                    log.append(f"api error: {type(exc).__name__}: {exc}")
+                    job.log_ref = self._write_log(box, job, "\n".join(log))
+                    self._log_ask(
+                        box, {"request": text, "box": box, "kind": "error", "error": str(exc)[:300]}
+                    )
+                    self.mark_away()
+                    self._set(job, "failed", KID_AWAY)
+                    return
+                if self.ledger:
+                    self.ledger.record(genie.model, usage)
+                entry = {
+                    "request": text,
+                    "box": box,
+                    "source": src,
+                    "kind": result.kind,
+                    "attempts": attempt,
+                    "usage": {
+                        "in": getattr(usage, "input_tokens", 0),
+                        "out": getattr(usage, "output_tokens", 0),
+                        "cache_read": getattr(usage, "cache_read_input_tokens", 0),
+                    },
+                }
+                problems = check(result)  # P7 guard: the persona's rules, enforced in code
+                if problems and result.kind != "sketch":
+                    log.append("guard: " + "; ".join(problems))
+                    job.log_ref = self._write_log(box, job, "\n".join(log))
+                    self._log_ask(box, {**entry, "kind": "guard", "problems": problems})
+                    self._set(job, "failed", KID_DECLINED)
+                    return
+                if problems:
+                    log.append(f"[attempt {attempt}] guard: " + "; ".join(problems))
+                    error = "(not the compiler) The answer broke these rules:\n- " + "\n- ".join(
+                        problems
+                    )
+                    result = None
+                    continue
+                job.answer = result.kind
+                if result.kind != "sketch":
+                    job.prompts = []
+                    self._log_ask(box, {**entry, "duration_s": round(time.time() - t0, 1)})
+                    self._set(job, "done", result.message_kid)
+                    return
+                if plan is None:  # the ask itself: hold the plan, the kid decides with Go!
+                    job.result, job.answer, job.prompts = result, "ready", []
+                    self._log_ask(box, {**entry, "duration_s": round(time.time() - t0, 1)})
+                    self._set(job, "done", result.message_kid)
+                    return
+            job.answer = "sketch"
             frags = result.fragments()
             parent = Path(tempfile.mkdtemp(prefix=f"{box}-ask-", dir=self._mk(self.work_dir)))
             sketch_dir = parent / "genie"
@@ -508,7 +536,7 @@ class RealJobRunner:
                 self._log_ask(box, {**entry, "failed_stage": res.failed_stage})
                 self._set(job, "failed", res.message_kid)
                 return
-            error = res.log
+            error, result = res.log, None
         job.log_ref = self._write_log(box, job, "\n".join(log))
         self._log_ask(
             box, {"request": text, "box": box, "source": src, "kind": "gave-up", "attempts": 3}

@@ -1839,6 +1839,54 @@ request. One iPad-profile test covers the card at 1194 and 390 px wide.
 - [x] Step 3 — explanations: `explain` job (teaching persona, typed ExplainResult with Step boxes, cached per version, guarded, logged), "What does this code do?" and tap-a-line/range "Explain lines a-b" on the code page, static "How does the whole thing work?" page with an inline SVG, code steps aside under 1100 px while an explanation is open, "Hide code" removed; two live explanation goldens (sleepy guard dog; mail sorter) drive the full-stack test — completed 2026-10-31
 - [x] Step 4 — preview republished (v5); release 0.6.0 on the Pi (healthy; a live explanation of the Forklift stock ran through the app and was cached) — completed 2026-10-31
 
+## P8 round 3 — the ask box: draft survives, the helper gates Go! (2026-10-31, approved by default)
+
+Owner's report (2026-10-31, on the preview): "I hardly finished typing and the
+text just disappeared"; rethink: multiline requests; the AI helper decides when
+it has enough to execute and only then is Go! enabled; no redirect while the
+helper still needs something; "Try one of these" is not relevant once the kid
+is typing.
+
+Root cause of the vanishing text: `render()` rebuilds the whole screen on the
+20 s refresh timer and on every board status event; the ask field is recreated
+empty. Not an Enter key: the form only submits on the button or Enter.
+
+Design:
+1. **Draft survives**: the field is a `<textarea>` (two rows, grows with the
+   text, Enter is a newline; `Send` is the button). Its text lives in `S.draft`
+   (updated on `input`), is written back on every render, and focus + caret are
+   restored when the field had focus. "Try one of these" is hidden while
+   `S.draft` has text or a discussion is open.
+2. **Two steps, the helper gates Go!**: `POST /api/ask` runs the model phase
+   only and ends the job with `answer` = `ready` (it has the code; held
+   server-side as `Job.result`, never flashed yet) | `clarify` | `explain`. The
+   kid stays on Home the whole time: the kid bubble appears at once, a thinking
+   bubble shows the stage text, then the helper's bubble (a ready answer is
+   followed by "Press Go! to send it to the box."). `Go!` is disabled until
+   `S.ready` holds a ready job id and the draft is empty (typing more means
+   the plan is stale: Send again). `POST /api/go {job_id}` flashes the held
+   plan with no model call (409 unless that job is a ready answer for the
+   current box); this job walks the Working screen as before and a sketch
+   answer clears the discussion. A failed ask (helper away, declined) is a
+   helper bubble on Home, not the Failed screen.
+3. Mock backend: ask -> thinking -> ready; go -> compiling/uploading/verifying
+   -> done (`fail`/`prompts` carried from the ready job). Preview stand-in
+   mirrors it. Full stack: the recorded sketch golden now ends in ready, Go!
+   flashes it.
+4. Departure from Home.dc.html (one Go!, one line): owner's request. Decision
+   log entry in docs/DESIGN.md; API contract gains `/api/go`.
+
+Steps: 1 server (unit, red -> green); 2 page + pwa (draft survives a render,
+chips hide while typing, Go! gated, multiline sent); 3 full stack + preview
+(v6) + docs; 4 release 0.7.0, live ask -> ready -> Go! on the Pi.
+Parallelism: all steps touch static/index.html or the ask job -> serial.
+
+## Progress — P8 round 3
+- [x] Step 1 — server: `answer: ready` holds the plan (Job.result); `/api/go` flashes it with no model call, 409 unless a ready answer for the current box; mock and existing ask tests go through Go! — completed 2026-10-31
+- [ ] Step 2 — page: textarea draft survives renders, chips hide while typing, Send/Go! split, discussion stays on Home
+- [ ] Step 3 — full stack, preview v6, DESIGN decision log, API contract
+- [ ] Step 4 — release 0.7.0 on the Pi, live ask -> ready -> Go!
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the

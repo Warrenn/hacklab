@@ -50,6 +50,16 @@ def make(tmp_path, boxes_dir, responses, board=None):
     return fb, store, runner, client
 
 
+async def ask_go(runner, payload, timeout=5.0):
+    """An ask ends with the helper's answer; a ready answer is flashed by a go job (P8 round 3)."""
+    job = await wait_done(runner, await runner.submit("ask", payload), timeout)
+    if job.answer == "ready":
+        job = await wait_done(
+            runner, await runner.submit("ask", {"box": payload["box"], "go": job.id}), timeout
+        )
+    return job
+
+
 async def wait_done(runner, job_id, timeout=5.0):
     async def _w():
         while runner.get(job_id).state not in {"done", "failed"}:
@@ -62,9 +72,7 @@ async def wait_done(runner, job_id, timeout=5.0):
 async def test_ask_flashes_assembled_sketch_and_stores_fragments(tmp_path, boxes_dir):
     fb, store, runner, client = make(tmp_path, boxes_dir, golden("shake-head-on-7"))
     q = runner.subscribe()
-    job = await wait_done(
-        runner, await runner.submit("ask", {"box": "testbox", "text": "shake on 7"})
-    )
+    job = await ask_go(runner, {"box": "testbox", "text": "shake on 7"})
     assert job.state == "done"
     assert job.message_kid and "Traceback" not in job.message_kid
     assert all(p["id"] in {"servo", "loop"} for p in job.prompts)  # filtered to the box's concepts
@@ -83,25 +91,21 @@ async def test_next_ask_sends_the_current_fragments(tmp_path, boxes_dir):
     fb, store, runner, client = make(
         tmp_path, boxes_dir, golden("shake-head-on-7") + golden("fire-when-3-pressed")
     )
-    await wait_done(runner, await runner.submit("ask", {"box": "testbox", "text": "shake on 7"}))
-    await wait_done(runner, await runner.submit("ask", {"box": "testbox", "text": "fire on 3"}))
+    await ask_go(runner, {"box": "testbox", "text": "shake on 7"})
+    await ask_go(runner, {"box": "testbox", "text": "fire on 3"})
     assert "case cmd7" in client.calls[1]["messages"][0]["content"]
 
 
 async def test_explain_ends_done_without_flashing(tmp_path, boxes_dir):
     fb, store, runner, client = make(tmp_path, boxes_dir, golden("make-it-fly"))
-    job = await wait_done(
-        runner, await runner.submit("ask", {"box": "testbox", "text": "make it fly"})
-    )
+    job = await ask_go(runner, {"box": "testbox", "text": "make it fly"})
     assert job.state == "done" and job.message_kid
     assert fb.uploads == 0 and store.current("testbox").id == "0000"
 
 
 async def test_compile_error_retries_with_the_log(tmp_path, boxes_dir):
     fb, store, runner, client = make(tmp_path, boxes_dir, golden("compile-retry"))
-    job = await wait_done(
-        runner, await runner.submit("ask", {"box": "testbox", "text": "fire on 5"})
-    )
+    job = await ask_go(runner, {"box": "testbox", "text": "fire on 5"})
     assert job.state == "done" and len(client.calls) == 2
     assert "expected ';'" in client.calls[1]["messages"][0]["content"]
     assert "cmd5" in fb.last_uploaded_source and "fire() break" not in fb.last_uploaded_source
@@ -110,9 +114,7 @@ async def test_compile_error_retries_with_the_log(tmp_path, boxes_dir):
 async def test_three_bad_compiles_fail_in_kid_language(tmp_path, boxes_dir):
     bad = golden("compile-retry")[:1] * 3
     fb, store, runner, client = make(tmp_path, boxes_dir, bad)
-    job = await wait_done(
-        runner, await runner.submit("ask", {"box": "testbox", "text": "fire on 5"})
-    )
+    job = await ask_go(runner, {"box": "testbox", "text": "fire on 5"})
     assert job.state == "failed" and len(client.calls) == 3
     assert "Traceback" not in job.message_kid and job.log_ref
     assert store.current("testbox").id == "0000"
@@ -120,14 +122,14 @@ async def test_three_bad_compiles_fail_in_kid_language(tmp_path, boxes_dir):
 
 async def test_api_failure_marks_the_helper_away(tmp_path, boxes_dir):
     fb, store, runner, client = make(tmp_path, boxes_dir, [{"error": "boom"}])
-    job = await wait_done(runner, await runner.submit("ask", {"box": "testbox", "text": "x"}))
+    job = await ask_go(runner, {"box": "testbox", "text": "x"})
     assert job.state == "failed" and "away" in job.message_kid
     assert runner.genie_away() is True
 
 
 async def test_refusal_sends_to_offline_path(tmp_path, boxes_dir):
     fb, store, runner, client = make(tmp_path, boxes_dir, [{"refusal": True}])
-    job = await wait_done(runner, await runner.submit("ask", {"box": "testbox", "text": "x"}))
+    job = await ask_go(runner, {"box": "testbox", "text": "x"})
     assert job.state == "failed" and "Pick a trick" in job.message_kid
     assert runner.genie_away() is False  # a refusal is not an outage
 
@@ -135,7 +137,7 @@ async def test_refusal_sends_to_offline_path(tmp_path, boxes_dir):
 async def test_no_genie_configured(tmp_path, boxes_dir):
     fb, store, runner, client = make(tmp_path, boxes_dir, [])
     runner.genie = lambda box_id: None
-    job = await wait_done(runner, await runner.submit("ask", {"box": "testbox", "text": "x"}))
+    job = await ask_go(runner, {"box": "testbox", "text": "x"})
     assert job.state == "failed" and "away" in job.message_kid
 
 
@@ -147,9 +149,7 @@ async def test_ask_sketch_dir_carries_the_stock_sketch_siblings(tmp_path, boxes_
     box_dir = boxes_dir / "testbox" / "stock" / "stock"
     (box_dir / "config.h").write_text("int maxSpeed = 255;\n")
     fb, store, runner, client = make(tmp_path, boxes_dir, golden("fire-when-3-pressed"))
-    job = await wait_done(
-        runner, await runner.submit("ask", {"box": "testbox", "text": "fire on 3"})
-    )
+    job = await ask_go(runner, {"box": "testbox", "text": "fire on 3"})
     assert job.state == "done"
     assert "config.h" in fb.last_sketch_files and "genie.ino" in fb.last_sketch_files
     cur = store.current("testbox")
@@ -160,7 +160,7 @@ async def test_guard_rejects_escaping_fragments_and_retries(tmp_path, boxes_dir)
     bad = {"kind": "sketch", "params": "#include <EEPROM.h>", "message_kid": "Done."}
     good = {"kind": "sketch", "cases": "case cmd7: fire(); break;", "message_kid": "Press 7."}
     fb, store, runner, client = make(tmp_path, boxes_dir, [bad, good])
-    job = await wait_done(runner, await runner.submit("ask", {"box": "testbox", "text": "x"}))
+    job = await ask_go(runner, {"box": "testbox", "text": "x"})
     assert job.state == "done" and fb.uploads == 1
     assert len(client.calls) == 2
     assert "#include" in client.calls[1]["messages"][0]["content"]
@@ -170,6 +170,6 @@ async def test_guard_rejects_escaping_fragments_and_retries(tmp_path, boxes_dir)
 async def test_guard_declines_an_explain_with_a_link(tmp_path, boxes_dir):
     bad = {"kind": "explain", "message_kid": "Watch https://example.com to learn servos."}
     fb, store, runner, client = make(tmp_path, boxes_dir, [bad])
-    job = await wait_done(runner, await runner.submit("ask", {"box": "testbox", "text": "x"}))
+    job = await ask_go(runner, {"box": "testbox", "text": "x"})
     assert job.state == "failed" and "Pick a trick" in job.message_kid
     assert fb.uploads == 0 and runner.genie_away() is False
