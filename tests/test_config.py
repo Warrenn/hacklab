@@ -10,21 +10,19 @@ def test_defaults_when_no_file(tmp_path: Path):
     assert cfg.data_dir == Path("data")
     assert cfg.fake_board is False
     assert cfg.api_key is None
-    assert cfg.monthly_cap_usd > 0
 
 
 def test_file_values_are_read(tmp_path: Path):
     f = tmp_path / "config.toml"
     f.write_text(
         '[app]\nport = 9000\ndata_dir = "/var/lib/hacklab"\nfake_board = true\n'
-        '[ai]\nmodel = "claude-test"\nmonthly_cap_usd = 3\n'
+        '[ai]\nmodel = "claude-test"\n'
     )
     cfg = load_config(f, env={})
     assert cfg.port == 9000
     assert cfg.data_dir == Path("/var/lib/hacklab")
     assert cfg.fake_board is True
     assert cfg.model == "claude-test"
-    assert cfg.monthly_cap_usd == 3
 
 
 def test_env_overrides_file(tmp_path: Path):

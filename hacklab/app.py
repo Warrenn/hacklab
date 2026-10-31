@@ -118,7 +118,6 @@ def create_app(
         runner, flasher, store = make_runner(cfg, board)
     boxes = load_boxes(cfg.boxes_dir)
     client = (genie_client or make_genie_client(cfg)) if store else None
-    ledger = getattr(runner, "ledger", None)
 
     def genie_for(box_id: str) -> Genie | None:
         """The AI helper for a box, or None when it is away: no key, over the
@@ -126,8 +125,6 @@ def create_app(
         if cfg.api_key is None or client is None or box_id not in boxes:
             return None
         if getattr(runner, "genie_away", lambda: False)():
-            return None
-        if ledger and ledger.over_cap(cfg.monthly_cap_usd):
             return None
         skeleton = load_skeleton(boxes[box_id], cfg.data_dir)
         if skeleton is None:
@@ -237,11 +234,12 @@ def create_app(
         return {
             "box": box,
             "online": True,
+            # The spend budget lives only in the Claude Console: when it is reached the API
+            # refuses and the runner marks the helper away; there is no cap here.
             "ai_available": (
                 cfg.api_key is not None and (store is None or genie_for(box) is not None)
                 if box
                 else cfg.api_key is not None
-                and (ledger is None or not ledger.over_cap(cfg.monthly_cap_usd))
             ),
             "board_connected": (
                 flasher.detect(spec=spec_for(box) if box else None) is not None

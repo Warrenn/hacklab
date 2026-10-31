@@ -12,4 +12,4 @@ fake_board = false
 
 [ai]
 model = "claude-sonnet-5-5"
-monthly_cap_usd = 10
+# The AI spend budget is set once, in the Claude Console (workspace spend limit); no cap here.

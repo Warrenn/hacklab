@@ -30,8 +30,7 @@ def test_totals_persist_and_cap(tmp_path: Path):
     again = SpendLedger(tmp_path / "data")
     assert again.month_total("2026-10") == round(2 * (0.002 + 0.005), 6)
     assert again.month_total("2026-11") == round(0.007, 6)
-    assert again.over_cap(0.01, month="2026-10") is True
-    assert again.over_cap(10, month="2026-10") is False
+    assert again.month_total(month="2026-10") > 0.01
     assert again.month_total("2025-01") == 0.0
 
 
