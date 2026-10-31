@@ -28,7 +28,7 @@ goes into STRATEGY.md "P7 notes" with what was seen.
 ## The box
 
 - [ ] Plug the box in. The chip reads "plugged in" within two seconds.
-- [ ] Pick the box, Let's go, home screen shows the right name and asks.
+- [ ] Tap the box's card, home screen shows the right name and asks. Tap the Hack Lab mark at the top to get back to the picker.
 - [ ] One pre-tested trick: watch the four stages, the box does it, Done shows
       the code with the highlighted numbers.
 - [ ] Change the numbers (Level 2), Send: the box changes.

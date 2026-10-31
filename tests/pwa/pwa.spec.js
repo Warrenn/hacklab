@@ -46,19 +46,19 @@ const { isMobile: _m, defaultBrowserType: _b, ...IPAD } = devices['iPad Pro 11 l
 test.use({ ...IPAD });
 
 // The selected box is server state shared by every test on that server: open
-// the picker through the box chip when a previous test already picked one.
+// the picker through the Hack Lab mark when a previous test already picked one.
+const brand = (page) => page.getByRole('button', { name: /Hack Lab/ });
 async function openPicker(page, url) {
   await page.goto(url);
   const picker = page.getByRole('heading', { name: 'Which box is plugged in?' });
-  const chip = page.getByRole('button', { name: 'Change box' });
-  await expect(picker.or(chip)).toBeVisible({ timeout: 15000 }); // first render waits for /api/status
-  if (!(await picker.isVisible())) await chip.click();
+  await expect(picker.or(brand(page))).toBeVisible({ timeout: 15000 }); // first render waits for /api/status
+  if (!(await picker.isVisible())) await brand(page).click();
   await expect(picker).toBeVisible();
 }
+// Tapping a card picks the box and goes Home (no "Let's go", owner 2026-10-31).
 async function pickTurret(page, url) {
   await openPicker(page, url);
   await page.getByRole('button', { name: 'IR Turret', exact: true }).click();
-  await page.getByRole('button', { name: "Let's go" }).click();
 }
 // P8 round 3: Send asks the helper; Go! is enabled only once it answers "ready", then flashes.
 async function askAndGo(page, text) {
@@ -73,7 +73,8 @@ test('box picker leads to Home when the AI helper is here', async ({ page }) => 
   await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible();
   await expect(page.getByText('AI helper is here')).toBeVisible();
   await expect(page.getByText('IR Turret · plugged in')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Change box' })).toBeVisible();   // the chip is status; this is the control
+  await expect(page.getByRole('button', { name: 'Change box' })).toHaveCount(0);   // owner: the Hack Lab mark is the way back
+  await expect(brand(page)).toBeVisible();
   await expect(page.getByText('Try one of these')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Undo last change' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Back to how it came' })).toBeVisible();
@@ -154,7 +155,6 @@ test('screenshots of every screen for review', async ({ page }, info) => {
   await openPicker(page, homeUrl);
   await shot('1-box-picker');
   await page.getByRole('button', { name: 'IR Turret', exact: true }).click();
-  await page.getByRole('button', { name: "Let's go" }).click();
   await expect(page.getByText('Try one of these')).toBeVisible();
   await shot('2-home');
   await page.getByPlaceholder(/shake its head/).fill('Make it shake its head when I press 7');
@@ -168,7 +168,6 @@ test('screenshots of every screen for review', async ({ page }, info) => {
   await shot('4-done');
   await page.goto(offlineUrl);
   await page.getByRole('button', { name: 'IR Turret', exact: true }).click();
-  await page.getByRole('button', { name: "Let's go" }).click();
   await expect(page.getByRole('heading', { name: 'Pick a trick' })).toBeVisible();
   await shot('5-offline');
   await page.getByRole('button', { name: /Change the numbers/ }).click();
@@ -187,8 +186,7 @@ test('a remote viewer sees everything but cannot change anything', async ({ page
   await expect(page.getByText('Remote view · read only')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Turn on helping' })).toBeVisible();
   await openPicker(page, homeUrl);
-  await page.getByRole('button', { name: 'IR Turret', exact: true }).click();
-  await expect(page.getByRole('button', { name: "Let's go" })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'IR Turret', exact: true })).toBeDisabled();   // read only: no picking
 });
 
 test('helping unlocks remote changes and the kid screen says Uncle is helping', async ({ page, browser }) => {
@@ -199,7 +197,6 @@ test('helping unlocks remote changes and the kid screen says Uncle is helping', 
   await expect(page.getByText('Uncle is helping')).toBeVisible();
   await openPicker(page, homeUrl);
   await page.getByRole('button', { name: 'IR Turret', exact: true }).click();
-  await page.getByRole('button', { name: "Let's go" }).click();
   await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible();
   // a second, local browser (the kid's iPad) shows the line and has no switch
   const kid = await (await browser.newContext()).newPage();
@@ -227,15 +224,18 @@ test('?admin=1 turns helping on for a remote viewer and is ignored on the LAN', 
   await kid.context().close();
 });
 
-test("Let's go shows a busy state while the box is being selected", async ({ page }) => {
+test('tapping a card goes Home by itself and shows a busy state on the way', async ({ page }) => {
   await page.route('**/api/box', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.continue(); });
   await openPicker(page, homeUrl);
-  await page.getByRole('button', { name: 'IR Turret', exact: true }).click();
-  await page.getByRole('button', { name: "Let's go" }).click();
-  const busy = page.getByRole('button', { name: 'Getting ready' });
-  await expect(busy).toBeDisabled();
-  expect(parseFloat(await busy.evaluate((el) => getComputedStyle(el).opacity))).toBeLessThan(0.7);   // greyed out
-  await expect(page.getByRole('button', { name: 'Omnibot Forklift', exact: true })).toBeDisabled();  // no re-picking mid-flight
+  await expect(page.getByRole('button', { name: "Let's go" })).toHaveCount(0);                      // owner: tap is enough
+  const card = page.getByRole('button', { name: 'IR Turret', exact: true });
+  await card.click();
+  await expect(page.getByText('Getting ready')).toBeVisible();
+  await expect(card).toBeDisabled();
+  await expect(card).toHaveAttribute('aria-pressed', 'true');                                       // the tapped one stays marked
+  const other = page.getByRole('button', { name: 'Omnibot Forklift', exact: true });
+  await expect(other).toBeDisabled();                                                               // no re-picking mid-flight
+  expect(parseFloat(await other.evaluate((el) => getComputedStyle(el).opacity))).toBeLessThan(0.7);  // greyed out
   await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 10000 });
 });
 
@@ -247,7 +247,6 @@ test('the Home placeholder and "Try one of these" come from the box profile', as
   // a box without shipped tricks suggests plain asks instead
   await openPicker(page, homeUrl);
   await page.getByRole('button', { name: 'Omnibot Forklift', exact: true }).click();
-  await page.getByRole('button', { name: "Let's go" }).click();
   await expect(page.getByPlaceholder('Lift the fork up and down every five seconds')).toBeVisible();
   await page.getByRole('button', { name: 'Say hello on the serial monitor' }).click();
   await expect(page.locator('.chat')).toContainText('Say hello on the serial monitor');  // the button's own words open the discussion
@@ -371,8 +370,6 @@ test('the ask box keeps a half-typed request through re-renders, hides the sugge
 test('box picker cards: name on top, no tick, picture never cut off, at iPad and phone widths', async ({ page }) => {
   await openPicker(page, homeUrl);
   const card = page.getByRole('button', { name: 'IR Turret', exact: true });
-  await card.click();
-  await expect(card).toHaveAttribute('aria-pressed', 'true');
   await expect(card.locator('.tick')).toHaveCount(0);                                       // selection by border, no checkmark
   expect(await card.evaluate((el) => el.firstElementChild.className)).toBe('boxname');       // text first, on top
   expect(await card.locator('.boxname').evaluate((el) => getComputedStyle(el).justifyContent)).toBe('center');
@@ -392,12 +389,14 @@ test('box picker cards: name on top, no tick, picture never cut off, at iPad and
   expect(svg).not.toMatch(/<rect width="400" height="230" fill/);
 });
 
-test('the header chip is status; "Change box" is the way back to the picker', async ({ page }) => {
+test('the header chip is status; the Hack Lab mark is the way back to the picker', async ({ page }) => {
   await pickTurret(page, homeUrl);
   await expect(page.getByText('IR Turret · plugged in')).toBeVisible();
   await expect(page.getByRole('button', { name: /plugged in/ })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Change box' }).click();
+  await expect(page.getByRole('button', { name: 'Change box' })).toHaveCount(0);
+  await brand(page).click();
   await expect(page.getByRole('heading', { name: 'Which box is plugged in?' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'IR Turret', exact: true })).toHaveAttribute('aria-pressed', 'true');  // the current box is marked
 });
 
 test('the code page explains itself: What does this code do, lines, how it all works; code steps aside when narrow', async ({ page }) => {

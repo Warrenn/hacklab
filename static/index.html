@@ -21,6 +21,7 @@ a{color:var(--ink)}
 #app{min-height:100%;display:flex;flex-direction:column}
 header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 32px;border-bottom:2px solid var(--rule);flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:14px;font-size:26px;font-weight:900}
+button.brand{background:none;border:0;padding:0;text-align:left}
 .logo{width:44px;height:44px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:0}
 .chips{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .chip{display:inline-flex;align-items:center;gap:10px;padding:10px 16px;border-radius:999px;background:var(--chip);font-weight:800;font-size:17px;border:0;text-decoration:none}
@@ -41,6 +42,7 @@ h1{margin:0;font-size:40px;font-weight:900;line-height:1.1}
 .primary.wide{flex:1}
 .primary:disabled{opacity:.45;cursor:default}
 .boxcard:disabled{cursor:default}
+.boxcard:disabled:not(.sel){opacity:.45}
 .ghost{font-size:22px;font-weight:900;padding:18px 26px;border-radius:18px;border:3px solid var(--ink);background:#fff}
 .list{display:flex;flex-direction:column;gap:12px}
 .try{display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;font-size:21px;font-weight:800;padding:18px 22px;border-radius:16px;border:2px solid var(--line);background:var(--card)}
@@ -205,18 +207,21 @@ const I = {
 function header(opts = {}) {
   const st = S.status || {};
   const plugged = st.board_connected ? 'plugged in' : 'not plugged in';
-  // The chip is status; changing the box is a visible button (owner note, 2026-10-31).
-  const boxChip = st.box ? `<span class="chip ${st.board_connected ? '' : 'off'}"><span class="dot"></span>${esc(boxName())} · ${plugged}</span><button class="ghost small" data-act="picker">Change box</button>` : '';
+  // The chip is status only; the Hack Lab mark is the way back to the picker (owner, 2026-10-31).
+  const boxChip = st.box ? `<span class="chip ${st.board_connected ? '' : 'off'}"><span class="dot"></span>${esc(boxName())} · ${plugged}</span>` : '';
   const aiChip = opts.ai === false ? '' : st.ai_available ? '<span class="chip ai">AI helper is here</span>' : '<span class="chip away">AI helper is away</span>';
   const left = opts.back
     ? `<button class="back" data-act="${opts.back}" aria-label="Back">${I.back}</button><div style="font-size:26px;font-weight:900">${opts.title}</div>`
     : `<div class="logo">${I.logo}</div><div>Hack Lab</div>`;
+  const brand = opts.back || !st.box || S.screen === 'picker'
+    ? `<div class="brand">${left}</div>`
+    : `<button class="brand" data-act="picker" aria-label="Hack Lab: pick a box">${left}</button>`;
   const helpLine = helping() ? `<div class="helping" role="status">Uncle is helping</div>` : '';
   const remoteBar = remote()
     ? `<div class="remotebar" role="status"><span>Remote view${helping() ? ' · helping is on' : ' · read only'}</span>
        <button class="ghost small" data-act="helping">${helping() ? 'Turn off helping' : 'Turn on helping'}</button></div>`
     : '';
-  return `<header><div class="brand">${left}</div><div class="chips">${boxChip}${opts.chips === false ? '' : aiChip}</div></header>${remoteBar}${helpLine}`;
+  return `<header>${brand}<div class="chips">${boxChip}${opts.chips === false ? '' : aiChip}</div></header>${remoteBar}${helpLine}`;
 }
 // "2 minutes ago" for the Home card; kid words, no clock arithmetic on screen.
 function ago(epochS) {
@@ -340,15 +345,14 @@ function howItWorks() {
 function picker() {
   const cards = S.boxes.map((b) => {
     const sel = b.id === S.picked;
-    return `<button class="boxcard ${sel ? 'sel' : ''}" data-act="pick" data-id="${esc(b.id)}" aria-pressed="${sel}" ${S.busy ? 'disabled' : ''}>
+    return `<button class="boxcard ${sel ? 'sel' : ''}" data-act="pick" data-id="${esc(b.id)}" aria-pressed="${sel}" ${dis(S.busy)}>
       <div class="boxname">${esc(b.name)}</div>
       <div class="photo"><img alt="" src="${esc(b.picture)}" onerror="this.onerror=null;this.src='/static/boxes/${esc(b.id)}.svg'"></div></button>`;
   }).join('');
   return `${header({ chips: false })}<main style="display:flex;flex-direction:column;gap:28px;padding:36px 48px">
-    <div><h1>Which box is plugged in?</h1><p class="sub" style="margin-top:8px">Plug the USB cable into the box you want to play with, then tap it here.</p></div>
+    <div><h1>Which box is plugged in?</h1><p class="sub" style="margin-top:8px" role="status">${S.busy ? 'Getting ready' : 'Plug the USB cable into the box you want to play with, then tap it here.'}</p></div>
     <div class="grid3">${cards}</div>
-    <div class="row"><div class="faint">Picked the wrong one? No problem, nothing breaks. Just come back here.</div>
-    <button class="primary" data-act="go" ${dis(!S.picked || S.busy)}>${S.busy ? 'Getting ready' : "Let's go"}</button></div></main>`;
+    <div class="faint">Picked the wrong one? No problem, nothing breaks. Tap the Hack Lab mark at the top to come back here.</div></main>`;
 }
 function home() {
   const name = esc(boxName());
@@ -559,10 +563,10 @@ function openTweak(id) {
 }
 const ACTIONS = {
   picker: () => { S.picked = S.status?.box || S.picked; S.screen = 'picker'; render(); },
-  pick: (id) => { S.picked = id; render(); },
-  go: async () => {
-    S.busy = true; render();
-    try { await api('/box', { id: S.picked }); await refresh(); S.screen = homeScreen(); }
+  pick: async (id) => {
+    // Tapping a card is the whole move: pick the box and go Home (owner, 2026-10-31).
+    S.picked = id; S.busy = true; render();
+    try { await api('/box', { id }); await refresh(); S.screen = homeScreen(); }
     finally { S.busy = false; render(); }
   },
   helping: async () => { await api('/helping', { on: !helping() }); await refresh(); render(); },
