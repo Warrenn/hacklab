@@ -215,6 +215,18 @@ Usage Policy and its guidelines for organizations serving minors.
   trips the helper shows as away and the offline tricks keep working.
 - **Access.** LAN and Tailscale only; remote viewers are read-only unless
   the owner turns helping on, which the child sees as "Uncle is helping".
+- **The browser cannot be used against the box.** The app answers only for
+  its own names (`hacklab.local`, `hacklab`, `localhost`, IP literals,
+  Tailscale `*.ts.net`, plus `[app] allowed_hosts`) and refuses a POST whose
+  `Origin` is another site, so a malicious web page open on the iPad cannot
+  flash the box (CSRF, DNS rebinding). Asks are capped at 500 characters,
+  a Level 3 sketch at 256 KB.
+- **The service is sandboxed.** `hacklab-app.service` runs as its own user
+  with `ProtectSystem=strict`, a bounding set of only `CAP_NET_BIND_SERVICE`,
+  `RestrictAddressFamilies`, `SystemCallArchitectures=native` and the
+  `Protect*` family; it can write only its data and the Arduino cache. The Pi
+  installs security updates by itself (`unattended-upgrades`, no automatic
+  reboot) and nothing listens but SSH and the app.
 
 For the household: `docs/family-card.md` (printable). For the first install:
 `docs/field-checklist.md`.

@@ -22,6 +22,7 @@ class Config:
     data_dir: Path = field(default_factory=lambda: Path("data"))
     fake_board: bool = False
     watch_interval: float = 1.0  # seconds between serial device checks (plug/unplug push)
+    allowed_hosts: list[str] = field(default_factory=list)  # extra Host names besides the built-ins
     model: str = "claude-sonnet-5-5"
     api_key: str | None = None
     arduino_cli: str = "/opt/hacklab/bin/arduino-cli"
@@ -48,6 +49,7 @@ def load_config(path: Path | str = "config.toml", env: Mapping[str, str] | None 
         model=ai.get("model", Config.model),
         arduino_cli=app.get("arduino_cli", Config.arduino_cli),
         arduino_config=app.get("arduino_config", Config.arduino_config),
+        allowed_hosts=[str(h).lower() for h in app.get("allowed_hosts", [])],
     )
     if app.get("boxes_dir"):
         cfg.boxes_dir = Path(app["boxes_dir"])

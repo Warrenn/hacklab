@@ -7,14 +7,16 @@ import contextlib
 import json
 import logging
 import os
+import re
 import shutil
 import tempfile
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -47,20 +49,37 @@ class BoxSelect(BaseModel):
 
 class FlashBehaviour(BaseModel):
     id: str
-    tweakables: dict[str, Any] | None = None
+    tweakables: dict[str, Any] | None = Field(default=None, max_length=32)
 
 
 class FlashTemplate(BaseModel):
     template_id: str
-    values: dict[str, Any]
+    values: dict[str, Any] = Field(max_length=32)
 
 
 class FlashSketch(BaseModel):
-    source: str
+    source: str = Field(max_length=256 * 1024)  # Level 3: a whole sketch, never a dump
 
 
 class Ask(BaseModel):
-    text: str = Field(min_length=1)
+    text: str = Field(min_length=1, max_length=500)
+
+
+# P7b: the appliance answers only for its own names (the kid's browser must not be usable as a
+# bridge to it from a malicious page: CSRF, DNS rebinding). IP literals and Tailscale MagicDNS
+# names are fine; "testserver" is Starlette's TestClient default.
+OWN_HOST = re.compile(
+    r"^(hacklab(\.local)?|localhost|testserver|\d{1,3}(\.\d{1,3}){3}|[0-9a-f:]+|[a-z0-9-]+\.[a-z0-9-]+\.ts\.net)$",
+    re.I,
+)
+MSG_BAD_HOST = "This address is not the Hack Lab."
+MSG_CROSS_SITE = "Changes must come from the Hack Lab page itself."
+
+
+def host_of(value: str) -> str:
+    """'hacklab.local:80' / '[fd7a::1]:80' / 'http://x' -> bare host, lower-case."""
+    v = value if "//" in value else "//" + value
+    return (urlsplit(v).hostname or "").lower()
 
 
 class HelpingBody(BaseModel):
@@ -176,6 +195,17 @@ def create_app(
 
     app = FastAPI(title="Hack Lab", lifespan=lifespan)
     app.state.runner = runner
+
+    @app.middleware("http")
+    async def host_guard(request: Request, call_next):
+        host = host_of(request.headers.get("host", ""))
+        if not (OWN_HOST.match(host) or host in cfg.allowed_hosts):
+            return JSONResponse({"detail": MSG_BAD_HOST}, status_code=400)
+        origin = request.headers.get("origin")
+        if request.method == "POST" and origin and host_of(origin) != host:
+            return JSONResponse({"detail": MSG_CROSS_SITE}, status_code=403)
+        return await call_next(request)
+
     state: dict[str, Any] = {"box": None, "versions": {}}  # mock mode only: box_id -> [version]
 
     def box_or_409() -> str:

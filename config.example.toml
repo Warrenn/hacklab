@@ -9,6 +9,9 @@ port = 8000
 data_dir = "data"
 # Use the emulated board instead of a real USB Nano (dev / CI).
 fake_board = false
+# Extra hostnames the app may be reached by (hacklab.local, hacklab, localhost, IP literals and
+# *.ts.net are always allowed). Other Host values get 400: see README "Safety for a young user".
+# allowed_hosts = ["robots.lan"]
 
 [ai]
 model = "claude-sonnet-5-5"
