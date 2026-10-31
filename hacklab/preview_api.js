@@ -15,15 +15,16 @@
   const locked = () => source === 'remote' && !st.helping;
   const render = (src, values) => Object.entries(values || {}).reduce(
     (s, [name, v]) => s.replace(new RegExp('(\\b' + name + '\\s*=\\s*)[-\\d.]+'), '$1' + v), src);
-  function runJob(kind, { fail = false, prompts = [], sketch = null, note = '' } = {}) {
+  function runJob(kind, { fail = false, prompts = [], sketch = null, note = '', clarify = false } = {}) {
     const id = 'preview-' + (++st.seq);
     const stages = (kind === 'ask' ? ['thinking'] : []).concat(['compiling', 'uploading', 'verifying']);
-    const job = { job_id: id, kind, state: 'queued', message_kid: MESSAGES.queued, log_ref: null, prompts: [], sketch_ref: null };
+    const job = { job_id: id, kind, state: 'queued', message_kid: MESSAGES.queued, log_ref: null, prompts: [], sketch_ref: null, answer: null };
     st.jobs[id] = job;
     let i = 0;
     const step = () => {
       if (i < stages.length) {
         job.state = stages[i++]; job.message_kid = MESSAGES[job.state]; emit({ ...job });
+        if (clarify && job.state === 'thinking') { setTimeout(() => { job.state = 'done'; job.answer = 'clarify'; job.message_kid = 'Which key on the remote should start it?'; emit({ ...job }); }, 900); return; }
         if (fail && job.state === 'compiling') { setTimeout(() => { job.state = 'failed'; job.message_kid = MESSAGES.failed; emit({ ...job }); }, 900); return; }
         setTimeout(step, 1100); return;
       }
@@ -31,7 +32,7 @@
       if (kind === 'undo') { if (v.length > 1) v.pop(); }
       else if (kind === 'reset') v.splice(1);
       else v.push({ id: 'v' + (v.length + 1), source: sketch, note, created: Math.floor(Date.now() / 1000) });
-      job.state = 'done'; job.message_kid = MESSAGES.done; job.prompts = prompts; job.sketch_ref = v[v.length - 1].id;
+      job.state = 'done'; job.message_kid = MESSAGES.done; job.prompts = prompts; job.sketch_ref = v[v.length - 1].id; if (kind === 'ask') job.answer = 'sketch';
       emit({ ...job });
     };
     setTimeout(step, 300);
@@ -63,7 +64,7 @@
       if (!st.ai) return json({ detail: 'The AI helper is away.' }, 409);
       const prompts = Object.entries(box.concepts).slice(0, 2).map(([id, c]) => ({ id, question: c.question }));
       const sketch = '// The AI helper added a rule for: ' + body.text + '\n' + vs()[0].source;
-      return json({ job_id: runJob('ask', { fail: /^fail/i.test(body.text), prompts, sketch, note: body.text }) });
+      return json({ job_id: runJob('ask', { fail: /^fail/i.test(body.text), clarify: /^which/i.test(body.text), prompts, sketch, note: body.text }) });
     }
     if (path === '/flash/behaviour') {
       const src = box.sketches[body.id]; if (!src) return json({ detail: 'No such trick.' }, 404);

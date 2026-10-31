@@ -1770,6 +1770,63 @@ index.html -> serial, in order.
 - [x] Step 5 — recorded deferrals: job cancel (no safe cancel mid-upload), box pictures (owner's photos) — completed 2026-10-31
 - [x] Step 6 — preview republished (v2); release 0.5.0 on the Pi (healthy; editor bundle served; status carries note/time; selected box survived a service restart) — completed 2026-10-31
 
+## P8 round 2 — owner's notes on the code page and the ask page (2026-10-31, approved by default)
+
+Owner's notes (pasted 2026-10-31): on "The code right now" page, a link that
+explains what the code does for a kid (stories, similes, strong mental model,
+visuals), a link that explains how the whole thing works end to end (Pi, iPad,
+box; diagrams, lightweight), select a line or range and get an explanation,
+"the undo button is not working" (with a Playwright red/green test), "why do we
+have a Hide code button?", auto-hide the code when explanations need the room
+and unhide after. On the ask page: when the AI helper still has a question, go
+into a discussion the kid can answer; when it has what it needs, just do it.
+
+Findings: no POST /api/undo reached the Pi in the six hours around the report;
+the Forklift was on its stock version, so Undo was (correctly) disabled and
+looked dead. Fix is clarity, not plumbing. "Hide code" came from Done.dc.html
+(P3) as the kid's way to make room for the praise and prompts; the owner's
+auto-hide replaces it, so the button goes.
+
+Design:
+1. **Undo clarity**: a disabled rescue button carries a one-line reason under
+   it ("Nothing to undo yet", "Already how it came"; remote: "Read only while
+   nobody is helping"); Done's Undo hidden when there is nothing to undo.
+   Red/green pwa tests for all three Undo paths (Home, Done, code page).
+2. **Discussion mode**: `/api/ask` body gains `history` (up to 10 earlier turns
+   `{role: kid|helper, text}`); the genie sends them as prior user/assistant
+   messages. Jobs report `answer` (sketch | clarify | explain). A clarify or
+   explain answer returns the kid to the Home screen with a discussion panel
+   under the ask box (helper bubble, kid bubbles, the input becomes the reply,
+   "Start over" clears it); a sketch answer runs as today and clears the
+   discussion. Mock backend: an ask whose text starts with "which" answers
+   clarify; the preview stand-in mirrors it. Full stack: a recorded clarify
+   golden. Guard applies to clarify text too.
+3. **Explanations** as a job kind `explain` (no flash; SSE progress; cached per
+   version under `data/<box>/versions/<id>/explain-<scope>.json`): a teaching
+   persona (second system prompt, same rules) returns `ExplainResult {title,
+   story (2-4 short paragraphs), steps [{label, detail}] for a flow picture,
+   metaphor, watch_for}`; scopes `sketch` and `lines:a-b`. Code page gets two
+   links above the code: "What does this code do?" (AI) and "How does the whole
+   thing work?" (static page: inline SVG of iPad -> WiFi -> Pi -> USB -> box
+   with the AI helper in the cloud; six kid sentences). Tapping a line, then
+   another, selects a range and shows "Explain these lines". While an
+   explanation is open the code panel collapses to a "Show the code" pill and
+   comes back when the explanation closes. "Hide code" removed. Steps render as
+   a horizontal flow of boxes with arrows (CSS), the metaphor as a warm callout.
+4. Every explanation call is logged like an ask (kind explain) and bounded by
+   the Console budget; cached so re-reading is free.
+
+Steps: 1 Undo clarity (red -> green); 2 discussion (unit + pwa + full stack);
+3 explain job + persona + code page links + line selection + auto-hide + static
+how-it-works; 4 preview republished; release 0.6.0. Parallelism: all touch
+static/index.html -> serial.
+
+## Progress — P8 round 2
+- [x] Step 1 — Undo clarity: disabled rescue buttons say why; Done hides Undo when there is nothing to undo; one iPad-profile pwa test walks all three Undo paths; browser specs now emulate an iPad (viewport, touch, Safari UA; WebKit project = the iPad engine) — completed 2026-10-31
+- [x] Step 2 — discussion mode: Ask.history (10 turns), genie sends earlier turns as messages, jobs report `answer`, Home chat panel with "Your answer" and "Start over", mock "which..." -> question, recorded clarify golden `clarify-which-key`, golden client matches the current turn — completed 2026-10-31
+- [ ] Step 3 — explanations (code, lines, how it works), auto-hide, Hide code removed
+- [ ] Step 4 — preview republished; release 0.6.0 on the Pi
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the

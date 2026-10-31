@@ -126,6 +126,10 @@ pre .tok-keyword{color:#C9A7FF}pre .tok-typeName,pre .tok-standard{color:#7FD1FF
 .cm-editor .cm-gutters{background:var(--panel);border-right:2px solid var(--line);color:var(--faint)}
 .cm-editor .tok-keyword{color:#7A3FD1}.cm-editor .tok-typeName,.cm-editor .tok-standard{color:#0B6B9E}.cm-editor .tok-number,.cm-editor .tok-bool{color:#B35C00}.cm-editor .tok-string{color:#1F7A3A}.cm-editor .tok-comment,.cm-editor .tok-lineComment,.cm-editor .tok-blockComment{color:#7A7F99}.cm-editor .tok-function{color:#8A5A00}.cm-editor .tok-processingInstruction,.cm-editor .tok-macroName{color:#B8236B}
 .cm-tooltip-autocomplete{font-size:17px}.cm-tooltip-autocomplete ul li{padding:8px 12px !important}
+.chat{display:flex;flex-direction:column;gap:10px;padding:16px 18px;border-radius:18px;background:var(--panel)}
+.bubble{max-width:92%;padding:12px 16px;border-radius:16px;font-size:19px;font-weight:700;line-height:1.35}
+.bubble.kid{align-self:flex-end;background:#fff;border:2px solid var(--line)}
+.bubble.helper{align-self:flex-start;background:var(--teal-soft);color:var(--teal-dark)}
 .remotebar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 24px;background:#FFF4E5;color:#8A5A00;font-weight:800}
 .remotebar .small{padding:8px 14px;font-size:15px}
 .helping{padding:8px 24px;background:#E6F7F2;color:#0B6B57;font-weight:800;text-align:center}
@@ -139,7 +143,7 @@ pre .tok-keyword{color:#C9A7FF}pre .tok-typeName,pre .tok-standard{color:#7FD1FF
 // One screen router keyed on state. All kid-facing copy either comes from the
 // server (message_kid, titles, prompts) or is copied verbatim from docs/screens.
 const S = { status: null, boxes: [], behaviours: [], sketch: null, job: null, asked: '', screen: 'picker',
-            picked: null, tweak: null, concept: null, showCode: true, editor: '', busy: false };
+            picked: null, tweak: null, concept: null, showCode: true, editor: '', busy: false, chat: [] };
 const $app = document.getElementById('app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const api = async (path, body) => {
@@ -210,10 +214,20 @@ function rightNow() {
 }
 function rescue(note) {
   const canUndo = changes() > 0;
+  // A greyed button looks broken to a kid: say why it is off (owner report, 2026-10-31).
+  const why = locked() ? 'Read only while nobody is helping' : !canUndo ? 'Nothing to undo yet' : '';
   return `<div class="list">
     <button class="rescue" data-act="undo" ${dis(!canUndo)}>${I.undo}Undo last change</button>
+    ${why ? `<div class="small" style="margin-top:-6px">${why}</div>` : ''}
     <button class="rescue teal" data-act="reset" ${dis()}>${I.reset}Back to how it came</button></div>
     <div class="note">${note}</div>`;
+}
+// Discussion with the AI helper: shown on Home when its last answer was a question or an explanation.
+function chat() {
+  if (!S.chat.length) return '';
+  const turns = S.chat.map((t) => `<div class="bubble ${t.role}">${esc(t.text)}</div>`).join('');
+  return `<div class="chat" role="log" aria-label="Talking with the AI helper">${turns}
+    <button class="link" data-act="startover">Start over</button></div>`;
 }
 function tries() {
   // "Try one of these" comes from the box profile ([copy].suggestions): a shipped trick or a plain ask.
@@ -265,8 +279,9 @@ function home() {
   return `${header()}<main>
     <section class="col7"><h1>What should the ${name} do?</h1>
       <label class="lead" for="ask">Say it or type it. Tap the mic on your keyboard to talk.</label>
-      <form class="ask" data-form="ask"><input id="ask" type="text" placeholder="${esc((S.boxes.find((b) => b.id === S.status?.box) || {}).ask_placeholder || 'What should it do?')}" autocomplete="off" enterkeyhint="go"><button class="primary" type="submit" ${dis()}>Go!</button></form>
-      <div class="lead" style="margin-top:8px">Try one of these</div><div class="list">${tries()}</div></section>
+      ${chat()}
+      <form class="ask" data-form="ask"><input id="ask" type="text" placeholder="${S.chat.length ? 'Your answer' : esc((S.boxes.find((b) => b.id === S.status?.box) || {}).ask_placeholder || 'What should it do?')}" autocomplete="off" enterkeyhint="go"><button class="primary" type="submit" ${dis()}>Go!</button></form>
+      ${S.chat.length ? '' : `<div class="lead" style="margin-top:8px">Try one of these</div><div class="list">${tries()}</div>`}</section>
     <aside class="col5">${rightNow()}${rescue('Nothing you try can break it. Those two buttons always put it right.')}</aside></main>`;
 }
 function offline() {
@@ -314,7 +329,7 @@ function done() {
   return `${header({ chips: false })}<main>
     <section class="col7" style="gap:18px">${head}
       ${prompts ? `<div class="lead" style="margin-top:6px">Curious?</div><div class="list" style="gap:10px">${prompts}</div>` : ''}${concept}
-      <div class="actions"><button class="primary wide" data-act="home">Try something else</button><button class="ghost" data-act="undo" ${n ? '' : 'disabled'}>Undo</button></div></section>
+      <div class="actions"><button class="primary wide" data-act="home">Try something else</button>${n ? '<button class="ghost" data-act="undo">Undo</button>' : ''}</div></section>
     <aside class="col5" style="gap:12px">
       <div class="row"><div class="lead">The code that does it</div><button class="pill" data-act="togglecode">${S.showCode ? 'Hide code' : 'Show code'}</button></div>
       ${S.showCode ? `<pre>${highlight(S.sketch?.source || '')}</pre>` : ''}
@@ -419,7 +434,14 @@ async function finishJob() {
   try {
     await refresh();
     if (S.job.state === 'failed') S.screen = 'failed';
-    else S.screen = S.job.kind === 'undo' || S.job.kind === 'reset' ? homeScreen() : 'done';
+    else if (S.job.kind === 'ask' && (S.job.answer === 'clarify' || S.job.answer === 'explain')) {
+      // The helper asked back (or explained without changing anything): keep talking on Home.
+      S.chat = [...S.chat, { role: 'kid', text: S.asked }, { role: 'helper', text: S.job.message_kid }];
+      S.screen = homeScreen();
+    } else {
+      if (S.job.kind === 'ask') S.chat = [];
+      S.screen = S.job.kind === 'undo' || S.job.kind === 'reset' ? homeScreen() : 'done';
+    }
     render();
   } finally { finishing = false; }
 }
@@ -455,7 +477,8 @@ const ACTIONS = {
     finally { S.busy = false; render(); }
   },
   helping: async () => { await api('/helping', { on: !helping() }); await refresh(); render(); },
-  suggest: (text, el) => startJob('ask', '/ask', { text }, el?.dataset.title || text),
+  suggest: (text, el) => startJob('ask', '/ask', { text, history: S.chat }, el?.dataset.title || text),
+  startover: () => { S.chat = []; render(); },
   home: () => { S.screen = homeScreen(); render(); },
   done: () => { S.screen = 'done'; render(); },
   code: () => { S.job = null; S.concept = null; S.screen = 'done'; render(); },
@@ -482,7 +505,7 @@ $app.addEventListener('click', (e) => {
 $app.addEventListener('submit', (e) => {
   e.preventDefault();
   const text = document.getElementById('ask').value.trim();
-  if (text) startJob('ask', '/ask', { text }, text);
+  if (text) startJob('ask', '/ask', { text, history: S.chat }, text);
 });
 $app.addEventListener('input', (e) => {
   const name = e.target.dataset.tw;
