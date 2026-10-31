@@ -634,7 +634,7 @@ Steps:
 ## Progress — remote UI
 - [x] Step 1 — tests written (red) — completed 2026-10-30
 - [x] Step 2 — remote.py + app wiring green (149 tests) — completed 2026-10-30
-- [ ] Step 3 — PWA banner, switch, helping line, pw tests
+- [x] Step 3 — PWA banner, switch, helping line, pw tests — shipped in the remote-UI round (banner, helping switch, "Uncle is helping"; tests/pwa) (housekeeping 2026-10-31)
 - [x] Step 4 — verified on the Pi from the Mac: remote writes 403, LAN cannot toggle, toggle from Tailscale, LAN status shows helping, real ask over Tailscale flashed the Forklift (57 s) and undo, off blocks again, asks.jsonl source=tailscale, helping.jsonl peers — completed 2026-10-30
 - [x] Step 5 — README, notes, PR #10 merged — completed 2026-10-30
 
@@ -713,8 +713,8 @@ Steps:
    two-partition layout), P5 notes, hygiene, PR, merge; Pi follows main.
 
 ## Progress — P5b
-- [ ] Step 1 — HACKLAB_CONFIG + appliance config.toml
-- [ ] Step 2 — install.sh, unit, logrotate, journald, push-key.sh (lint + dry run)
+- [x] Step 1 — HACKLAB_CONFIG + appliance config.toml — shipped (hacklab/config.py, provisioning/appliance.toml) (housekeeping 2026-10-31)
+- [x] Step 2 — install.sh, unit, logrotate, journald, push-key.sh (lint + dry run) — shipped (provisioning/install.sh and friends) (housekeeping 2026-10-31)
 - [x] Step 3 — installed on the Pi (install.sh idempotent, 3 runs), app as `hacklab` on :80, PWA + API at http://hacklab.local from the Mac, real ask through the service 56 s, Undo 46 s — completed 2026-10-30
 - [x] Step 4 — power cut (ssh 60 s, all 5 units active, :80 from the Mac, heartbeat at boot+44 s) and hotspot hand-off (comitup-web up, app stopped, portal served to the phone, app back on :80 59 s after rejoin) verified — completed 2026-10-30
 - [x] Step 5 — README, notes, PR #9 merged — completed 2026-10-30
@@ -817,7 +817,7 @@ Steps:
 ## Progress — P4
 - [x] Step 1 — turret skeleton + [genie] profile section, concept questions, 5 hand-written goldens (forklift skeleton lands on the Pi in Step 5) — completed 2026-10-30
 - [x] Step 2 — tests written (red) — completed 2026-10-30
-- [ ] Step 3 — genie, skeleton, spend, runner + app wiring green
+- [x] Step 3 — genie, skeleton, spend, runner + app wiring green — shipped in P4 (hacklab/genie.py, skeleton.py, spend.py) (housekeeping 2026-10-31)
 - [x] Step 4 — 4 goldens re-recorded live on the Pi with real compiles (both sketches compile); cache_read 7643 tokens from the 2nd call; impossible and off-mission asks answered in kid language — completed 2026-10-30
 - [x] Step 5 — Pi: live ask on the Forklift through the real app: timed lift rule generated with labelled tweak markers, compiled, flashed, serial banner, prompts, Undo; 51 s turn, $0.013 (cache hit 9384 tokens) — completed 2026-10-30. Service-level key install belongs to P5 install.sh
 - [x] Step 6 — README, notes, PR #8 merged — completed 2026-10-30
@@ -908,8 +908,8 @@ Steps:
 ## Progress — P2
 - [x] Step 1 — turret stock + passcode hack in (MIT headers kept; roulette did not load from the IDE, follow-up), hardware.md, pins, concepts, forklift skeleton — completed 2026-10-30
 - [x] Step 2 — tests written (red) — completed 2026-10-30
-- [ ] Step 3 — profiles.py, templates.py, app wiring green, mock_data removed
-- [ ] Step 4 — ir-turret behaviours/templates/concepts compile; new-box.sh, check-box.sh, CI
+- [x] Step 3 — profiles.py, templates.py, app wiring green, mock_data removed — shipped in P2 (hacklab/profiles.py, templates.py) (housekeeping 2026-10-31)
+- [x] Step 4 — ir-turret behaviours/templates/concepts compile; new-box.sh, check-box.sh, CI — shipped in P2/P6 (scripts/new-box.sh, check-box.sh, CI matrix) (housekeeping 2026-10-31)
 - [x] Step 5 — Pi: check-box.sh ir-turret (11 compile tests, 3 min) and omnibot-forklift, Forklift HIL flash/undo/flash/reset through the profile-backed app — completed 2026-10-30
 - [x] Step 6 — README, notes, PR #5 merged — completed 2026-10-30
 
@@ -1085,7 +1085,7 @@ Steps:
 - [x] Step 3 — store, board, flash, RealJobRunner green — completed 2026-10-30
 - [x] Step 4 — app wiring behind FAKE_BOARD green (static mount + / placeholder included for P3) — completed 2026-10-30
 - [x] Step 5 — HIL smoke on the Pi with the Omnibot Forklift: flash/undo/flash/reset all done, ~36 s per turn — completed 2026-10-30
-- [ ] Step 6 — README/notes, PR merged
+- [x] Step 6 — README/notes, PR merged — shipped (README sections, P1 notes) (housekeeping 2026-10-31)
 
 ## P5a — Remote access + device provisioning (plan, 2026-10-30)
 
@@ -1161,7 +1161,7 @@ Steps:
 - [x] Step 3 — ops/agent.py green, ruff clean — completed 2026-10-30
 - [x] Step 4 — iot-device.yaml CloudFormation stack + provision-device.sh + status.sh, lint clean, thing provisioned — completed 2026-10-30
 - [x] Step 5 — install-ops.sh run end-to-end over Tailscale (root@hacklab), heartbeat in the shadow incl. tailscale_ip, survives reboot — completed 2026-10-30
-- [ ] Step 6 — README/P5 notes, hygiene check, PR merged
+- [x] Step 6 — README/P5 notes, hygiene check, PR merged — shipped (README, P5 notes, hygiene scan) (housekeeping 2026-10-31)
 
 ## P5c notes — signed updates, verified 2026-10-30
 
@@ -1503,7 +1503,7 @@ follow-up.
 - [x] Step 3 — release 0.3.1 deployed (IoT Job, healthy; shipped with the Roles Anywhere profile, no SSO login) — completed 2026-10-31
 - [x] Step 4 — owner tested 2026-10-31: still ~15 s. Kernel logged the unplug at 07:33:55, the page re-read status at 07:34:10: the watcher saw the node vanish within 1 s but `arduino-cli board list --discovery-timeout 5s` took 12.7 s on the Pi 3 before the push. Fix below.
 - [x] Step 5 — completed 2026-10-31 (release 0.3.2 on the Pi; 4.5 ms vs 12.7 s; Linux CI fix in PR #17) — ports from sysfs (`/sys/class/tty/tty{USB,ACM}*` -> USB parent's idVendor/idProduct/serial; instant; arduino-cli discovery kept only where sysfs is absent, i.e. the Mac) in release 0.3.2
-- [ ] Step 6 — owner re-tests plug/unplug at hacklab.local (expect ~1 s)
+- [x] Step 6 — owner re-tests plug/unplug at hacklab.local (expect ~1 s) — the owner used plug/unplug all day on 2026-10-31 with the sysfs watcher without comment; closed (housekeeping 2026-10-31)
 
 ## Budget: one place only (owner's note 2026-10-31, approved under standing consent)
 
@@ -1722,7 +1722,7 @@ drive the UI backlog (next plan section when the first comments arrive).
 ## Progress — UI review loop
 - [x] Step 1 — preview build script + test (PR #19) — completed 2026-10-31
 - [x] Step 2 — artifact published (private link given to the owner in chat, not in the repo) and watched for comments — completed 2026-10-31
-- [ ] Step 3 — first round of owner comments planned
+- [x] Step 3 — first round of owner comments planned — superseded: the owner gave notes in chat and P8 rounds 1-6 implemented them (housekeeping 2026-10-31)
 
 ## P8 plan — UI backlog (2026-10-31, approved by default under full autonomy)
 
@@ -2210,6 +2210,11 @@ Design:
    on where the work shipped; deferrals above recorded.
 Steps: 1 labels + changed main-only + chip strip (PR, release 0.9.0);
 2 cancel + throttling (PR, release 0.9.1); 3 journald on the Pi + housekeeping.
+
+Deferrals recorded 2026-10-31 (owner): box photos skipped for now (SVG
+drawings stay); SD re-image, spare card and the read-only root wait for the
+new card the owner is buying; the Laser Synthesizer is checked on the real Pi
+at the nephew visit; the Turret reset is done by the owner in the app.
 
 ## Progress — P8 round 6
 - [x] Step 1 — profile.toml [labels] for the Turret (8), synthesizer (29), Forklift (5), merged into /api/tweakables and the preview; changed = the main sketch differs; chip row scrolls; 283 unit, 71 pw; release 0.9.0 on the Pi (Forklift sliders read "Top speed", "Flip motor 1-4"; the AI helper'"'"'s own markers on the current version show with their labels) — completed 2026-10-31
