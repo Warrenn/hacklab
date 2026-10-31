@@ -226,7 +226,9 @@ Usage Policy and its guidelines for organizations serving minors.
   `RestrictAddressFamilies`, `SystemCallArchitectures=native` and the
   `Protect*` family; it can write only its data and the Arduino cache. The Pi
   installs security updates by itself (`unattended-upgrades`, no automatic
-  reboot) and nothing listens but SSH and the app.
+  reboot) and nothing listens but SSH and the app. SSH on the LAN accepts
+  keys only and the login user's sudo asks for a password; the owner's remote
+  path is Tailscale SSH.
 
 For the household: `docs/family-card.md` (printable). For the first install:
 `docs/field-checklist.md`.

@@ -19,6 +19,14 @@ run apt-get install -y -qq git python3-venv logrotate avahi-daemon curl minisign
 run bash -c 'printf "%s\n" "APT::Periodic::Update-Package-Lists \"1\";" "APT::Periodic::Unattended-Upgrade \"1\";" > /etc/apt/apt.conf.d/20auto-upgrades'
 run systemctl enable --now unattended-upgrades
 run systemctl disable --now rpcbind.socket rpcbind.service 2>/dev/null || true
+# P7b (owner-approved 2026-10-31): keys only on the LAN sshd (Tailscale SSH is the remote path),
+# and the imager's passwordless sudo for the login user becomes password-required.
+run bash -c 'printf "%s\n" "PasswordAuthentication no" "KbdInteractiveAuthentication no" "PermitRootLogin prohibit-password" > /etc/ssh/sshd_config.d/10-hacklab.conf'
+run bash -c 'sshd -t && systemctl reload ssh'
+for f in /etc/sudoers.d/*-nopasswd; do
+  [ -f "$f" ] || continue
+  run bash -c "sed 's/NOPASSWD: //' '$f' > '${f%-nopasswd}-passwd' && visudo -cf '${f%-nopasswd}-passwd' && rm -f '$f'"
+done
 
 log "2/9 toolchain + venv (provisioning/install-toolchain.sh)"
 run env PREFIX="$PREFIX" REPO_DIR="$SRC" "$SRC/provisioning/install-toolchain.sh"
