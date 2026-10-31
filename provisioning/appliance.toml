@@ -8,6 +8,7 @@ port = 80
 data_dir = "/opt/hacklab/data"
 boxes_dir = "/opt/hacklab/current/boxes"
 fake_board = false
+# allowed_hosts = []   # extra Host names; built-ins: hacklab.local, hacklab, localhost, IPs, *.ts.net
 arduino_cli = "/opt/hacklab/bin/arduino-cli"
 arduino_config = "/opt/hacklab/arduino/arduino-cli.yaml"
 

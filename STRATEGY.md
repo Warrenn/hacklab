@@ -1606,6 +1606,65 @@ writing task; an agent hand-off costs more than it saves -> serial, A then B.
 - Owner items (not blocking): Console spend limit; box photos; on-site visit
   with docs/field-checklist.md; SD re-image + spare card.
 
+## P7b plan — further hardening from the audit (2026-10-31, approved by default)
+
+Audit of the running Pi and the app (2026-10-31): app unit has ProtectSystem=strict,
+PrivateTmp, NoNewPrivileges, ProtectHome, User=hacklab, but the full capability
+bounding set and no syscall/address-family limits; ops unit unsandboxed (needs
+sudo for the apply helper, by design); `/etc/default/hacklab` root 600; sshd
+allows password auth and `admin` has `NOPASSWD: ALL` sudo (Pi OS imager
+default); rpcbind listens on 0.0.0.0:111 for nothing; no unattended security
+updates, 4 pending; nftables holds only Tailscale's rules; git history has no
+secrets (scan for API keys, Tailscale keys, AWS keys, private keys, WiFi PSKs:
+0 hits). App: no Host/Origin check, no size limits on the ask text or the
+Level 3 sketch body.
+
+Do (autonomous):
+1. App: a small middleware rejects requests whose Host is not the appliance
+   (hacklab.local, hacklab, localhost, any IP literal, *.ts.net, plus
+   `[app] allowed_hosts` from config) and POSTs whose Origin host differs from
+   the Host (CSRF / DNS-rebinding defence for the kid's browser). Body limits:
+   ask text 500 chars, Level 3 sketch 256 KB, tweakables/values at most 32 keys.
+2. Unit: `CapabilityBoundingSet=CAP_NET_BIND_SERVICE`,
+   `RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6`, `RestrictSUIDSGID`,
+   `LockPersonality`, `RestrictRealtime`, `ProtectKernelTunables/Modules/Logs`,
+   `ProtectControlGroups`, `SystemCallArchitectures=native`. Devices stay
+   reachable (serial ports are files; no DevicePolicy). Applied on the Pi and
+   proven by a real flash (Back to how it came on the Forklift, which also
+   undoes my accidental Undo).
+3. Pi: disable rpcbind; install and enable unattended-upgrades (security
+   origin, no auto-reboot); apply the pending updates through the existing
+   `apt-upgrade` IoT job. Both added to provisioning/install.sh for re-images.
+4. `pip-audit` of the Pi venv's packages; fix or record.
+5. Release 0.4.1, deploy, verify; notes; owner list.
+
+Raise to the owner (account/lockout decisions, not done unattended): sshd
+password auth for `admin` and its passwordless sudo; an input firewall (would
+have to carve out comitup's hotspot DHCP/DNS and mDNS; risk to the fallback).
+
+## P7b notes (2026-10-31)
+
+- Host guard regex allows `hacklab`, `hacklab.local`, `localhost`, `testserver`
+  (Starlette's TestClient), IPv4/IPv6 literals and `<name>.<tailnet>.ts.net`;
+  anything else is 400 "This address is not the Hack Lab." A POST whose Origin
+  host differs from the Host is 403. Browsers never send Origin on same-page
+  GETs and send the page's own origin on its POSTs, so the PWA is unaffected
+  (mock + full-stack browser suites green). A router that hands out another
+  name (e.g. `hacklab.lan`) goes in `[app] allowed_hosts`.
+- Left to the owner (account/lockout decisions): sshd password authentication
+  and the imager's `admin ALL=(ALL) NOPASSWD: ALL`; an input firewall (would
+  have to carve out comitup's hotspot DHCP/DNS and mDNS; a mistake here breaks
+  the WiFi fallback).
+- Not done, by choice: one-active-ask-per-box throttling (the UI already
+  switches to Working on submit; the Console limit bounds spend).
+
+## Progress — P7b
+- [x] Step 1 — host/origin middleware + body limits (tests/test_hostguard.py, 5) — completed 2026-10-31
+- [x] Step 2 — unit tightened in provisioning and on the Pi (bounding set = net_bind_service, address families, syscall arch, Protect*); real flash OK: Back to how it came on the Forklift under the new unit (also reverted my earlier accidental Undo; Forklift on 0000) — completed 2026-10-31
+- [x] Step 3 — rpcbind off (only :22 and :80 listen now), unattended-upgrades on, 4 pending security updates applied through the apt-upgrade IoT job (SUCCEEDED); install.sh carries both — completed 2026-10-31
+- [x] Step 4 — pip-audit of the Pi venv (29 packages): no known vulnerabilities — completed 2026-10-31
+- [ ] Step 5 — release 0.4.1 on the Pi; owner list reported
+
 ## Progress — P7
 - [x] Step 1 — guard (tests red -> green), wired into the runner — completed 2026-10-31
 - [x] Step 2 — persona additions — completed 2026-10-31

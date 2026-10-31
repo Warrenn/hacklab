@@ -14,7 +14,11 @@ run() { if [ "$DRY" = 1 ]; then printf '  would: %s\n' "$*"; else "$@"; fi; }
 if [ "$DRY" = 0 ] && [ "$(id -u)" != 0 ]; then echo "run as root (or --dry-run)" >&2; exit 1; fi
 
 log "1/9 apt packages"
-run apt-get install -y -qq git python3-venv logrotate avahi-daemon curl minisign
+run apt-get install -y -qq git python3-venv logrotate avahi-daemon curl minisign unattended-upgrades
+# P7b: security updates install themselves (no automatic reboot); rpcbind serves nothing here.
+run bash -c 'printf "%s\n" "APT::Periodic::Update-Package-Lists \"1\";" "APT::Periodic::Unattended-Upgrade \"1\";" > /etc/apt/apt.conf.d/20auto-upgrades'
+run systemctl enable --now unattended-upgrades
+run systemctl disable --now rpcbind.socket rpcbind.service 2>/dev/null || true
 
 log "2/9 toolchain + venv (provisioning/install-toolchain.sh)"
 run env PREFIX="$PREFIX" REPO_DIR="$SRC" "$SRC/provisioning/install-toolchain.sh"
