@@ -29,6 +29,10 @@ button.brand{background:none;border:0;padding:0;text-align:left}
 .chip.off .dot{background:var(--faint)}
 .chip.ai{background:var(--teal-soft);color:var(--teal-dark)}
 .chip.away{background:var(--amber);color:var(--amber-dark)}
+.boxbtn{display:inline-flex;align-items:center;gap:10px;padding:6px 12px 6px 8px;border-radius:999px;border:2px solid var(--teal);background:var(--teal-soft);color:var(--teal-dark);font-weight:800;font-size:17px}
+.boxbtn.off{border-color:var(--amber-dark);background:var(--amber);color:var(--amber-dark)}
+.boxbtn .thumb{width:46px;height:28px;object-fit:contain;border-radius:8px;background:#fff}
+.boxbtn svg{width:18px;height:18px}
 main{flex:1;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px;padding:28px 32px;min-height:0}
 .col7{grid-column:span 7;display:flex;flex-direction:column;gap:20px;min-width:0}
 .col6{grid-column:span 6;display:flex;flex-direction:column;gap:22px;min-width:0}
@@ -132,6 +136,7 @@ footer{padding:16px 32px 24px;display:flex;justify-content:center}
   #app.fill pre{max-height:40vh}
   h1{font-size:30px}
   .brand{font-size:22px}
+  .boxbtn .thumb{display:none}
   .ask{flex-direction:column}
   .grid3{grid-template-columns:1fr}
   .photo,.photo img{min-height:160px;height:160px}
@@ -224,8 +229,12 @@ const I = {
 function header(opts = {}) {
   const st = S.status || {};
   const plugged = st.board_connected ? 'plugged in' : 'not plugged in';
-  // The chip is status only; the Hack Lab mark is the way back to the picker (owner, 2026-10-31).
-  const boxChip = st.box ? `<span class="chip ${st.board_connected ? '' : 'off'}"><span class="dot"></span>${esc(boxName())} · ${plugged}</span>` : '';
+  // The box control is a button again (owner, 2026-10-31): the box's drawing, its name and state,
+  // an arrow; teal when plugged in, amber when not. The Hack Lab mark opens the picker too.
+  const pic = (S.boxes.find((b) => b.id === st.box) || {}).picture || '';
+  const boxChip = st.box && S.screen !== 'picker'
+    ? `<button class="boxbtn ${st.board_connected ? '' : 'off'}" data-act="picker" aria-label="Change box: ${esc(boxName())}, ${plugged}"><img class="thumb" alt="" src="${esc(pic)}" data-src="${esc(pic)}" onerror="retryPic(this)"><span>${esc(boxName())} · ${plugged}</span>${I.arrow}</button>`
+    : '';
   const aiChip = opts.ai === false ? '' : st.ai_available ? '<span class="chip ai">AI helper is here</span>' : '<span class="chip away">AI helper is away</span>';
   const left = opts.back
     ? `<button class="back" data-act="${opts.back}" aria-label="Back">${I.back}</button><div style="font-size:26px;font-weight:900">${opts.title}</div>`
