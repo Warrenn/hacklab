@@ -1663,7 +1663,7 @@ have to carve out comitup's hotspot DHCP/DNS and mDNS; risk to the fallback).
 - [x] Step 2 — unit tightened in provisioning and on the Pi (bounding set = net_bind_service, address families, syscall arch, Protect*); real flash OK: Back to how it came on the Forklift under the new unit (also reverted my earlier accidental Undo; Forklift on 0000) — completed 2026-10-31
 - [x] Step 3 — rpcbind off (only :22 and :80 listen now), unattended-upgrades on, 4 pending security updates applied through the apt-upgrade IoT job (SUCCEEDED); install.sh carries both — completed 2026-10-31
 - [x] Step 4 — pip-audit of the Pi venv (29 packages): no known vulnerabilities — completed 2026-10-31
-- [ ] Step 5 — release 0.4.1 on the Pi; owner list reported
+- [x] Step 5 — release 0.4.1 on the Pi (healthy; own names 200, foreign Host 400, cross-site POST 403, verified over Tailscale and hacklab.local); owner list reported — completed 2026-10-31
 
 ## Progress — P7
 - [x] Step 1 — guard (tests red -> green), wired into the runner — completed 2026-10-31
