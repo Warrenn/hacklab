@@ -121,6 +121,7 @@ pre .cm{color:#8A90A8}
 .slider{display:flex;flex-direction:column;gap:10px}
 .slider label{display:flex;justify-content:space-between;font-size:22px;font-weight:900}
 .slider label output{color:var(--accent)}
+.slider .hint{font-size:15px;font-weight:600;color:var(--muted);margin:-4px 0 6px}
 .slider input[type=range]{width:100%;height:44px;accent-color:var(--accent)}
 .slider select{font:inherit;font-size:20px;font-weight:800;padding:12px 16px;border-radius:12px;border:2px solid var(--line);background:#fff}
 .summary{background:var(--panel);border-radius:16px;padding:14px 18px;font-size:16px;font-weight:700;color:var(--muted);line-height:1.4}
@@ -194,7 +195,7 @@ pre .ln.sel{background:#3A3F63;box-shadow:inset 3px 0 0 var(--accent)}
 // server (message_kid, titles, prompts) or is copied verbatim from docs/screens.
 const S = { status: null, boxes: [], behaviours: [], sketch: null, job: null, asked: '', screen: 'picker',
             picked: null, tweak: null, concept: null, showCode: true, editor: '', busy: false, chat: [],
-            explanation: null, sel: null, back: 'home', draft: '', ready: null, thinking: false };
+            explanation: null, sel: null, back: 'home', draft: '', ready: null, thinking: false, numbers: null };
 const $app = document.getElementById('app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const api = async (path, body) => {
@@ -210,8 +211,16 @@ const dis = (extra = false) => (locked() || extra ? 'disabled' : '');
 const boxName = () => (S.boxes.find((b) => b.id === S.status?.box) || {}).name || 'box';
 const changes = () => Math.max(0, (S.status?.versions_count || 1) - 1);
 // "Try it" / "Change the numbers" follow the trick the kid just flashed, else the first one with numbers.
-const tweakable = () => S.behaviours.find((b) => b.id === S.lastBehaviour && b.tweakables?.length)
-  || S.behaviours.find((b) => b.tweakables && b.tweakables.length);
+// Level 2 on the box's own code (P8 round 4): the IDE's markers in every file of the current
+// version are sliders too. A just-flashed trick with sliders still wins; else the box's own numbers.
+const numbersItem = () => {
+  const files = (S.numbers || []).filter((f) => f.tweakables && f.tweakables.length);
+  if (!files.length) return null;
+  return { id: 'numbers', numbers: true, files, title: `The ${boxName()}'s numbers`,
+    description: 'These are the numbers CrunchLabs left for you to change. Slide, then send.',
+    tweakables: files.flatMap((f) => f.tweakables.map((t) => ({ ...t, file: f.name }))) };
+};
+const tweakable = () => S.behaviours.find((b) => b.id === S.lastBehaviour && b.tweakables?.length) || numbersItem();
 
 // ---------- icons (inline, no external assets) ----------
 const I = {
@@ -312,9 +321,9 @@ function highlight(src, values) {
     if (/\/\/\/\{/.test(line)) {
       out = esc(line);
       const code = line.split('///')[0];
-      const m = code.match(/(\w+)\s*=\s*(-?[\d.]+)|\((\d+)\)/);
+      const m = code.match(/(\w+)\s*=\s*(-?[\d.]+f?|true|false)|#define\s+(\w+)\s+(-?[\d.]+f?)|\((\d+)\)/);
       if (m) {
-        const name = m[1], val = m[2] ?? m[3];
+        const name = m[1] || m[3], val = m[2] ?? m[4] ?? m[5];
         const set = values && name && values[name] !== undefined ? values[name] : null;
         out = out.replace(esc(val), set !== null ? `<span class="set">${esc(set)}</span>` : `<span class="hl">${esc(val)}</span>`);
       }
@@ -412,7 +421,7 @@ function home() {
 function offline() {
   const name = esc(boxName());
   const tricks = S.behaviours.map((b) => `<button class="trick" data-act="behaviour" data-id="${esc(b.id)}" ${dis()}><b>${esc(b.title)}</b><span>${esc(b.description)}</span></button>`).join('');
-  const numbers = tweakable() ? `<button class="trick numbers" data-act="tweak" data-id="${esc(tweakable().id)}"><b>Change the numbers</b><span>Make a trick faster, bigger, longer</span></button>` : '';
+  const numbers = tweakable() ? `<button class="trick numbers" data-act="tweak" data-id="${esc(tweakable().id)}"><b>Change the numbers</b><span>Make it faster, bigger, longer</span></button>` : '';
   return `${header()}<div class="banner">${I.wifi}<div><strong style="color:var(--ink)">The AI helper can't hear you right now</strong> — the internet is probably off. You can still pick a trick below or change the numbers in one, and the ${name} will do it. Nothing here needs the internet.</div></div>
     <main style="padding-top:24px"><section class="col7" style="gap:14px"><h1 style="font-size:32px">Pick a trick</h1><div class="tricks">${tricks}${numbers}</div></section>
     <aside class="col5">${rightNow()}${rescue('When the internet is back, the AI helper comes back by itself.')}</aside></main>`;
@@ -454,7 +463,7 @@ function done() {
   const head = `<div class="donehead">${job ? `<span class="tick">${I.tick(32)}</span><h1>${esc(job.message_kid)}</h1>` : '<h1>The code right now</h1>'}<span class="sub">${sub}</span></div>`;
   const actions = `<div class="actions"><button class="primary wide" data-act="home">Try something else</button>${n ? '<button class="ghost" data-act="undo">Undo</button>' : ''}</div>`;
   const twk = tweakable();
-  const foot = `<div class="codefoot"><span>Tap a line to ask about it. The highlighted numbers are the ones you can change yourself. ${twk ? `<button class="try-it" data-act="tweak" data-id="${esc(twk.id)}">Try it</button>` : ''}</span>
+  const foot = `<div class="codefoot"><span>Tap a line to ask about it. The highlighted numbers are the ones you can change yourself. ${twk ? `<button class="try-it" data-act="tweak" data-id="${esc(twk.id)}">Change the numbers</button>` : ''}</span>
       <button data-act="editor">Level 3: edit all the code</button></div>`;
   // An open explanation takes the whole page: one column, the lines embedded under each step
   // (owner, 2026-10-31: no side bar to correlate with). The page scrolls as a whole here.
@@ -475,24 +484,35 @@ function done() {
 function tweak() {
   const t = S.tweak;
   const name = esc(boxName());
-  const controls = t.behaviour.tweakables.map((tw) => {
+  const control = (tw) => {
     const id = 'tw-' + tw.name, v = t.values[tw.name];
+    const hint = tw.hint ? `<div class="hint">${esc(tw.hint)}</div>` : '';
     if (tw.options) {
       const opts = tw.options.map((o) => `<option value="${esc(o)}" ${String(o) === String(v) ? 'selected' : ''}>${esc(o)}</option>`).join('');
-      return `<div class="slider"><label for="${id}"><span>${esc(tw.label || tw.name)}</span><output data-testid="val-${esc(tw.name)}">${esc(v)}</output></label><select id="${id}" data-tw="${esc(tw.name)}">${opts}</select></div>`;
+      return `<div class="slider"><label for="${id}"><span>${esc(tw.label || tw.name)}</span><output data-testid="val-${esc(tw.name)}">${esc(v)}</output></label>${hint}<select id="${id}" data-tw="${esc(tw.name)}">${opts}</select></div>`;
     }
     const [min, max] = tw.range || [tw.min, tw.max];
-    return `<div class="slider"><label for="${id}"><span>${esc(tw.label || tw.name)}</span><output data-testid="val-${esc(tw.name)}">${esc(v)}</output></label>
+    return `<div class="slider"><label for="${id}"><span>${esc(tw.label || tw.name)}</span><output data-testid="val-${esc(tw.name)}">${esc(v)}</output></label>${hint}
       <input id="${id}" type="range" min="${esc(min)}" max="${esc(max)}" step="${esc(tw.step || 1)}" value="${esc(v)}" data-tw="${esc(tw.name)}"></div>`;
-  }).join('');
-  const src = S.sketch?.source || '';
-  const missing = t.behaviour.tweakables.filter((tw) => !new RegExp(`\\b${tw.name}\\b`).test(src));
-  const setLine = missing.length ? `<span class="cm">// your numbers: ${missing.map((tw) => `${esc(tw.name)} = `).join('').slice(0, 0)}${missing.map((tw) => `${esc(tw.name)} = <span class="set">${esc(t.values[tw.name])}</span>`).join(', ')}</span>\n` : '';
+  };
+  let controls, code;
+  if (t.behaviour.numbers) {
+    // the box's own numbers: grouped by file, the live code is each file that has markers
+    const files = t.behaviour.files.filter((f) => f.tweakables.length);
+    controls = files.map((f) => `<div class="lead">${esc(f.name)}</div>${f.tweakables.map(control).join('')}`).join('');
+    code = files.map((f) => `<div class="lead">${esc(f.name)}</div><pre>${highlight(f.source, t.values)}</pre>`).join('');
+  } else {
+    controls = t.behaviour.tweakables.map(control).join('');
+    const src = S.sketch?.source || '';
+    const missing = t.behaviour.tweakables.filter((tw) => !new RegExp(`\\b${tw.name}\\b`).test(src));
+    const setLine = missing.length ? `<span class="cm">// your numbers: ${missing.map((tw) => `${esc(tw.name)} = <span class="set">${esc(t.values[tw.name])}</span>`).join(', ')}</span>\n` : '';
+    code = `<div class="lead">The code, live</div><pre>${setLine}${highlight(src, t.values)}</pre>`;
+  }
   return `${header({ back: 'home', title: `${esc(t.behaviour.title)} · Level 2: change the numbers`, chips: false })}<main>
     <section class="col6"><p class="sub">Slide these and watch the code change on the right. The ${name} can't be hurt — every number has a safe limit.</p>
       ${controls}
       <div class="actions"><button class="primary wide" data-act="send" ${dis()}>Send to ${name}</button><button class="ghost" data-act="resetnumbers">Reset numbers</button></div></section>
-    <aside class="col6" style="gap:12px"><div class="lead">The code, live</div><pre>${setLine}${highlight(src, t.values)}</pre>
+    <aside class="col6" style="gap:12px">${code}
       <div class="summary"><strong style="color:var(--ink)">What it will do:</strong> ${esc(t.behaviour.description)}</div></aside></main>`;
 }
 function editor() {
@@ -552,7 +572,7 @@ async function refresh() {
   }
   if (!S.boxes.length) S.boxes = await api('/boxes').catch(() => []);
   if (S.status.box) {
-    [S.behaviours, S.sketch] = await Promise.all([api('/behaviours').catch(() => []), api('/sketch/current').catch(() => null)]);
+    [S.behaviours, S.sketch, S.numbers] = await Promise.all([api('/behaviours').catch(() => []), api('/sketch/current').catch(() => null), api('/tweakables').then((r) => r.files).catch(() => null)]);
   }
 }
 async function startJob(kind, path, body, asked) {
@@ -621,7 +641,7 @@ function connectEvents() {
   es.onerror = () => { es.close(); setTimeout(connectEvents, 3000); };
 }
 function openTweak(id) {
-  const b = S.behaviours.find((x) => x.id === id);
+  const b = id === 'numbers' ? numbersItem() : S.behaviours.find((x) => x.id === id);
   if (!b) return;
   S.tweak = { behaviour: b, values: Object.fromEntries(b.tweakables.map((tw) => [tw.name, tw.value])) };
   S.screen = 'tweak';
@@ -657,7 +677,10 @@ const ACTIONS = {
   reset: () => startJob('reset', '/reset', {}, 'Back to how it came'),
   tweak: (id) => openTweak(id),
   resetnumbers: () => openTweak(S.tweak.behaviour.id),
-  send: () => { const label = `${S.tweak.behaviour.title}, with my numbers`; startJob('flash', '/flash/behaviour', { id: S.tweak.behaviour.id, tweakables: S.tweak.values, label }, label); },
+  send: () => {
+    if (S.tweak.behaviour.numbers) { startJob('flash', '/flash/numbers', { values: S.tweak.values }, 'My numbers'); return; }
+    const label = `${S.tweak.behaviour.title}, with my numbers`; startJob('flash', '/flash/behaviour', { id: S.tweak.behaviour.id, tweakables: S.tweak.values, label }, label);
+  },
   editor: () => { S.editor = S.sketch?.source || ''; S.screen = 'editor'; render(); },
   sendsketch: () => startJob('flash', '/flash/sketch', { source: editorText() }, 'My own code'),
   concept: async (id) => { S.concept = await api('/concepts/' + id).catch(() => null); render(); },

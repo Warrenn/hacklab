@@ -18,6 +18,7 @@ MARKER = re.compile(r"///\s*(\{.*\})\s*$")
 LITERAL = re.compile(r"\b(true|false)\b|-?\d+(?:\.\d+)?")
 DECL = re.compile(r"\b([A-Za-z_]\w*)\s*=\s*$")
 CALL = re.compile(r"\b([A-Za-z_]\w*)\s*\(\s*$")
+DEFINE = re.compile(r"#define\s+([A-Za-z_]\w*)\s+$")  # #define NAME 130
 
 
 class TemplateError(ValueError):
@@ -108,7 +109,7 @@ def find_tweakables(source: str) -> list[Tweakable]:
 
 
 def _guess_name(before: str, n: int) -> str:
-    m = DECL.search(before) or CALL.search(before)
+    m = DECL.search(before) or CALL.search(before) or DEFINE.search(before)
     return m.group(1) if m else f"tweak_{n}"
 
 

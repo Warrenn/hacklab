@@ -131,7 +131,7 @@ test('Tweak sliders are bound to the behaviour ranges, clamp, and Reset restores
   const name = await slider.getAttribute('data-tw');
   const max = await slider.getAttribute('max');
   const initial = await slider.inputValue();
-  await expect(page.locator(`label[for="tw-${name}"] span`).first()).not.toHaveText(name); // kid label, not the variable
+  await expect(page.locator(`label[for="tw-${name}"]`)).toBeVisible();   // the box's own numbers keep their code names (the hint explains them)
   await slider.fill(max);
   await expect(page.getByTestId(`val-${name}`)).toHaveText(max);
   await expect(page.locator('pre')).toContainText(max); // live code shows the value
@@ -472,7 +472,7 @@ test('Curious? is always on the code page, and nothing that acts looks like a hy
   expect(await chips.count()).toBeGreaterThanOrEqual(3);
   await chips.nth(2).click();
   await expect(page.locator('.explain.warm')).toBeVisible();
-  for (const name of ['Try it', 'Level 3: edit all the code', 'What does this code do?', 'How does the whole thing work?']) await noLinkLook(name);
+  for (const name of ['Change the numbers', 'Level 3: edit all the code', 'What does this code do?', 'How does the whole thing work?']) await noLinkLook(name);
   await page.getByRole('button', { name: 'Try something else' }).click();
   await page.getByPlaceholder(/shake its head/).fill('which key');
   await page.getByRole('button', { name: 'Send' }).click();
@@ -511,6 +511,32 @@ test('picking lines keeps the code scroll, works in any order, and a further tap
   await lines.nth(17).click();
   await lines.nth(17).click();                                                            // the same line again: nothing picked
   await expect(page.locator('pre .ln.sel')).toHaveCount(0);
+});
+
+test('Level 2 on the box\'s own code: Change the numbers shows the IDE markers from every file, previews live, sends', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  await page.getByRole('button', { name: 'Show me the code' }).click();
+  await expect(page.getByRole('button', { name: 'Try it' })).toHaveCount(0);                   // renamed
+  await page.getByRole('button', { name: 'Change the numbers' }).click();
+  await expect(page.getByText(/Level 2: change the numbers/)).toBeVisible();
+  const speed = page.locator('input[data-tw="yawPrecision"]');                                   // a CrunchLabs marker in the Turret's own code
+  await expect(speed).toBeVisible();
+  await expect(page.locator('.hint').filter({ hasText: /time in milliseconds that the YAW motor/ })).toBeVisible();   // the author's comment as the hint
+  await speed.fill('500');
+  await expect(page.getByTestId('val-yawPrecision')).toHaveText('500');
+  await expect(page.locator('pre .set').filter({ hasText: '500' })).toBeVisible();              // live code shows the new number
+  await page.getByRole('button', { name: /^Send to/ }).click();
+  await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
+  await page.getByRole('button', { name: 'Try something else' }).click();
+  await expect(page.getByText('My numbers', { exact: true })).toBeVisible();                     // the Home card names the change
+  // the synthesizer keeps its numbers in config.h: they show too, grouped by file
+  await brand(page).click();
+  await page.getByRole('button', { name: 'Laser Synthesizer', exact: true }).click();
+  await page.getByRole('button', { name: 'Show me the code' }).click();
+  await page.getByRole('button', { name: 'Change the numbers' }).click();
+  await expect(page.getByText('config.h', { exact: true }).first()).toBeVisible();
+  await expect(page.locator('input[data-tw="TOUCHPAD_X_MIN"]')).toBeVisible();
+  expect(await page.locator('input[data-tw]').count()).toBeGreaterThan(20);
 });
 
 test('the header box button (drawing, name, state) and the Hack Lab mark both lead to the picker', async ({ page }) => {

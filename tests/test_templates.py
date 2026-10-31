@@ -83,3 +83,13 @@ def test_label_is_our_extension_and_passes_through():
     api = [t.to_api() for t in find_tweakables(src)]
     assert api[0]["label"] == "How many shakes"
     assert "label" not in api[1]
+
+
+def test_a_define_marker_takes_the_macro_name():
+    # the CrunchLabs config.h files mark #define values (P8 round 4)
+    (t,) = find_tweakables(
+        '#define TOUCHPAD_X_MIN 130        // Minimum X -- ///{"min":100,"max":200}\n'
+    )
+    assert t.name == "TOUCHPAD_X_MIN" and t.value == 130 and t.hint == "Minimum X"
+    out = render('#define TOUCHPAD_X_MIN 130 ///{"min":100,"max":200}\n', {"TOUCHPAD_X_MIN": 150})
+    assert out.startswith("#define TOUCHPAD_X_MIN 150 ")

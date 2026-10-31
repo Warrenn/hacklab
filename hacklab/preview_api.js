@@ -14,7 +14,8 @@
   const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
   const locked = () => source === 'remote' && !st.helping;
   const render = (src, values) => Object.entries(values || {}).reduce(
-    (s, [name, v]) => s.replace(new RegExp('(\\b' + name + '\\s*=\\s*)[-\\d.]+'), '$1' + v), src);
+    (s, [name, v]) => s.replace(new RegExp('(\\b' + name + '\\s*=\\s*)(-?[\\d.]+f?|true|false)'), '$1' + v)
+                       .replace(new RegExp('(#define\\s+' + name + '\\s+)(-?[\\d.]+f?)'), '$1' + v), src);
   const EXPLANATION = { title: 'The box waits, then acts', story: ['Think of the box as a dog that sits very still, listening for a whistle.', 'Every key on the remote is a different whistle. When one arrives, the code looks it up and runs the matching trick, then goes back to listening.'], steps: [{ label: 'Wait', from_line: 1, to_line: 3, detail: 'loop() runs round and round, checking for a key.' }, { label: 'Hear a key', from_line: 4, to_line: 6, detail: 'The IR eye turns the flash of light into a number.' }, { label: 'Pick the trick', from_line: 7, to_line: 9, detail: 'switch matches the number to one case.' }, { label: 'Do it', from_line: 10, to_line: 12, detail: 'A helper function moves a servo for a short moment.' }], metaphor: 'A servo is like a tap: open it for a second and water runs, then close it.', watch_for: 'Press 7 and count how many times it shakes.' };
   function runJob(kind, { fail = false, prompts = [], sketch = null, note = '', clarify = false, explanation = null, go = false } = {}) {
     const id = 'preview-' + (++st.seq);
@@ -75,6 +76,11 @@
       const plan = st.jobs[body.job_id];
       if (!plan || plan.answer !== 'ready') return json({ detail: 'That idea is gone. Say it again.' }, 409);
       return json({ job_id: runJob('ask', { ...plan.held, go: true }) });
+    }
+    if (path === '/tweakables') return json({ files: box.files || [] });
+    if (path === '/flash/numbers') {
+      const main = (box.files || []).find((f) => f.name.endsWith('.ino'));
+      return json({ job_id: runJob('flash', { sketch: render(main ? main.source : vs()[0].source, body.values), note: 'My numbers' }) });
     }
     if (path === '/flash/behaviour') {
       const src = box.sketches[body.id]; if (!src) return json({ detail: 'No such trick.' }, 404);

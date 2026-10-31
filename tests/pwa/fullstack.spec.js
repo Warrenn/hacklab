@@ -103,7 +103,7 @@ test('changing the numbers renders the chosen value into the flashed sketch, cla
   await pickTurret(page);
   await page.getByRole('button', { name: 'Shake its head no' }).click();
   await expect(doneScreen(page)).toBeVisible({ timeout: 30000 });
-  await page.getByRole('button', { name: 'Try it' }).click();
+  await page.getByRole('button', { name: 'Change the numbers' }).click();                 // the just-flashed trick's own Level 2
   await expect(page.getByText('Level 2: change the numbers')).toBeVisible();
   const shakes = page.getByLabel(/How many shakes/);
   await expect(shakes).toHaveAttribute('max', '10');
@@ -163,6 +163,21 @@ test('discussion: the recorded clarify answer asks a question; the reply (with h
   await page.getByRole('button', { name: 'Go!' }).click();
   await expect(doneScreen(page)).toBeVisible({ timeout: 30000 });
   await expect(page.locator('pre')).toContainText('IrReceiver.decode()');
+});
+
+test('Level 2 on the Turret\'s own code: a CrunchLabs number is changed, compiled for real and stored', async ({ page }) => {
+  await pickTurret(page);
+  await page.getByRole('button', { name: 'Show me the code' }).click();
+  await page.getByRole('button', { name: 'Change the numbers' }).click();
+  await page.locator('input[data-tw="yawPrecision"]').fill('500');
+  await page.getByRole('button', { name: /^Send to/ }).click();
+  await expect(doneScreen(page)).toBeVisible({ timeout: 60000 });
+  const versions = fs.readdirSync(path.join(dataDir, 'ir-turret', 'versions')).sort();
+  const latest = versions[versions.length - 1];
+  const dir = fs.readdirSync(path.join(dataDir, 'ir-turret', 'versions', latest)).find((f) => fs.statSync(path.join(dataDir, 'ir-turret', 'versions', latest, f)).isDirectory());
+  const ino = fs.readdirSync(path.join(dataDir, 'ir-turret', 'versions', latest, dir)).find((f) => f.endsWith('.ino'));
+  expect(fs.readFileSync(path.join(dataDir, 'ir-turret', 'versions', latest, dir, ino), 'utf8')).toContain('int yawPrecision = 500;');
+  expect(JSON.parse(fs.readFileSync(path.join(dataDir, 'ir-turret', 'versions', latest, 'meta.json'), 'utf8')).note).toBe('My numbers');
 });
 
 test('explanations come from the recorded model answers and are cached per version', async ({ page }) => {

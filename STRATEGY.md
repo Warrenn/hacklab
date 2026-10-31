@@ -2139,7 +2139,7 @@ release 0.8.0, live on the Pi (synth sliders).
 
 ## Progress — P8 round 4
 - [x] Step 1 — Tweakable.hint (author's comment), GET /api/tweakables (every file of the current version, main first), POST /api/flash/numbers (renders each file's own names into a copy, 422 on unknown, note "My numbers"); test box stock carries markers in stock.ino + config.h; tests/test_numbers.py — completed 2026-10-31
-- [ ] Step 2 — Tweak screen on the box's own numbers, entry points, pwa + full stack
+- [x] Step 2 — S.numbers loads with the box; numbersItem() behind "Change the numbers" (code footer, Offline card) when no just-flashed trick has sliders; Tweak screen groups sliders by file with the author's hint and shows each file live (#define and true/false highlighted; #define markers take the macro name); Send posts /flash/numbers; preview stand-in mirrors; pwa (Turret yawPrecision, synth config.h) + full stack (real compile, stored yawPrecision = 500) — completed 2026-10-31
 - [ ] Step 3 — preview v20, release 0.8.0 live on the Pi
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
