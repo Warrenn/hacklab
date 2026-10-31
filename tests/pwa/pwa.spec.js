@@ -407,6 +407,22 @@ test('picking another box starts fresh: no discussion, draft or plan from the la
   await expect(page.getByPlaceholder(/shake its head/)).toBeVisible();
 });
 
+test('a box picture that fails to load (app restarting) is retried until it shows', async ({ page }) => {
+  const refused = {};
+  await page.route('**/static/boxes/*.svg', (route) => {
+    const u = route.request().url().split('?')[0];
+    refused[u] = (refused[u] || 0) + 1;
+    return refused[u] <= 2 ? route.abort('connectionrefused') : route.continue();   // the first two tries fail
+  });
+  await openPicker(page, homeUrl);
+  const imgs = page.locator('.boxcard img');
+  await expect(imgs).toHaveCount(3);
+  for (let i = 0; i < 3; i++) {
+    await expect.poll(() => imgs.nth(i).evaluate((el) => el.naturalWidth), { timeout: 15000 }).toBeGreaterThan(0);
+  }
+  expect(Object.keys(refused).some((u) => /synthesizer\.svg/.test(u))).toBe(false);          // no guessed fallback file
+});
+
 test('the header chip is status; the Hack Lab mark is the way back to the picker', async ({ page }) => {
   await pickTurret(page, homeUrl);
   await expect(page.getByText('IR Turret · plugged in')).toBeVisible();

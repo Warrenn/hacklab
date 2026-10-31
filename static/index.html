@@ -342,12 +342,20 @@ function howItWorks() {
 }
 
 // ---------- screens ----------
+// A picture drawn while the Pi was restarting (a deploy) fails once and would stay broken:
+// ask again, fresh, with growing pauses (1+2+3+4+5 s).
+function retryPic(img) {
+  const n = (Number(img.dataset.try) || 0) + 1;
+  if (n > 5) return;
+  img.dataset.try = n;
+  setTimeout(() => { img.src = img.dataset.src + '?r=' + n; }, 1000 * n);
+}
 function picker() {
   const cards = S.boxes.map((b) => {
     const sel = b.id === S.picked;
     return `<button class="boxcard ${sel ? 'sel' : ''}" data-act="pick" data-id="${esc(b.id)}" aria-pressed="${sel}" ${dis(S.busy)}>
       <div class="boxname">${esc(b.name)}</div>
-      <div class="photo"><img alt="" src="${esc(b.picture)}" onerror="this.onerror=null;this.src='/static/boxes/${esc(b.id)}.svg'"></div></button>`;
+      <div class="photo"><img alt="" src="${esc(b.picture)}" data-src="${esc(b.picture)}" onerror="retryPic(this)"></div></button>`;
   }).join('');
   return `${header({ chips: false })}<main style="display:flex;flex-direction:column;gap:28px;padding:36px 48px">
     <div><h1>Which box is plugged in?</h1><p class="sub" style="margin-top:8px" role="status">${S.busy ? 'Getting ready' : 'Plug the USB cable into the box you want to play with, then tap it here.'}</p></div>
