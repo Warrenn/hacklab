@@ -2065,6 +2065,26 @@ snippet on the iPad). A snippet shows about 14 lines and scrolls inside.
 - [x] Step 6 — live on the Pi the Turret's explanation came back with 7 steps, the shape allowed 6, and the validation error was treated as an outage (helper away 10 min). Steps allow up to 8 (persona still asks 3-6); a wrong-shaped answer fails with "The AI helper got muddled. Ask again." and never marks the helper away, in both the explain and the ask paths; logged as kind shape. Unit tests; 272 — completed 2026-10-31 (release 0.7.12 below)
 - [x] Step 7 — release 0.7.12 on the Pi (healthy, helper back); live: the Turret's whole-sketch explanation in 14 s, six ranged steps, the 35-line snippet capped at 328 px and scrolling — completed 2026-10-31
 
+## P8 round 3i — the header box control is a button again (owner's note 2026-10-31, approved by default)
+
+Owner: rescind the chip-as-status change; the box control is a button that
+opens the picker, it must look like one (border, colours that say what it
+does), it shows the box's SVG drawing, and the Hack Lab mark keeps working.
+
+Design: `button.boxbtn` in the header (`data-act="picker"`, aria-label
+"Change box: <name>, plugged in|not plugged in"): the box's small drawing
+(object-fit contain, retryPic on error), "<name> · plugged in", and an arrow;
+2 px border; teal face when the board is plugged in, amber when not. The
+brand button stays. Hidden on the picker itself (as before). Decision log row
+(this reverses the 2026-10-31 "chip is status" entry). Test: the header button
+has the box picture, a border, the state words, and opens the picker; so does
+the brand.
+Steps: 1 red -> green; 2 preview v18, release 0.7.13 on the Pi.
+
+## Progress — P8 round 3i
+- [x] Step 1 — button.boxbtn in the header: drawing (retryPic), "<name> · plugged in", arrow, 2 px border, teal / amber faces, aria-label "Change box: …"; hidden on the picker; brand unchanged; pwa test; 63 pw on WebKit + Chromium; decision log — completed 2026-10-31
+- [ ] Step 2 — preview v18, release 0.7.13 live on the Pi
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the

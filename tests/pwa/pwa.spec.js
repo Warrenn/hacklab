@@ -73,7 +73,7 @@ test('box picker leads to Home when the AI helper is here', async ({ page }) => 
   await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible();
   await expect(page.getByText('AI helper is here')).toBeVisible();
   await expect(page.getByText('IR Turret · plugged in')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Change box' })).toHaveCount(0);   // owner: the Hack Lab mark is the way back
+  await expect(page.getByRole('button', { name: 'Change box', exact: true })).toHaveCount(0);   // no bare label; the box button and the mark lead back
   await expect(brand(page)).toBeVisible();
   await expect(page.getByText('Try one of these')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Undo last change' })).toBeVisible();
@@ -513,14 +513,25 @@ test('picking lines keeps the code scroll, works in any order, and a further tap
   await expect(page.locator('pre .ln.sel')).toHaveCount(0);
 });
 
-test('the header chip is status; the Hack Lab mark is the way back to the picker', async ({ page }) => {
+test('the header box button (drawing, name, state) and the Hack Lab mark both lead to the picker', async ({ page }) => {
   await pickTurret(page, homeUrl);
-  await expect(page.getByText('IR Turret · plugged in')).toBeVisible();
-  await expect(page.getByRole('button', { name: /plugged in/ })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Change box' })).toHaveCount(0);
-  await brand(page).click();
+  const boxBtn = page.getByRole('button', { name: /Change box: IR Turret, plugged in/ });
+  await expect(boxBtn).toBeVisible();
+  await expect(boxBtn).toContainText('IR Turret · plugged in');
+  await expect(boxBtn.locator('img')).toHaveAttribute('src', '/static/boxes/ir-turret.svg');   // the box's drawing
+  await expect.poll(() => boxBtn.locator('img').evaluate((el) => el.naturalWidth)).toBeGreaterThan(0);
+  const face = await boxBtn.evaluate((el) => { const c = getComputedStyle(el); return { border: parseFloat(c.borderTopWidth), bg: c.backgroundColor, color: c.color }; });
+  expect(face.border).toBeGreaterThan(0);                                                        // looks like a button
+  expect(face.bg).not.toBe('rgba(0, 0, 0, 0)');
+  await expect(page.getByText('Change box', { exact: true })).toHaveCount(0);                   // no label, the control is self-evident
+  await boxBtn.click();
   await expect(page.getByRole('heading', { name: 'Which box is plugged in?' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'IR Turret', exact: true })).toHaveAttribute('aria-pressed', 'true');  // the current box is marked
+  await expect(page.getByRole('button', { name: /Change box:/ })).toHaveCount(0);               // not on the picker itself
+  await page.getByRole('button', { name: 'IR Turret', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible();
+  await brand(page).click();                                                                     // the mark still works
+  await expect(page.getByRole('heading', { name: 'Which box is plugged in?' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'IR Turret', exact: true })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('the code page explains itself: the explanation is one column with the lines embedded under each step', async ({ page }) => {
