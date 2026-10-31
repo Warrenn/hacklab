@@ -627,9 +627,9 @@ def create_app(
             try:
                 while not await request.is_disconnected():
                     try:
-                        yield format_sse(await asyncio.wait_for(q.get(), timeout=15))
+                        yield format_sse(await asyncio.wait_for(q.get(), timeout=cfg.sse_ping))
                     except TimeoutError:
-                        yield ": ping\n\n"
+                        yield format_sse({"type": "ping"})  # a real event: the page can time it
             finally:
                 runner.unsubscribe(q)
 

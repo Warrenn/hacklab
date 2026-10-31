@@ -22,6 +22,7 @@ class Config:
     data_dir: Path = field(default_factory=lambda: Path("data"))
     fake_board: bool = False
     watch_interval: float = 1.0  # seconds between serial device checks (plug/unplug push)
+    sse_ping: float = 15.0  # seconds between ping events on /api/events (the page times them)
     allowed_hosts: list[str] = field(default_factory=list)  # extra Host names besides the built-ins
     model: str = "claude-sonnet-5-5"
     api_key: str | None = None

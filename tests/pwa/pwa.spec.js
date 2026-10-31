@@ -347,7 +347,7 @@ test('a question from the AI helper opens a discussion the kid can answer', asyn
   const chat = page.locator('.chat');
   await expect(chat).toContainText('which key makes it dance');
   await expect(chat).toContainText('Which key on the remote should start it?', { timeout: 15000 });
-  await expect(page.getByRole('button', { name: 'Go!' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeHidden();
   await expect(page.getByPlaceholder('Your answer')).toBeVisible();
   await askAndGo(page, 'key 5');
   await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
@@ -360,13 +360,13 @@ test('the ask box keeps a half-typed request through re-renders, hides the sugge
   await pickTurret(page, homeUrl);
   const box = page.locator('#ask');                                                  // its placeholder changes once the discussion opens
   await expect(page.getByText('Try one of these')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Go!' })).toBeDisabled();           // nothing to go with yet
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeHidden();           // nothing to go with yet
   await box.fill('Make it spin\nthen stop');                                          // multiline is fine
   await expect(page.getByText('Try one of these')).toBeHidden();                      // not relevant while typing
   // the 20 s refresh and every board status event rebuild the screen: the draft must survive
   await page.evaluate(() => refresh().then(render));
   await expect(box).toHaveValue('Make it spin\nthen stop');
-  await expect(page.getByRole('button', { name: 'Go!' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeHidden();
   await page.getByRole('button', { name: 'Send' }).click();
   await expect(page.locator('.chat')).toContainText('Make it spin');
   await expect(page.locator('.chat')).toContainText('I know what to do', { timeout: 15000 });
@@ -375,7 +375,7 @@ test('the ask box keeps a half-typed request through re-renders, hides the sugge
   await expect(go).toBeEnabled();
   await expect(box).toHaveValue('');
   await box.fill('and faster');                                                      // more words: the plan is stale
-  await expect(go).toBeDisabled();
+  await expect(go).toBeHidden();                                                           // Go! exists only when the helper is ready
   await box.fill('');
   await expect(go).toBeEnabled();
   await go.click();
@@ -417,7 +417,7 @@ test('picking another box starts fresh: no discussion, draft or plan from the la
   await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible();
   await expect(page.locator('.chat')).toHaveCount(0);                                        // the Forklift's talk is gone
   await expect(page.locator('#ask')).toHaveValue('');
-  await expect(page.getByRole('button', { name: 'Go!' })).toBeDisabled();                    // and so is its plan
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeHidden();                    // and so is its plan
   await expect(page.getByText('Try one of these')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Shake its head no' })).toBeVisible();      // this box's suggestions
   await expect(page.getByPlaceholder(/shake its head/)).toBeVisible();
@@ -601,6 +601,14 @@ test('Back to how it came ends on the Done screen like every flash, then Home sh
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toHaveCount(0);        // nothing above the stock now
   await page.getByRole('button', { name: 'Try something else' }).click();
   await expect(page.getByText('How it came', { exact: true })).toBeVisible();
+});
+
+test('the page refreshes its status when it comes back to the foreground', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  await expect(page.getByText('IR Turret · plugged in')).toBeVisible();
+  const fetched = page.waitForRequest((r) => r.url().endsWith('/api/status'), { timeout: 5000 });
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));   // iPhone: back from the background
+  await fetched;
 });
 
 test('the header box button (drawing, name, state) and the Hack Lab mark both lead to the picker', async ({ page }) => {
