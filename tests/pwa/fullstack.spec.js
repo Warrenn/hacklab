@@ -45,12 +45,11 @@ test.use({ ...IPAD });
 async function pickTurret(page) {
   await page.goto(url);
   const picker = page.getByRole('heading', { name: 'Which box is plugged in?' });
-  const chip = page.getByRole('button', { name: 'Change box' });
-  await expect(picker.or(chip)).toBeVisible({ timeout: 15000 }); // first render waits for /api/status
-  if (!(await picker.isVisible())) await chip.click();
+  const brand = page.getByRole('button', { name: /Hack Lab/ });
+  await expect(picker.or(brand)).toBeVisible({ timeout: 15000 }); // first render waits for /api/status
+  if (!(await picker.isVisible())) await brand.click();
   await expect(picker).toBeVisible();
-  await page.getByRole('button', { name: 'IR Turret', exact: true }).click();
-  await page.getByRole('button', { name: "Let's go" }).click();
+  await page.getByRole('button', { name: 'IR Turret', exact: true }).click();                   // tap = pick + go
   await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 15000 });
 }
 // The Done screen's heading IS the kid message from the server, so wait for the screen's buttons.

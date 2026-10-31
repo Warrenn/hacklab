@@ -1890,6 +1890,26 @@ Parallelism: all steps touch static/index.html or the ask job -> serial.
 - [x] Step 3 — full stack (recorded sketch golden ends in ready, Go! flashes it; clarify golden gates Go!), preview republished (v6), DESIGN decision log row, API contract (/api/go, answer field) — completed 2026-10-31
 - [x] Step 4 — release 0.7.0 on the Pi (healthy); live on the Pi: ask "Say hello on the serial monitor every second" -> ready with the helper's words and no flash, bogus Go! -> 409, Go! -> version 0001 flashed, Undo -> stock — completed 2026-10-31
 
+## P8 round 3b — no "Change box", no "Let's go" (owner's notes 2026-10-31, approved by default)
+
+Owner: "Change box" is inconsistent with every other call-to-action button
+(those do something); remove it and make the Hack Lab mark the way back to the
+picker. Does the picker need "Let's go"? Proceed when a card is tapped.
+
+Design: the header brand (logo + "Hack Lab") is a button once a box is chosen
+(`data-act="picker"`, aria-label "Hack Lab: pick a box"); the box chip stays a
+status. The picker has no primary button: tapping a card selects the box and
+goes Home; while that runs the cards are disabled and greyed, the tapped card
+keeps the teal border, and the sub line reads "Getting ready". A read-only
+remote viewer sees the cards disabled. Departs from BoxPicker.dc.html and from
+round 2b (owner's request); decision log row. Field checklist wording updated.
+Steps: 1 pwa tests red -> page green (both engines); 2 preview v7, docs,
+release 0.7.1, picker driven on the Pi.
+
+## Progress — P8 round 3b
+- [x] Step 1 — header brand is the button back to the picker (aria-label "Hack Lab: pick a box"), Change box gone, tapping a card picks and goes Home with a greyed locked busy state; 53 pw tests on WebKit + Chromium; DESIGN decision log; field checklist — completed 2026-10-31
+- [ ] Step 2 — preview v7, docs, release 0.7.1 live on the Pi
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the
