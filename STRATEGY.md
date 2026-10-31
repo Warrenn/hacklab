@@ -2169,7 +2169,7 @@ live on the Pi); 3 preview v21, release 0.8.1, live on the Pi.
 ## Progress — P8 round 5
 - [x] Step 1 — hacklab/diff.sketch_diff over every *.ino/*.h, status.changed (real: previous exists and differs; mock: >1 version), explain scope changed with the diff + current code and "why", 409 when nothing changed, soft fail in the job, golden client serves explain-changed; tests/test_changed.py; 281 unit — completed 2026-10-31
 - [x] Step 2 — "What just changed?" chip first in the row when status.changed, same explanation view; stand-in mirrors; three explanation goldens re-recorded live locally incl. explain-changed ("Button 7 Makes the Turret Say No", every step ranged); pwa (mock: hidden on stock, shown after a trick, explains) + full stack (ask -> Go! -> chip -> recorded explanation with snippets); 69 pw, 281 unit — completed 2026-10-31
-- [ ] Step 3 — preview v21, release 0.8.1 live on the Pi
+- [x] Step 3 — preview v21; releases 0.8.1 and 0.8.2 on the Pi (healthy). On the Pi: status.changed false on stock; a Nod yes flash on the Turret gave version 0001 and the diff first came out as 657 lines (main files paired by name: stock.ino vs nod-yes.ino) -> 0.8.2 pairs the main sketch by role, diff now 72 lines of real differences. The full chip -> live explanation run on the Pi was cut short because the owner switched boxes mid-check (not repeated: the owner was using the device); the UI loop is covered by the full-stack test with the live-recorded explain-changed golden — completed 2026-10-31
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
