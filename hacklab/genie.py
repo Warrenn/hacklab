@@ -89,7 +89,15 @@ class Genie:
             f"```\n{self.skeleton}\n```\n"
         )
 
-    def ask(self, request: str, current: Fragments, compile_error: str | None = None):
+    def ask(
+        self,
+        request: str,
+        current: Fragments,
+        compile_error: str | None = None,
+        history: list[dict[str, str]] | None = None,
+    ):
+        """One turn. `history` is the discussion so far ({role: kid|helper, text}), sent as
+        the earlier user/assistant messages so a reply to the helper's question has its context."""
         user = (
             "Current fragments (what the box has now):\n"
             f"params:\n{current.params or '(empty)'}\ncases:\n{current.cases or '(empty)'}\n"
@@ -111,7 +119,16 @@ class Genie:
                     "cache_control": {"type": "ephemeral"},
                 }
             ],
-            messages=[{"role": "user", "content": user}],
+            messages=[
+                *(
+                    {
+                        "role": "user" if t.get("role") == "kid" else "assistant",
+                        "content": t["text"],
+                    }
+                    for t in (history or [])
+                ),
+                {"role": "user", "content": user},
+            ],
             output_format=GenieResult,
             output_config={"effort": self.effort},
         )
@@ -184,7 +201,8 @@ class GoldenGenieClient(FakeGenieClient):
 
     def _parse(self, **kwargs):
         self.calls.append(kwargs)
-        asked = str(kwargs["messages"][0]["content"]).lower()
+        # match on the current ask (the last user message); earlier turns are the discussion
+        asked = str(kwargs["messages"][-1]["content"]).lower()
         hit = next((r for req, r in self.by_request.items() if req in asked), None)
         r = hit or next(r for r in self.by_request.values() if r["kind"] == "sketch")
         usage = SimpleNamespace(

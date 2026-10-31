@@ -13,7 +13,7 @@ import tempfile
 import time
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
@@ -63,8 +63,14 @@ class FlashSketch(BaseModel):
     source: str = Field(max_length=256 * 1024)  # Level 3: a whole sketch, never a dump
 
 
+class Turn(BaseModel):
+    role: Literal["kid", "helper"]
+    text: str = Field(max_length=500)
+
+
 class Ask(BaseModel):
     text: str = Field(min_length=1, max_length=500)
+    history: list[Turn] = Field(default_factory=list, max_length=10)  # the discussion so far
 
 
 # P7b: the appliance answers only for its own names (the kid's browser must not be usable as a
@@ -388,7 +394,9 @@ def create_app(
             raise HTTPException(409, "The AI helper is away right now. Pick a trick instead.")
         payload = {
             "text": text,
+            "history": [t.model_dump() for t in body.history],
             "fail": text.lower().startswith("fail"),  # mock-only: exercises the failure path
+            "clarify": text.lower().startswith("which"),  # mock-only: the helper asks back
             "prompts": [],  # mock-only; the real runner fills prompts from the genie
         }
         return await start("ask", payload, src)

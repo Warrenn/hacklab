@@ -1,0 +1,17 @@
+{
+  "request": "make it move when I press a key",
+  "responses": [
+    {
+      "kind": "clarify",
+      "params": "",
+      "cases": "",
+      "loop": "",
+      "functions": "",
+      "message_kid": "Which key do you want to press, and what should the box do: turn, tilt, nod, shake its head, or fire a dart?",
+      "changed": "",
+      "concepts": [
+        "event"
+      ]
+    }
+  ]
+}

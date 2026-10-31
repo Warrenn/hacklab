@@ -3,7 +3,7 @@
 // helper replaying the recorded goldens (HACKLAB_GENIE=golden). Everything the
 // kid does is verified end to end except the USB cable, which scripts/hil-*.sh
 // cover on the Pi. Run with the machine-wide harness:  pw test tests/pwa
-const { test, expect } = require('@playwright/test');
+const { test, expect, devices } = require('@playwright/test');
 const { spawn } = require('child_process');
 const path = require('path');
 const http = require('http');
@@ -37,7 +37,10 @@ test.beforeAll(async () => {
   url = `http://127.0.0.1:${port}/`;
 });
 test.afterAll(() => { proc && proc.kill(); });
-test.beforeEach(async ({ page }) => page.setViewportSize({ width: 1180, height: 820 }));
+// The kid uses an iPad: emulate one (viewport, touch, Safari UA, scale). The WebKit project is
+// the iPad engine; isMobile is dropped because Firefox refuses it. (Owner hit an issue on the iPad.)
+const { isMobile: _m, defaultBrowserType: _b, ...IPAD } = devices['iPad Pro 11 landscape'];
+test.use({ ...IPAD });
 
 async function pickTurret(page) {
   await page.goto(url);
@@ -143,4 +146,16 @@ test('Level 3: what the kid types in the editor is exactly what gets flashed', a
   const files = fs.readdirSync(path.join(dataDir, 'ir-turret', 'versions', latest), { recursive: true });
   const ino = files.find((f) => String(f).endsWith('.ino'));
   expect(fs.readFileSync(path.join(dataDir, 'ir-turret', 'versions', latest, ino), 'utf8')).toContain('// hello from level 3');
+});
+
+test('discussion: the recorded clarify answer asks a question; the reply (with history) gets a sketch', async ({ page }) => {
+  await pickTurret(page);
+  await page.getByPlaceholder(/shake its head/).fill('make it move when I press a key');  // golden: clarify
+  await page.getByRole('button', { name: 'Go!' }).click();
+  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('.chat')).toContainText(/Which key/);
+  await page.getByPlaceholder('Your answer').fill('key 7, shake its head');
+  await page.getByRole('button', { name: 'Go!' }).click();
+  await expect(doneScreen(page)).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('pre')).toContainText('IrReceiver.decode()');
 });

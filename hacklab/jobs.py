@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 KID_AWAY = "The AI helper is away right now. Pick a trick instead."
 KID_DECLINED = "The AI helper can't help with that one. Pick a trick instead."
+MOCK_QUESTION = "Which key on the remote should start it?"  # mock backend's clarify answer
 KID_GAVE_UP = (
     "The AI helper tried three times and the code would not build. "
     "Try saying it another way, or pick a trick."
@@ -63,6 +64,9 @@ class Job:
     log_ref: str | None = None
     prompts: list[dict[str, str]] = field(default_factory=list)
     sketch_ref: str | None = None
+    answer: str | None = (
+        None  # ask jobs: sketch | clarify | explain (what the helper came back with)
+    )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -73,6 +77,7 @@ class Job:
             "log_ref": self.log_ref,
             "prompts": self.prompts,
             "sketch_ref": self.sketch_ref,
+            "answer": self.answer,
         }
 
 
@@ -90,6 +95,7 @@ class JobRunner(Protocol):
 
 class FakeJobRunner:
     """Walks the stages on a timer. payload["fail"] fails it at compile time;
+    payload["clarify"] answers an ask with a question instead of code;
     payload["prompts"] is attached on success."""
 
     def __init__(self, delay: float = 1.0):
@@ -137,12 +143,20 @@ class FakeJobRunner:
         for stage in STAGES[job.kind]:
             self._set(job, stage)
             await asyncio.sleep(self.delay)
+            if stage == "thinking" and job.payload.get("clarify"):
+                job.answer = "clarify"
+                job.state = "done"
+                job.message_kid = MOCK_QUESTION
+                self._publish(job)
+                return
             if stage == "compiling" and job.payload.get("fail"):
                 job.log_ref = f"{job.id}.log"
                 self._set(job, "failed")
                 return
         job.sketch_ref = f"{job.id}.ino"
         job.prompts = job.payload.get("prompts", [])
+        if job.kind == "ask":
+            job.answer = "sketch"
         if on_done:
             on_done(job)
         self._set(job, "done")
@@ -310,6 +324,7 @@ class RealJobRunner:
         from hacklab.skeleton import assemble
 
         text = job.payload.get("text", "")
+        history = job.payload.get("history") or []
         t0 = time.time()
         src = (
             "tailscale" if job.payload.get("origin") == "remote" else "local"
@@ -326,7 +341,7 @@ class RealJobRunner:
         progress = lambda stage: loop.call_soon_threadsafe(self._set, job, stage)  # noqa: E731
         for attempt in range(1, 4):
             try:
-                result, usage = await asyncio.to_thread(genie.ask, text, current, error)
+                result, usage = await asyncio.to_thread(genie.ask, text, current, error, history)
             except GenieRefused as exc:
                 log.append(f"refused: {exc}")
                 job.log_ref = self._write_log(box, job, "\n".join(log))
@@ -371,6 +386,7 @@ class RealJobRunner:
                     problems
                 )
                 continue
+            job.answer = result.kind
             if result.kind != "sketch":
                 job.prompts = []
                 self._log_ask(box, {**entry, "duration_s": round(time.time() - t0, 1)})

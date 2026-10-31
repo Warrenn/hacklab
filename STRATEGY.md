@@ -1822,8 +1822,8 @@ how-it-works; 4 preview republished; release 0.6.0. Parallelism: all touch
 static/index.html -> serial.
 
 ## Progress — P8 round 2
-- [ ] Step 1 — Undo clarity, three pwa tests
-- [ ] Step 2 — discussion mode
+- [x] Step 1 — Undo clarity: disabled rescue buttons say why; Done hides Undo when there is nothing to undo; one iPad-profile pwa test walks all three Undo paths; browser specs now emulate an iPad (viewport, touch, Safari UA; WebKit project = the iPad engine) — completed 2026-10-31
+- [x] Step 2 — discussion mode: Ask.history (10 turns), genie sends earlier turns as messages, jobs report `answer`, Home chat panel with "Your answer" and "Start over", mock "which..." -> question, recorded clarify golden `clarify-which-key`, golden client matches the current turn — completed 2026-10-31
 - [ ] Step 3 — explanations (code, lines, how it works), auto-hide, Hide code removed
 - [ ] Step 4 — preview republished; release 0.6.0 on the Pi
 

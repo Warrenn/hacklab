@@ -4,7 +4,7 @@
 // without (Offline). PYTHONPATH pins `hacklab` to this checkout; `python -m
 // uvicorn` avoids the venv's console-script launchers (their shebang breaks
 // when the checkout folder is renamed).
-const { test, expect } = require('@playwright/test');
+const { test, expect, devices } = require('@playwright/test');
 const { spawn } = require('child_process');
 const path = require('path');
 const http = require('http');
@@ -40,7 +40,10 @@ test.beforeAll(async () => {
   offlineUrl = `http://127.0.0.1:${p2}/`;
 });
 test.afterAll(() => { home && home.kill(); offline && offline.kill(); });
-test.beforeEach(async ({ page }) => page.setViewportSize({ width: 1180, height: 820 })); // iPad landscape
+// The kid uses an iPad: emulate one (viewport, touch, Safari UA, scale). The WebKit project is
+// the iPad engine; isMobile is dropped because Firefox refuses it. (Owner hit an issue on the iPad.)
+const { isMobile: _m, defaultBrowserType: _b, ...IPAD } = devices['iPad Pro 11 landscape'];
+test.use({ ...IPAD });
 
 // The selected box is server state shared by every test on that server: open
 // the picker through the box chip when a previous test already picked one.
@@ -269,4 +272,53 @@ test('the code view has syntax colours and Level 3 opens a real editor with comp
   await expect(completion).toBeVisible();
   await expect(completion).toContainText('shakeHeadNo');                     // seeded from the sketch's identifiers
   await page.keyboard.press('Escape');
+});
+
+test('Undo: disabled buttons say why, and every Undo path works on the iPad', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  await page.getByRole('button', { name: 'Back to how it came' }).click();           // known clean start
+  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 15000 });
+  // Home: nothing to undo -> the button is disabled and says so
+  await expect(page.getByRole('button', { name: 'Undo last change' })).toBeDisabled();
+  await expect(page.getByText('Nothing to undo yet')).toBeVisible();
+  // the code page: no Undo button at all when there is nothing to undo
+  await page.getByRole('button', { name: 'Show me the code' }).click();
+  await expect(page.getByRole('heading', { name: 'The code right now' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Undo', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Try something else' }).click();
+  // after a trick: Done's Undo works
+  await page.getByRole('button', { name: 'Nod yes' }).click();
+  await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(page.getByText('You asked')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('Nothing changed yet')).toBeVisible();
+  // after a trick: Home's Undo last change works, and the code page's Undo works
+  await page.getByRole('button', { name: 'Nod yes' }).click();
+  await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
+  await page.getByRole('button', { name: 'Try something else' }).click();
+  await expect(page.getByRole('button', { name: 'Undo last change' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Show me the code' }).click();
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('Nothing changed yet')).toBeVisible();
+});
+
+test('a question from the AI helper opens a discussion the kid can answer', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  await page.getByPlaceholder(/shake its head/).fill('which key makes it dance');   // mock: "which..." -> a question back
+  await page.getByRole('button', { name: 'Go!' }).click();
+  await expect(page.getByText('The AI helper is thinking about your idea.')).toBeVisible();
+  // back on Home, with the helper's question and the kid's words in a discussion
+  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 15000 });
+  const chat = page.locator('.chat');
+  await expect(chat).toContainText('which key makes it dance');
+  await expect(chat).toContainText('Which key on the remote should start it?');
+  await expect(page.getByPlaceholder('Your answer')).toBeVisible();
+  await page.getByPlaceholder('Your answer').fill('key 5');
+  await page.getByRole('button', { name: 'Go!' }).click();
+  await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
+  await page.getByRole('button', { name: 'Try something else' }).click();
+  await expect(page.locator('.chat')).toHaveCount(0);                                 // a sketch answer ends the discussion
+  await expect(page.getByPlaceholder(/shake its head/)).toBeVisible();
 });
