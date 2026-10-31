@@ -480,6 +480,39 @@ test('Curious? is always on the code page, and nothing that acts looks like a hy
   await noLinkLook('Start over');
 });
 
+test('picking lines keeps the code scroll, works in any order, and a further tap expands or contracts the range', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  await page.getByRole('button', { name: 'Show me the code' }).click();
+  const pre = page.locator('pre');
+  await expect(pre).toBeVisible();
+  await pre.evaluate((el) => { el.scrollTop = 300; });                                    // lines ~14-30 are in view now
+  const lines = page.locator('pre .ln');
+  const picked = async () => (await page.locator('pre .ln.sel').evaluateAll((els) => els.map((e) => Number(e.dataset.ln)))).join(',');
+  const scrollKept = async () => expect(await pre.evaluate((el) => el.scrollTop)).toBeGreaterThan(250);
+  await lines.nth(19).click();                                                            // line 20 (data-ln is 1-based)
+  await expect(page.getByText(/Line 20 picked/)).toBeVisible();
+  await scrollKept();                                                                     // the panel did not jump to the top
+  await lines.nth(16).click();                                                            // above the first: 17 to 20
+  await expect(page.getByText('Lines 17 to 20 picked.')).toBeVisible();
+  expect(await picked()).toBe('17,18,19,20');
+  await scrollKept();
+  await lines.nth(22).click();                                                            // below the range: expands
+  await expect(page.getByText('Lines 17 to 23 picked.')).toBeVisible();
+  await lines.nth(14).click();                                                            // above the range: expands
+  await expect(page.getByText('Lines 15 to 23 picked.')).toBeVisible();
+  await lines.nth(20).click();                                                            // inside, nearer the end: contracts the end
+  await expect(page.getByText('Lines 15 to 21 picked.')).toBeVisible();
+  await lines.nth(15).click();                                                            // inside, nearer the start: contracts the start
+  await expect(page.getByText('Lines 16 to 21 picked.')).toBeVisible();
+  expect(await picked()).toBe('16,17,18,19,20,21');
+  await scrollKept();
+  await page.getByRole('button', { name: 'Clear' }).click();
+  await expect(page.locator('pre .ln.sel')).toHaveCount(0);
+  await lines.nth(17).click();
+  await lines.nth(17).click();                                                            // the same line again: nothing picked
+  await expect(page.locator('pre .ln.sel')).toHaveCount(0);
+});
+
 test('the header chip is status; the Hack Lab mark is the way back to the picker', async ({ page }) => {
   await pickTurret(page, homeUrl);
   await expect(page.getByText('IR Turret · plugged in')).toBeVisible();
