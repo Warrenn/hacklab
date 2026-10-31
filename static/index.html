@@ -513,8 +513,13 @@ const SCREENS = { picker, home, offline, working, failed, done, tweak, editor, h
 function render() {
   if (cm) { cm.destroy(); cm = null; }
   const hadFocus = document.activeElement?.id === 'ask';
+  const oldPre = document.querySelector('pre');
+  const scroll = oldPre ? [oldPre.scrollTop, oldPre.scrollLeft] : null;
   $app.classList.toggle('fill', S.screen === 'done' && !S.explanation);
   $app.innerHTML = SCREENS[S.screen]();
+  // The code panel keeps its place across rebuilds (a tapped line, a status event, the refresh).
+  const newPre = document.querySelector('pre');
+  if (newPre && scroll) { newPre.scrollTop = scroll[0]; newPre.scrollLeft = scroll[1]; }
   if (S.screen === 'editor') mountEditor();
   const a = document.getElementById('ask');
   if (!a) return;
@@ -644,11 +649,21 @@ const ACTIONS = {
   sendsketch: () => startJob('flash', '/flash/sketch', { source: editorText() }, 'My own code'),
   concept: async (id) => { S.concept = await api('/concepts/' + id).catch(() => null); render(); },
 };
+// Picking lines (owner, 2026-10-31): the selection is kept as {a: low, b: high} (b null for one line).
+// Nothing picked -> that line; one line -> a range in either order (the same line again clears);
+// a range -> a tap outside expands it, a tap inside pulls the nearer end in (ties pull the top).
+function pickLine(s, n) {
+  if (!s) return { a: n, b: null };
+  if (s.b == null) return n === s.a ? null : { a: Math.min(s.a, n), b: Math.max(s.a, n) };
+  if (n < s.a) return { a: n, b: s.b };
+  if (n > s.b) return { a: s.a, b: n };
+  return n - s.a <= s.b - n ? { a: n, b: s.b } : { a: s.a, b: n };
+}
 $app.addEventListener('click', (e) => {
   const ln = e.target.closest('pre .ln');
   if (ln && S.screen === 'done') {
     const n = Number(ln.dataset.ln);
-    S.sel = !S.sel || S.sel.b != null ? { a: n, b: null } : { a: S.sel.a, b: n };
+    S.sel = pickLine(S.sel, n);
     render();
     return;
   }

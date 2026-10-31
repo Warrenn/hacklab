@@ -2012,6 +2012,27 @@ that row. The explaining (two-column) state is unchanged.
 - [x] Step 3 — tweaks: version / change line beside the heading, "The code that does it" and "Curious?" gone, the two code questions are the first chips in the prompt row; pwa tests updated; 61 pw on WebKit + Chromium — completed 2026-10-31
 - [x] Step 4 — preview v13; release 0.7.7 on the Pi (healthy); code page at hacklab.local (Laser Synthesizer): "Version 0000." beside the heading, no labels, chips = the two code questions then the box's three prompts, code 1664 px wide, no page scroll — completed 2026-10-31
 
+## P8 round 3g — picking lines: keep the scroll, ranges in any order, expand / contract (owner's report 2026-10-31, approved by default)
+
+Owner: tapping a line resets the code panel to the top (the screen rebuild
+recreates the `<pre>`); the second tap may be above or below the first; after
+a range, a further tap must expand or contract it.
+
+Design: `render()` keeps the code panel's scrollTop / scrollLeft across
+rebuilds (any rebuild: a tap, a status event, the 20 s refresh). The selection
+is stored normalised as `{a: low, b: high}` (b null for one line). Rules for
+a tap on line n: nothing picked -> line n; one line a picked -> the range
+a..n in either order (n == a clears); a range lo..hi -> n outside it expands
+the nearer end to n, n inside it pulls the nearer end in to n (ties pull the
+top). "Clear" still resets. Test: scroll the panel, tap, scroll kept; tap 6
+then 3 -> 3 to 6; tap 9 -> 3 to 9; tap 1 -> 1 to 9; tap 7 -> 1 to 7 (nearer
+end); tap 2 -> 2 to 7; Clear.
+Steps: 1 red -> green; 2 preview v14, release 0.7.8 on the Pi.
+
+## Progress — P8 round 3g
+- [x] Step 1 — render() keeps the code panel scroll across rebuilds; pickLine(): any order, expand outside, contract inside (nearer end), same line clears; pwa test on visible lines; 63 pw on WebKit + Chromium — completed 2026-10-31
+- [ ] Step 2 — preview v14, release 0.7.8 live on the Pi
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the
