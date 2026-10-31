@@ -1908,7 +1908,7 @@ release 0.7.1, picker driven on the Pi.
 
 ## Progress — P8 round 3b
 - [x] Step 1 — header brand is the button back to the picker (aria-label "Hack Lab: pick a box"), Change box gone, tapping a card picks and goes Home with a greyed locked busy state; 53 pw tests on WebKit + Chromium; DESIGN decision log; field checklist — completed 2026-10-31
-- [ ] Step 2 — preview v7, docs, release 0.7.1 live on the Pi
+- [x] Step 2 — preview v7; release 0.7.1 on the Pi (healthy); real page driven at hacklab.local: no Change box, brand button "Hack Lab: pick a box" opens the picker with the current box marked, no Let's go, card tap -> Getting ready -> Home — completed 2026-10-31
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
