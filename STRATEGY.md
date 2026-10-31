@@ -2101,6 +2101,11 @@ survive the hard reset. Worth a look once the supply is back in place: if
 or cable is marginal (the Pi 3B wants 5 V / 2.5 A). The field checklist says
 so. Not a software item.
 
+Reading 2026-10-31 18:51, after the supply was put back: `throttled=0x50005`,
+106 "Undervoltage detected!" lines in 69 minutes, a further reboot at 17:40.
+That is the supply or the cable being marginal, not the knock: the Pi 3B
+wants 5 V / 2.5 A on a short, thick cable. Owner item.
+
 ## P8 round 4 — Level 2 on the box's own code (owner's ask 2026-10-31, approved by default)
 
 Owner: the Laser Synthesizer and the Omnibot Forklift have no "change the
@@ -2219,7 +2224,7 @@ at the nephew visit; the Turret reset is done by the owner in the app.
 ## Progress — P8 round 6
 - [x] Step 1 — profile.toml [labels] for the Turret (8), synthesizer (29), Forklift (5), merged into /api/tweakables and the preview; changed = the main sketch differs; chip row scrolls; 283 unit, 71 pw; release 0.9.0 on the Pi (Forklift sliders read "Top speed", "Flip motor 1-4"; the AI helper'"'"'s own markers on the current version show with their labels) — completed 2026-10-31
 - [x] Step 2 — POST /api/jobs/{id}/cancel sets cancel_requested, honoured before compile, before upload (Flasher.should_stop), on a model answer, and at every mock stage; 409 when finished or mid-write; Working screen shows Stop while queued/thinking/compiling, Failed says "Stopped. Nothing was changed."; one AI call at a time (ask/go/explain 409 KID_BUSY, flashes unaffected), the page shows the words as a bubble; stand-in mirrors; tests/test_cancel.py + pwa Stop test; 287 unit, 73 pw — completed 2026-10-31 (release 0.9.1 below)
-- [ ] Step 3 — persistent journal: provisioning merged (PR #48); APPLY ON THE PI PENDING the owner's Tailscale SSH re-check (link given in chat 2026-10-31), then `install -m 644 provisioning/systemd/journald-hacklab.conf /etc/systemd/journald.conf.d/hacklab.conf && mkdir -p /var/log/journal && systemctl restart systemd-journald`; stale checkboxes closed and deferrals recorded — 2026-10-31
+- [x] Step 3 — persistent journal applied on the Pi (Storage=persistent, SyncIntervalSec=30s, SystemMaxUse=200M; /var/log/journal populated after a flush, journald active); stale checkboxes closed and deferrals recorded. Tailscale SSH re-check was approved by the owner at 18:49 — completed 2026-10-31
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
