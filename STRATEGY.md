@@ -1927,6 +1927,26 @@ Steps: 1 red -> green; 2 preview v8, release 0.7.2, verified on the Pi.
 - [x] Step 1 — refresh() resets chat/ready/draft when status.box changes; pwa test (Forklift discussion gone after picking the Turret); 55 pw tests on WebKit + Chromium — completed 2026-10-31
 - [x] Step 2 — preview v8; release 0.7.2 on the Pi (healthy); driven live at hacklab.local: a ready discussion and a typed draft on the Laser Synthesizer were gone after picking the Forklift (its own suggestions showed, Go! off), and gone again on the way back; box left on the Laser Synthesizer, stock version — completed 2026-10-31
 
+## P8 round 3d — box pictures heal after a failed load (owner's report 2026-10-31, approved by default)
+
+Owner: "not seeing the svg images". Findings on the Pi: the SVGs are served
+(200, image/svg+xml) and load when asked again; the browser console showed
+ERR_CONNECTION_REFUSED / TIMED_OUT at the moment the picker was drawn, i.e.
+the app was restarting for a deploy (three releases went out while the owner
+was using the page). A picture that fails to load is never retried, so the
+cards keep the broken-image icon until the screen is redrawn. Also the
+`onerror` fallback to `/static/boxes/<id>.svg` was wrong for the synthesizer
+(its file is laser-synth.svg) and could only 404.
+Fix: `onerror` retries the profile's own picture with a cache-busting query
+and growing delays (up to five tries, about 15 s); no id-based fallback.
+Test: the first two requests for each picture are refused, the cards still end
+up with real pictures. Steps: 1 red -> green; 2 preview v9, release 0.7.3,
+checked on the Pi.
+
+## Progress — P8 round 3d
+- [x] Step 1 — retryPic(): up to five cache-busted retries with growing pauses, no id-based fallback; pwa test refuses the first two loads of every picture and sees real pictures; 57 pw tests on WebKit + Chromium — completed 2026-10-31
+- [ ] Step 2 — preview v9, release 0.7.3 live on the Pi
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the
