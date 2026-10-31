@@ -2031,7 +2031,7 @@ Steps: 1 red -> green; 2 preview v14, release 0.7.8 on the Pi.
 
 ## Progress — P8 round 3g
 - [x] Step 1 — render() keeps the code panel scroll across rebuilds; pickLine(): any order, expand outside, contract inside (nearer end), same line clears; pwa test on visible lines; 63 pw on WebKit + Chromium — completed 2026-10-31
-- [ ] Step 2 — preview v14, release 0.7.8 live on the Pi
+- [x] Step 2 — preview v14; release 0.7.8 on the Pi (healthy); driven live at hacklab.local: scroll stayed at 400 px through six taps, 30 then 27 -> 27 to 30, expand to 33 and 25, contract to 31 and 26, Clear — completed 2026-10-31
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
