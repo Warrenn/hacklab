@@ -2002,7 +2002,7 @@ Steps: 1 red -> green; 2 preview v12, release 0.7.6 on the Pi.
 
 ## Progress — P8 round 3f
 - [x] Step 1 — /api/boxes entries carry concepts [{id, question}], the code page falls back to the box's own three, one pill face for Show me the code / Start over / Try it / Level 3 (no underlined text buttons left); tighter rhythm on the viewport-high page; unit + pwa tests; 61 pw on WebKit + Chromium — completed 2026-10-31
-- [ ] Step 2 — preview v12, release 0.7.6 live on the Pi
+- [x] Step 2 — preview v12; release 0.7.6 on the Pi (healthy); code page at hacklab.local on the Laser Synthesizer: Curious? with the box's three questions, Level 3 and the code links with button faces, code 1664 px wide, no page scroll — completed 2026-10-31
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
