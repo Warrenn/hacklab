@@ -1612,7 +1612,7 @@ writing task; an agent hand-off costs more than it saves -> serial, A then B.
 - [x] Step 3 — red-team goldens recorded live on the Pi (10 rt-*: 9 explain, 1 on-mission sketch that compiled; no leaks, links or personal-data asks); test_redteam green — completed 2026-10-31
 - [x] Step 4 — original four goldens re-recorded with the new persona, both sketches compile; no upload/flash wording — completed 2026-10-31
 - [x] Step 5 — README "Safety for a young user", docs/family-card.md, docs/field-checklist.md, DESIGN row (no CI signing) — completed 2026-10-31
-- [ ] Step 6 — release deployed, owner list reported
+- [x] Step 6 — release 0.4.0 deployed and healthy; live ask through the app on the Pi (Forklift) answered as explain and was logged; owner list reported — completed 2026-10-31
 
 ## UI review loop (owner's ask 2026-10-31, approved under standing consent)
 
