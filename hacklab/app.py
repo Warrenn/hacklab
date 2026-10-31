@@ -639,7 +639,11 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     def index():
         page = STATIC_DIR / "index.html"
-        return page.read_text() if page.is_file() else PLACEHOLDER
+        # no-cache: phones (Safari) kept an old page after a release; they must revalidate
+        return HTMLResponse(
+            page.read_text() if page.is_file() else PLACEHOLDER,
+            headers={"Cache-Control": "no-cache"},
+        )
 
     if STATIC_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

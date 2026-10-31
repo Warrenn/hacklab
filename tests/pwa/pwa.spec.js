@@ -60,6 +60,16 @@ async function pickTurret(page, url) {
   await openPicker(page, url);
   await page.getByRole('button', { name: 'IR Turret', exact: true }).click();
 }
+// Undo and Back to how it came end on the Done screen like every flash (owner, 2026-10-31).
+async function freshStock(page) {
+  const reset = page.getByRole('button', { name: 'Back to how it came' });
+  if (await reset.isEnabled().catch(() => false)) {
+    await reset.click();
+    await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 20000 });
+    await page.getByRole('button', { name: 'Try something else' }).click();
+  }
+  await expect(page.getByRole('heading', { name: /^What should the .* do\?$/ })).toBeVisible({ timeout: 20000 });
+}
 // P8 round 3: Send asks the helper; Go! is enabled only once it answers "ready", then flashes.
 async function askAndGo(page, text) {
   await page.getByPlaceholder(/shake its head|Your answer/).fill(text);
@@ -96,7 +106,8 @@ test('asking walks the Working stages over SSE and lands on Done, then Undo', as
   await expect(page.getByRole('button', { name: /What does this code do\?$/ })).toBeVisible();  // (curiosity prompts: full-stack spec)
   await expect(page.locator('pre')).toContainText('void loop');
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });   // ends like every flash
+  await expect(page.getByText('It is back to how it came.')).toBeVisible();
 });
 
 test('a failed job shows the kid message and one next action', async ({ page }) => {
@@ -266,7 +277,9 @@ test('a "Try one of these" button is quoted by its own words and becomes the Hom
   await expect(card).toContainText('Shake its head no');
   await expect(card).toContainText(/Change \d+ of \d+ · just now/);
   await page.getByRole('button', { name: 'Back to how it came' }).click();
-  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('It is back to how it came.')).toBeVisible();
+  await page.getByRole('button', { name: 'Try something else' }).click();
   await expect(card).toContainText('How it came');
   await expect(card).toContainText('Nothing changed yet');
 });
@@ -294,8 +307,7 @@ test('the code view has syntax colours and Level 3 opens a real editor with comp
 
 test('Undo: disabled buttons say why, and every Undo path works on the iPad', async ({ page }) => {
   await pickTurret(page, homeUrl);
-  await page.getByRole('button', { name: 'Back to how it came' }).click();           // known clean start
-  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 15000 });
+  await freshStock(page);                                                              // known clean start
   // Home: nothing to undo -> the button is disabled and says so
   await expect(page.getByRole('button', { name: 'Undo last change' })).toBeDisabled();
   await expect(page.getByText('Nothing to undo yet')).toBeVisible();
@@ -309,9 +321,10 @@ test('Undo: disabled buttons say why, and every Undo path works on the iPad', as
   await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect(page.getByText('You asked')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });   // owner: it must visibly finish
+  await expect(page.getByText('It is back to how it came.')).toBeVisible();
+  await page.getByRole('button', { name: 'Try something else' }).click();
   await expect(page.getByText('Nothing changed yet')).toBeVisible();
-  await expect(page.getByRole('status').filter({ hasText: 'Done! The last change is undone.' })).toBeVisible();   // owner: Home must say it finished
   // after a trick: Home's Undo last change works, and the code page's Undo works
   await page.getByRole('button', { name: 'Nod yes' }).click();
   await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
@@ -319,7 +332,9 @@ test('Undo: disabled buttons say why, and every Undo path works on the iPad', as
   await expect(page.getByRole('button', { name: 'Undo last change' })).toBeEnabled();
   await page.getByRole('button', { name: 'Show me the code' }).click();
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('It is back to how it came.')).toBeVisible();
+  await page.getByRole('button', { name: 'Try something else' }).click();
   await expect(page.getByText('Nothing changed yet')).toBeVisible();
 });
 
@@ -545,8 +560,7 @@ test('Level 2 on the box\'s own code: Change the numbers shows the IDE markers f
 
 test('What just changed? appears only once a change is known, and explains it', async ({ page }) => {
   await pickTurret(page, homeUrl);
-  await page.getByRole('button', { name: 'Back to how it came' }).click().catch(() => {});       // a clean start if an earlier test left a change
-  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 20000 });
+  await freshStock(page);                                                                      // a clean start if an earlier test left a change
   await page.getByRole('button', { name: 'Show me the code' }).click();
   await expect(page.getByRole('heading', { name: 'The code right now' })).toBeVisible();
   await expect(page.getByRole('button', { name: /What just changed\?/ })).toHaveCount(0);        // stock: nothing to compare
@@ -575,21 +589,18 @@ test('Stop ends a job before the box is written; the Failed screen says so', asy
   await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible();
 });
 
-test('Back to how it came finishes with a visible confirmation on Home', async ({ page }) => {
+test('Back to how it came ends on the Done screen like every flash, then Home shows How it came', async ({ page }) => {
   await pickTurret(page, homeUrl);
   await page.getByRole('button', { name: 'Nod yes' }).click();
   await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
   await page.getByRole('button', { name: 'Try something else' }).click();
   await page.getByRole('button', { name: 'Back to how it came' }).click();
   await expect(page.getByText('You asked')).toBeVisible();                                     // the Working screen shows the flash
-  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 20000 });
-  const notice = page.getByRole('status').filter({ hasText: 'Done! The IR Turret is back to how it came.' });
-  await expect(notice).toBeVisible();
-  await expect(page.getByText('How it came', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Shake its head no' }).click();                        // the next action clears it
-  await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 20000 });   // owner (iPhone): a reset must end like a flash
+  await expect(page.getByText('It is back to how it came.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Undo', exact: true })).toHaveCount(0);        // nothing above the stock now
   await page.getByRole('button', { name: 'Try something else' }).click();
-  await expect(page.getByRole('status').filter({ hasText: /back to how it came/ })).toHaveCount(0);
+  await expect(page.getByText('How it came', { exact: true })).toBeVisible();
 });
 
 test('the header box button (drawing, name, state) and the Hack Lab mark both lead to the picker', async ({ page }) => {
