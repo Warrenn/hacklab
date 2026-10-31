@@ -174,9 +174,9 @@ Pi service gets a root-only env file in P5). Each ask is one Messages API call
 box's skeleton (`boxes/<id>/genie/skeleton.ino`, or on the device for boxes
 whose stock code is not in git); the app assembles, compiles (retrying up to 3
 times with the compiler error), flashes and stores the version. Spend is
-logged per call under `data/spend/` and the helper switches off at
-`monthly_cap_usd` (config) until next month; set the same cap on the Console
-workspace. Without hardware: `HACKLAB_BOARD=fake` runs the full stack on the
+logged per call under `data/spend/` (a log, not a cap). The budget lives in one
+place only, the Claude Console workspace spend limit: when it is reached the
+API refuses the call and the helper shows as away until the next month. Without hardware: `HACKLAB_BOARD=fake` runs the full stack on the
 emulated board.
 
 - `scripts/record-golden.py [--compile]` re-records `tests/golden/*.json` live.

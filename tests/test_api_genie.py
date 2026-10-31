@@ -1,4 +1,5 @@
-"""API: ai_available, /api/ask with the genie, cap and away handling."""
+"""API: ai_available, /api/ask with the genie, and away handling (the spend budget lives
+only in the Claude Console; a refused API call puts the helper away)."""
 
 import time
 
@@ -13,13 +14,12 @@ from hacklab.spend import SpendLedger
 from tests.test_genie import golden
 
 
-def make(tmp_path, boxes_dir, responses, api_key="k", cap=10.0):
+def make(tmp_path, boxes_dir, responses, api_key="k"):
     cfg = Config(
         data_dir=tmp_path / "data",
         fake_board=False,
         boxes_dir=boxes_dir,
         api_key=api_key,
-        monthly_cap_usd=cap,
     )
     return TestClient(create_app(cfg, board=FakeBoard(), genie_client=FakeGenieClient(responses)))
 
@@ -52,22 +52,22 @@ def test_no_key_means_helper_away(tmp_path, boxes_dir):
         assert r.status_code == 409 and "away" in r.json()["detail"]
 
 
-def test_cap_reached_disables_the_helper(tmp_path, boxes_dir):
-    from types import SimpleNamespace
-
-    SpendLedger(tmp_path / "data").record(
-        "claude-sonnet-5-5",
-        SimpleNamespace(
-            input_tokens=10_000_000,
-            output_tokens=0,
-            cache_read_input_tokens=0,
-            cache_creation_input_tokens=0,
-        ),
-    )
-    with make(tmp_path, boxes_dir, golden("shake-head-on-7"), cap=5.0) as c:
-        assert c.get("/api/status").json()["ai_available"] is False
+def test_console_spend_limit_error_puts_the_helper_away(tmp_path, boxes_dir):
+    # The Console limit is the only budget: the API refuses (400 invalid_request_error),
+    # the ask fails with the "away" message and the helper reports away afterwards.
+    refused = [{"error": "400 invalid_request_error: usage limit reached"}]
+    with make(tmp_path, boxes_dir, refused) as c:
         c.post("/api/box", json={"id": "testbox"})
+        assert c.get("/api/status").json()["ai_available"] is True
+        job = settle(c, c.post("/api/ask", json={"text": "x"}).json()["job_id"])
+        assert job["state"] == "failed"
+        assert "away" in job["message_kid"].lower()
+        assert c.get("/api/status").json()["ai_available"] is False
         assert c.post("/api/ask", json={"text": "x"}).status_code == 409
+
+
+def test_config_has_no_cap_of_its_own():
+    assert not hasattr(Config(), "monthly_cap_usd")
 
 
 def test_every_ask_is_logged_and_charged(tmp_path, boxes_dir):

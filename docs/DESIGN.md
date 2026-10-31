@@ -30,7 +30,7 @@ The rule that falls out of every scenario below: **there are no irreversible sta
 | Scenario | Must work? | Required behaviour |
 | --- | --- | --- |
 | Claude API unreachable (internet down) | Yes | he can still write code and flash. Helpful message explains why the helper is away. |
-| API spend cap hit | Yes | Same as above: coding and flashing continue, clear message. |
+| Console spend limit reached (API refuses) | Yes | Same as above: coding and flashing continue, clear message. The limit is set once, in the Claude Console; the app has no cap of its own. |
 | Turret unplugged / wrong port | Tolerated | Detect, show help text with a picture of the right port, no state change. |
 | Flash half-completed, turret dead | Tolerated | Detect (board does not re-enumerate), offer one-tap reset to default sketch. |
 | Code compiles but misbehaves (servo jitter) | Tolerated | Reset to default must be fast and obvious, to avoid hardware wear. |
@@ -109,6 +109,7 @@ The Pi cannot tell boxes apart over USB (same chip), so the app needs a "which b
 | 2026-10-28 | Borrow the Hack Pack IDE's levels: Level 1 AI does it (default), Level 2 change the numbers, Level 3 edit all the code (always available, never default). Adopt their ///{"range":\[a,b\]} trailing-comment markers for tweakables. | Vocabulary he already knows from the kit; stock sketches become Level 2 templates with no editing. |
 | 2026-10-28 | Stock sketches are committed: CrunchLabs code is MIT-licensed (verified in the IDE for IR Turret and Laser Synthesizer). | Removes the user-supplied-at-install step; official hacks seed the behaviour library. |
 | 2026-10-28 | Docker is dev-only (arm64 Debian on the Mac, FAKE\_BOARD). No Docker on the Pi. Deploys are signed release tarballs applied by the ops agent via IoT Jobs, with health check and auto-rollback. A set of maintainer scripts covers new box, check, release, deploy, rollback, status, logs. | Same toolchain on Mac and Pi; nothing hand-edited on the device; new boxes are content, not code. |
+| 2026-10-31 | The AI budget has exactly one home: the Claude Console workspace spend limit. The app keeps a spend log but enforces no cap of its own. | Owner: two places to set a budget drift and the wrong one trips first. The API returns 400 `invalid_request_error` when the Console limit is reached (and 429 at the tier cap); the app already treats any API error as "the AI helper is away". |
 
 
 ## Screens

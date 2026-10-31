@@ -337,7 +337,7 @@ CI release build + signing; spare pre-imaged SD.
 **P6 — Laser Synthesizer profile.** Verify hardware on the unit; profile + 3
 behaviours + 1 template; proves the abstraction.
 
-**P7 — Hardening & field checklist.** Spend cap; guardrail red-team; persona
+**P7 — Hardening & field checklist.** Console spend limit set and verified (no app cap; see "Budget: one place only"); guardrail red-team; persona
 polish; family "if broken" card; on-site smoke test; box pictures for picker.
 
 Decision 2026-10-30 — **HTTP only for the MVP** at `http://hacklab.local`
@@ -1501,6 +1501,33 @@ follow-up.
 - [x] Step 4 — owner tested 2026-10-31: still ~15 s. Kernel logged the unplug at 07:33:55, the page re-read status at 07:34:10: the watcher saw the node vanish within 1 s but `arduino-cli board list --discovery-timeout 5s` took 12.7 s on the Pi 3 before the push. Fix below.
 - [x] Step 5 — completed 2026-10-31 (release 0.3.2 on the Pi; 4.5 ms vs 12.7 s; Linux CI fix in PR #17) — ports from sysfs (`/sys/class/tty/tty{USB,ACM}*` -> USB parent's idVendor/idProduct/serial; instant; arduino-cli discovery kept only where sysfs is absent, i.e. the Mac) in release 0.3.2
 - [ ] Step 6 — owner re-tests plug/unplug at hacklab.local (expect ~1 s)
+
+## Budget: one place only (owner's note 2026-10-31, approved under standing consent)
+
+Owner: "I dont want multiple separate locations to configure what the budget
+needs to be we should have one central place that being the claude console."
+The app had a second place, `[ai] monthly_cap_usd` (default 10) in
+config/appliance.toml, gating `ai_available` through the spend ledger.
+
+Verified 2026-10-31 (platform.claude.com/docs/en/api/errors): when usage
+reaches an organization or workspace spend limit set in the Console the API
+returns 400 `invalid_request_error`; the usage tier's monthly cap returns 429
+without `retry-after`. The runner already turns any API error into "the AI
+helper is away" for 10 minutes and the kid sees the Offline screen, so the
+Console limit alone gives the required behaviour (DESIGN robustness table).
+
+Change: delete `monthly_cap_usd` (config, example, appliance.toml, README) and
+`SpendLedger.over_cap`; `ai_available` no longer consults the ledger. The ledger
+stays as a local spend log (`data/spend/<month>.jsonl`, also in `logs.sh`
+bundles). Tests: the cap test becomes "a spend-limit API error puts the helper
+away"; config/spend tests drop the cap. P7's "spend cap" item now reads: set
+and verify the Console limit (owner, in the Console), nothing in the app.
+Parallelism: single small change, serial.
+
+## Progress — budget one place
+- [x] Step 1 — tests (Console-limit error puts the helper away; config has no cap) — completed 2026-10-31
+- [x] Step 2 — remove the app cap (config, app, ledger.over_cap, appliance/example configs, README, DESIGN) — completed 2026-10-31
+- [ ] Step 3 — release 0.3.3 on the Pi
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 

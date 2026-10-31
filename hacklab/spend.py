@@ -51,6 +51,3 @@ class SpendLedger:
         return round(
             sum(json.loads(ln)["usd"] for ln in f.read_text().splitlines() if ln.strip()), 6
         )
-
-    def over_cap(self, cap_usd: float, month: str | None = None) -> bool:
-        return self.month_total(month) >= cap_usd
