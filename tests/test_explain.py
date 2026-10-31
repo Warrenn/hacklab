@@ -11,6 +11,7 @@ from hacklab.app import create_app
 from hacklab.config import Config
 from hacklab.genie import ExplainResult, FakeGenieClient, Genie
 from hacklab.guard import check_text
+from hacklab.jobs import KID_MUDDLED
 from hacklab.profiles import load_boxes
 from tests.test_ask_runner import make, wait_done
 
@@ -127,3 +128,22 @@ def test_api_explain_validates_and_the_mock_backend_answers(tmp_path, boxes_dir)
         assert j["state"] == "done" and j["kind"] == "explain"
         assert j["explanation"]["title"] and j["explanation"]["steps"]
         assert c.get("/api/status").json()["versions_count"] == 1  # nothing flashed
+
+
+def test_explain_result_allows_up_to_eight_steps():
+    # the model sometimes sends 7 steps for a long sketch (seen live); the API does not enforce
+    # list bounds, so the shape is lenient and the persona still asks for 3 to 6
+    eight = {**EXPLANATION, "steps": [EXPLANATION["steps"][0]] * 8}
+    assert len(ExplainResult(**eight).steps) == 8
+
+
+async def test_a_badly_shaped_answer_is_not_an_outage(tmp_path, boxes_dir):
+    nine = {**EXPLANATION, "steps": [EXPLANATION["steps"][0]] * 9}
+    fb, store, runner, client = make(tmp_path, boxes_dir, [nine])
+    job = await wait_done(
+        runner, await runner.submit("explain", {"box": "testbox", "scope": "sketch"})
+    )
+    assert job.state == "failed" and job.message_kid == KID_MUDDLED
+    assert runner.genie_away() is False  # a shape slip must not put the helper away for 10 minutes
+    log = (tmp_path / "data" / "testbox" / "logs" / "asks.jsonl").read_text()
+    assert '"kind": "shape"' in log

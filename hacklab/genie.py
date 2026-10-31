@@ -74,7 +74,7 @@ class ExplainResult(BaseModel):
 
     title: str
     story: list[str] = Field(min_length=1, max_length=4)
-    steps: list[Step] = Field(min_length=1, max_length=6)
+    steps: list[Step] = Field(min_length=1, max_length=8)  # persona asks for 3-6; lenient
     metaphor: str = ""
     watch_for: str = ""
 
