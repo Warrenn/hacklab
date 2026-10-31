@@ -53,6 +53,9 @@ def box_data(root: Path) -> dict:
                     tws = [t.to_api() for t in find_tweakables(f.read_text())]
                 except TemplateError:
                     tws = []
+                for t in tws:
+                    if "label" not in t and t["name"] in b.labels:
+                        t["label"] = b.labels[t["name"]]
                 files.append({"name": f.name, "source": f.read_text(), "tweakables": tws})
         data[b.id] = {
             "files": files,  # Level 2 on the box's own code (the IDE's markers, per file)

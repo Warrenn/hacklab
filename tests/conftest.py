@@ -58,6 +58,7 @@ def write_box(
         'libraries = ["Servo@1.3.0"]\n[board]\n'
         f'fqbn = "{fqbn}"\ncore = "{fqbn.rsplit(":", 1)[0]}"\n'
         f'[stock]\nlocation = "{stock_location}"\nmain = "stock"\n'
+        '[labels]\nspeed = "How fast"\ntop = "The top"\n'  # kid-facing slider names (P8 round 6)
         '[genie]\nskeleton = "genie/skeleton.ino"\n'
         'helpers = ["wave(n): wave n times"]\nkeys = ["ok", "cmd1"]\n'
         + (

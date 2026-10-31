@@ -26,6 +26,14 @@ ask = "print the word hello on the serial monitor every two seconds"
 title = "Drive slower"
 ask = "make the wheels go at half speed"
 
+# Kid-facing names for the sliders (the IDE markers keep their code names in the code).
+[labels]
+maxSpeed = "Top speed"
+flipM1 = "Flip motor 1"
+flipM2 = "Flip motor 2"
+flipM3 = "Flip motor 3"
+flipM4 = "Flip motor 4"
+
 [genie]
 skeleton = "genie/skeleton.ino"   # on the device: data/boxes/omnibot-forklift/genie/skeleton.ino (stock-derived, not in git)
 notes = "This box has no remote-key switch: put every rule in the loop fragment (it runs after the stock drive code each loop, use millis() for timing) and leave cases empty. Keep it short: one or two rules."

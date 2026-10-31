@@ -2171,6 +2171,51 @@ live on the Pi); 3 preview v21, release 0.8.1, live on the Pi.
 - [x] Step 2 — "What just changed?" chip first in the row when status.changed, same explanation view; stand-in mirrors; three explanation goldens re-recorded live locally incl. explain-changed ("Button 7 Makes the Turret Say No", every step ranged); pwa (mock: hidden on stock, shown after a trick, explains) + full stack (ask -> Go! -> chip -> recorded explanation with snippets); 69 pw, 281 unit — completed 2026-10-31
 - [x] Step 3 — preview v21; releases 0.8.1 and 0.8.2 on the Pi (healthy). On the Pi: status.changed false on stock; a Nod yes flash on the Turret gave version 0001 and the diff first came out as 657 lines (main files paired by name: stock.ino vs nod-yes.ino) -> 0.8.2 pairs the main sketch by role, diff now 72 lines of real differences. The full chip -> live explanation run on the Pi was cut short because the owner switched boxes mid-check (not repeated: the owner was using the device); the UI loop is covered by the full-stack test with the live-recorded explain-changed golden — completed 2026-10-31
 
+## P8 round 6 — wrap-up batch (owner's answers 2026-10-31, approved by default)
+
+Owner's decisions on the outstanding list: box photos skipped for now; the
+Turret reset is the owner's (Undo in the app); SD re-image + spare card wait
+for the new card the owner is buying; the Laser Synthesizer is checked on the
+real Pi at the nephew visit; read-only root deferred with the re-image.
+Software to do now: kid-facing slider names; no "What just changed?" for a
+config-only change; the chip row scrolls instead of wrapping; job cancel;
+one-active-ask throttling; persistent journal; housekeeping of stale boxes.
+
+Design:
+1. **Slider names** live in the box profile, not in CrunchLabs' files:
+   `profile.toml [labels]` maps a marker name to a kid-facing label
+   ("maxSpeed" = "Top speed"); `/api/tweakables` (and the preview build) fill
+   `label` from it when the marker has none. Labels written for the Turret
+   (8), the synthesizer (29) and the Forklift (5).
+2. **changed = the main sketch differs**: `sketch_diff(..., main_only=True)`
+   for the status flag; the explanation itself still sends the full diff.
+3. **Chip row**: one line, scrolls sideways (`overflow-x: auto`,
+   `flex-wrap: nowrap`), cosmetic: no new test.
+4. **Job cancel**: `POST /api/jobs/{id}/cancel` sets `cancel_requested`;
+   the runners honour it at safe points only: before the compile, before the
+   upload (never during upload or verify: a half-written board is worse than
+   a finished flash), and when a model answer arrives (ask/explain). A
+   cancelled job ends `failed` with "Stopped." The Working screen shows
+   "Stop" while the job is queued, thinking or compiling. Mock runner: at
+   every stage boundary.
+5. **One ask at a time**: `/api/ask`, `/api/go` and `/api/explain` answer
+   409 "The AI helper is busy with one idea. Wait a moment." while another
+   ask, go or explain job is running (any device). The page shows the words
+   as a helper bubble.
+6. **Persistent journal**: `provisioning/systemd/journald-hacklab.conf`
+   (`Storage=persistent`, `SyncIntervalSec=30s`, `SystemMaxUse=200M`)
+   installed by install.sh and applied on the Pi now, so a reboot's cause
+   survives it.
+7. **Housekeeping**: stale checkboxes from earlier phases ticked with a note
+   on where the work shipped; deferrals above recorded.
+Steps: 1 labels + changed main-only + chip strip (PR, release 0.9.0);
+2 cancel + throttling (PR, release 0.9.1); 3 journald on the Pi + housekeeping.
+
+## Progress — P8 round 6
+- [ ] Step 1 — [labels] in profiles (3 boxes), changed = main differs, chip strip; tests; release 0.9.0
+- [ ] Step 2 — job cancel (safe points, Stop button) and one-active-ask throttling; tests; release 0.9.1
+- [ ] Step 3 — persistent journal applied on the Pi; stale checkboxes and deferrals recorded
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the

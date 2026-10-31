@@ -13,6 +13,38 @@ core = "arduino:avr"
 location = "repo"           # MIT-licensed stock code lives in stock/StockCode/ (headers kept)
 main = "StockCode"
 
+# Kid-facing names for the sliders (the IDE markers keep their code names in the code).
+[labels]
+USE_SERIAL = "Print to the serial monitor"
+TOUCHPAD_X_MIN = "Touchpad left edge"
+TOUCHPAD_X_MAX = "Touchpad right edge"
+TOUCHPAD_Y_MIN = "Touchpad top edge"
+TOUCHPAD_Y_MAX = "Touchpad bottom edge"
+TOUCHPAD_EDGE_DETECT = "Finger-off point"
+MIDI_ROOT_MIN = "Lowest root note"
+MIDI_ROOT_MAX = "Highest root note"
+DEFAULT_SCALE_TYPE = "Starting scale (0 major, 1 minor)"
+DEFAULT_ROOT_NOTE = "Starting root note"
+SMOOTH_FREQ_NORMAL = "Pitch smoothing"
+SMOOTH_GAIN_FAST = "Volume smoothing"
+SMOOTH_GAIN_SLOW = "Volume fade-out"
+WAVE_COUNT = "How many wave shapes"
+DEFAULT_WAVE = "Starting wave shape"
+MASTER_GAIN_MAX = "Loudest volume"
+VOLUME_SHIFT_AMOUNT = "Volume step (higher is quieter)"
+PROX_GAIN_REDUCTION = "Hand-near volume drop"
+LFO_MIN_BPM = "Slowest wobble"
+LFO_MAX_BPM = "Fastest wobble"
+LFO_SPINNER_NODES = "Spinner arms"
+LFO_MIN_NODE_WIDTH = "Spinner arm width"
+LFO_DECAY_TIMEOUT = "Wobble settle delay"
+LFO_BPM_MULTIPLIER = "Spin-to-wobble ratio"
+LFO_DECAY_RATE = "Wobble settle speed"
+AUDIO_OUTPUT_BITS = "Sound detail"
+SCALE_OCTAVES = "Octaves on the pad"
+NOTE_OFFSET_MIN = "Lowest pad note offset"
+SERIAL_OUTPUT_DIVIDER = "Serial print rate"
+
 [genie]
 skeleton = "genie/skeleton.ino"   # stock sketch with //@@ markers; config.h & co. ride along
 # Helper functions and variables the AI helper may use (all defined in the skeleton):
