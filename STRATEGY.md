@@ -1527,7 +1527,7 @@ Parallelism: single small change, serial.
 ## Progress — budget one place
 - [x] Step 1 — tests (Console-limit error puts the helper away; config has no cap) — completed 2026-10-31
 - [x] Step 2 — remove the app cap (config, app, ledger.over_cap, appliance/example configs, README, DESIGN) — completed 2026-10-31
-- [ ] Step 3 — release 0.3.3 on the Pi
+- [x] Step 3 — release 0.3.3 on the Pi (healthy; stale cap key removed from /etc/hacklab/config.toml) — completed 2026-10-31
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
