@@ -67,8 +67,8 @@ elif ! grep -q '^ANTHROPIC_API_KEY=' /etc/default/hacklab 2>/dev/null; then setv
 log "5/9 systemd unit, logrotate, journald limit"
 run install -m 644 "$SRC/provisioning/hacklab-app.service" /etc/systemd/system/hacklab-app.service
 run install -m 644 "$SRC/provisioning/hacklab.logrotate" /etc/logrotate.d/hacklab
-run mkdir -p /etc/systemd/journald.conf.d
-[ -f /etc/systemd/journald.conf.d/hacklab.conf ] || run bash -c 'printf "[Journal]\nSystemMaxUse=200M\n" > /etc/systemd/journald.conf.d/hacklab.conf'
+run mkdir -p /etc/systemd/journald.conf.d /var/log/journal
+run install -m 644 "$SRC/provisioning/systemd/journald-hacklab.conf" /etc/systemd/journald.conf.d/hacklab.conf
 run systemctl daemon-reload
 run systemctl restart systemd-journald
 
