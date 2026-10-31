@@ -539,6 +539,11 @@ test('the code page explains itself: the explanation is one column with the line
   await expect(steps.nth(0).locator('pre.snip .ln')).toHaveCount(2);                     // mock: lines 1-2
   await expect(steps.nth(0).locator('pre.snip .ln').first()).toHaveAttribute('data-ln', '1');
   await expect(steps.nth(2).locator('pre.snip .ln').first()).toHaveAttribute('data-ln', '5');
+  // a long cited range must not take the whole screen: a snippet shows about 14 lines and scrolls inside
+  const cap = await steps.nth(0).locator('pre.snip').evaluate((el) => { const c = getComputedStyle(el); return { max: parseFloat(c.maxHeight), overflow: c.overflowY, line: parseFloat(c.lineHeight) }; });
+  expect(cap.max).toBeGreaterThan(cap.line * 10);
+  expect(cap.max).toBeLessThan(cap.line * 18);
+  expect(cap.overflow).toBe('auto');
   await expect(xp.locator('.metaphor')).toContainText('tap');
   await expect(xp).toContainText('Try it: Press 7');
   await expect(page.getByText(/^Version \w+\.$/)).toHaveCount(1);                        // owner: not repeated
