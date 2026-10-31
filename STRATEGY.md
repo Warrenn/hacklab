@@ -2091,13 +2091,15 @@ ship without a new test; TDD stays for behaviour.
 
 ## Pi power (found 2026-10-31 while checking 0.7.14, owner item)
 
-The Pi rebooted by itself around 16:48 (uptime 4 min at 16:54). The kernel
+The Pi rebooted around 16:48 and again at 17:01: the owner had knocked over
+the power supply (owner, 2026-10-31), so the reboots are explained. The kernel
 logs "Undervoltage detected!" repeatedly (11 times in the first 6 minutes),
 `vcgencmd get_throttled` = 0x50005: under-voltage now, throttled now, both
 seen since boot; no box was on USB. The previous boot's journal did not
-survive the hard reset. A brownout reset is the likely cause of the reboot.
-Owner: the Pi 3B needs a 5 V / 2.5 A supply and a good cable (or a powered
-hub for the boxes); the field checklist should say so. Not a software item.
+survive the hard reset. Worth a look once the supply is back in place: if
+`vcgencmd get_throttled` still shows 0x50005 after a few minutes, the supply
+or cable is marginal (the Pi 3B wants 5 V / 2.5 A). The field checklist says
+so. Not a software item.
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
