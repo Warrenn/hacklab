@@ -1888,7 +1888,7 @@ Parallelism: all steps touch static/index.html or the ask job -> serial.
 - [x] Step 1 — server: `answer: ready` holds the plan (Job.result); `/api/go` flashes it with no model call, 409 unless a ready answer for the current box; mock and existing ask tests go through Go! — completed 2026-10-31
 - [x] Step 2 — page: textarea draft lives in S.draft and survives every render (focus and caret restored), "Try one of these" hides while typing, Send asks and the kid stays on Home with a thinking bubble, Go! enabled only on a ready answer with an empty draft, suggestions open the discussion; pwa tests updated + one new draft/gate test — completed 2026-10-31
 - [x] Step 3 — full stack (recorded sketch golden ends in ready, Go! flashes it; clarify golden gates Go!), preview republished (v6), DESIGN decision log row, API contract (/api/go, answer field) — completed 2026-10-31
-- [ ] Step 4 — release 0.7.0 on the Pi, live ask -> ready -> Go!
+- [x] Step 4 — release 0.7.0 on the Pi (healthy); live on the Pi: ask "Say hello on the serial monitor every second" -> ready with the helper's words and no flash, bogus Go! -> 409, Go! -> version 0001 flashed, Undo -> stock — completed 2026-10-31
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
