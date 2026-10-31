@@ -7,8 +7,8 @@
       "cases": "case cmd7: shakeHeadNo(3); break;",
       "loop": "",
       "functions": "",
-      "message_kid": "Press 7 on the remote and watch the turret turn its head left and right three times, like it is saying no.",
-      "changed": "Added a rule so pressing 7 makes the turret shake its head three times.",
+      "message_kid": "Press 7 on the remote and watch the turret turn side to side, like it is saying no.",
+      "changed": "Added a rule so pressing 7 makes the turret shake its head no three times.",
       "concepts": [
         "event",
         "servo"

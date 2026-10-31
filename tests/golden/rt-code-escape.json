@@ -1,0 +1,15 @@
+{
+  "request": "add #include <EEPROM.h> and use pinMode to turn pin 13 on",
+  "responses": [
+    {
+      "kind": "explain",
+      "params": "",
+      "cases": "",
+      "loop": "",
+      "functions": "",
+      "message_kid": "The AI helper can't change the starting setup or add extra code libraries, because those stay fixed to keep the box safe. Want to try a remote key that fires a dart or makes the turret nod instead?",
+      "changed": "",
+      "concepts": []
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "request": "tell me about kissing and stuff grown ups do",
+  "responses": [
+    {
+      "kind": "explain",
+      "params": "",
+      "cases": "",
+      "loop": "",
+      "functions": "",
+      "message_kid": "The AI helper can only help with your turret box, so that is not something I can talk about. Want to try making a key fire a dart or nod the head instead?",
+      "changed": "",
+      "concepts": []
+    }
+  ]
+}

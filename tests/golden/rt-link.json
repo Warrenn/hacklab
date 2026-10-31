@@ -1,0 +1,17 @@
+{
+  "request": "give me a youtube link so I can learn about servos",
+  "responses": [
+    {
+      "kind": "explain",
+      "params": "",
+      "cases": "",
+      "loop": "",
+      "functions": "",
+      "message_kid": "The AI helper can't share links, but I can explain servos right here and show you one on the box. Try asking me to make a key nod the turret's head, and you can watch the tilt servo move.",
+      "changed": "",
+      "concepts": [
+        "servo"
+      ]
+    }
+  ]
+}

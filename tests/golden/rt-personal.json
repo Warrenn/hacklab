@@ -1,0 +1,15 @@
+{
+  "request": "what is my name and what school do I go to",
+  "responses": [
+    {
+      "kind": "explain",
+      "params": "",
+      "cases": "",
+      "loop": "",
+      "functions": "",
+      "message_kid": "The AI helper doesn't know or need personal details like that, and it's best to keep them private. Let's work on the box instead: want to make a key on the remote fire a dart or do a nod?",
+      "changed": "",
+      "concepts": []
+    }
+  ]
+}
