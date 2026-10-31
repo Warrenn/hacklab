@@ -18,6 +18,7 @@ from pathlib import Path
 
 from hacklab.jobs import MESSAGES
 from hacklab.profiles import load_boxes
+from hacklab.templates import TemplateError, find_tweakables
 
 DEVICE_ONLY = (
     "// This box's stock code is not MIT-licensed, so it lives only on the device.\n"
@@ -44,7 +45,17 @@ def box_data(root: Path) -> dict:
             ino = item.sketch_dir / f"{item.id}.ino"
             if ino.is_file():
                 sketches[item.id] = ino.read_text()
+        files = []
+        sd = b.stock_dir(root / "data")
+        if sd.is_dir():
+            for f in sorted(sd.glob("*.ino")) + sorted(sd.glob("*.h")):
+                try:
+                    tws = [t.to_api() for t in find_tweakables(f.read_text())]
+                except TemplateError:
+                    tws = []
+                files.append({"name": f.name, "source": f.read_text(), "tweakables": tws})
         data[b.id] = {
+            "files": files,  # Level 2 on the box's own code (the IDE's markers, per file)
             "behaviours": [x.to_api() for x in b.behaviours.values()],
             "concepts": {
                 k: {**c.to_api(), "question": c.prompt_question()} for k, c in b.concepts.items()

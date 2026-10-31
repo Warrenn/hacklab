@@ -27,7 +27,13 @@ def test_behaviour_api_shape(boxes_dir: Path):
     b = load_boxes(boxes_dir)["testbox"]
     api = b.behaviours["shake"].to_api()
     assert api["id"] == "shake" and api["title"] == "Shake"
-    assert api["tweakables"][0] == {"name": "shakes", "value": 3, "range": [1, 10], "step": 1}
+    assert api["tweakables"][0] == {
+        "name": "shakes",
+        "value": 3,
+        "range": [1, 10],
+        "step": 1,
+        "hint": "how many",
+    }
     assert api["tweakables"][2] == {"name": "fast", "value": False, "options": ["true", "false"]}
 
 

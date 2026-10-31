@@ -2101,6 +2101,47 @@ survive the hard reset. Worth a look once the supply is back in place: if
 or cable is marginal (the Pi 3B wants 5 V / 2.5 A). The field checklist says
 so. Not a software item.
 
+## P8 round 4 — Level 2 on the box's own code (owner's ask 2026-10-31, approved by default)
+
+Owner: the Laser Synthesizer and the Omnibot Forklift have no "change the
+numbers" sliders, and CrunchLabs marks more editable values than we expose.
+
+Findings: the CrunchLabs sketches carry the IDE's `///{...}` trailing-comment
+markers on the hackable values: synth `config.h` 29, Forklift `config.h` 5
+(maxSpeed, the four motor flips), Turret stock main 8. The app only reads
+markers from shipped tricks and templates (their main file), never from the
+box's own code, and never from `config.h`; the Turret has tricks with markers,
+the other two have none, so no Level 2.
+
+Design:
+1. `templates.Tweakable.hint`: the comment text before the marker (e.g. "the
+   top"), so a slider can say what the number is in the author's words.
+2. `GET /api/tweakables` -> `{files: [{name, source, tweakables}]}` for the
+   current version's sketch dir (every `*.ino` and `*.h`, main first; mock
+   mode: the box's stock dir). `POST /api/flash/numbers {values}` copies the
+   current version's dir, renders each file's own names, 422 on an unknown
+   name, flashes as kind flash with note "My numbers" (the Home card shows
+   it). Working on the current version keeps the AI helper's changes.
+3. Page: `S.numbers` (loaded with the box). "Change the numbers" opens the
+   Tweak screen on the box's own values when no just-flashed trick has
+   sliders: sliders grouped by file with the hint under each, the live code
+   shows each file that has markers, Send posts `/flash/numbers`. Entry
+   points: the code page footer (renamed from "Try it" to "Change the
+   numbers") and the Offline card. Preview stand-in mirrors it (markers found
+   at build time, numbers rendered in the page).
+4. Tests: test box stock gets a marker in `stock.ino` and a `config.h` with
+   two; unit (list across files with hints; render both files, version note,
+   422; mock mode); pwa (mock: sliders from both files, live preview, Send ->
+   Done -> "My numbers"); full stack (Turret stock: pitchMoveSpeed slider ->
+   real compile -> stored main carries the value). Decision log row.
+Steps: 1 server (red -> green); 2 page + pwa + full stack; 3 preview v20,
+release 0.8.0, live on the Pi (synth sliders).
+
+## Progress — P8 round 4
+- [x] Step 1 — Tweakable.hint (author's comment), GET /api/tweakables (every file of the current version, main first), POST /api/flash/numbers (renders each file's own names into a copy, 422 on unknown, note "My numbers"); test box stock carries markers in stock.ino + config.h; tests/test_numbers.py — completed 2026-10-31
+- [x] Step 2 — S.numbers loads with the box; numbersItem() behind "Change the numbers" (code footer, Offline card) when no just-flashed trick has sliders; Tweak screen groups sliders by file with the author's hint and shows each file live (#define and true/false highlighted; #define markers take the macro name); Send posts /flash/numbers; preview stand-in mirrors; pwa (Turret yawPrecision, synth config.h) + full stack (real compile, stored yawPrecision = 500) — completed 2026-10-31
+- [ ] Step 3 — preview v20, release 0.8.0 live on the Pi
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the

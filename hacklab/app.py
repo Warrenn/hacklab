@@ -31,7 +31,7 @@ from hacklab.remote import MSG_NO_SWITCH, MSG_REMOTE_VIEW, Helping, source_of
 from hacklab.skeleton import load_skeleton
 from hacklab.spend import SpendLedger
 from hacklab.store import SketchStore
-from hacklab.templates import TemplateError, render
+from hacklab.templates import TemplateError, find_tweakables, render
 
 log = logging.getLogger("hacklab.app")
 
@@ -88,6 +88,10 @@ def host_of(value: str) -> str:
     """'hacklab.local:80' / '[fd7a::1]:80' / 'http://x' -> bare host, lower-case."""
     v = value if "//" in value else "//" + value
     return (urlsplit(v).hostname or "").lower()
+
+
+class FlashNumbers(BaseModel):
+    values: dict[str, Any] = Field(max_length=64)  # tweakable name -> new value (P8 round 4)
 
 
 class Go(BaseModel):
@@ -430,6 +434,64 @@ def create_app(
         d = rendered_sketch_dir(item, body.values)
         payload = {"template_id": body.template_id, "sketch_dir": str(d), "text": item.title}
         return await start("flash", payload, src)
+
+    def current_sketch_dir(box_id: str) -> Path:
+        """The sketch dir the kid is looking at: the current version (mock mode: the stock)."""
+        if store:
+            cur = store.current(box_id)
+            if cur is not None:
+                return store.path(box_id, cur)
+        d = boxes[box_id].stock_dir(cfg.data_dir)
+        if not d.is_dir():
+            raise HTTPException(409, "The stock code for this box is not on the device yet.")
+        return d
+
+    def sketch_files(d: Path) -> list[Path]:
+        inos = sorted(d.glob("*.ino"))
+        return inos + sorted(p for p in d.iterdir() if p.is_file() and p.suffix in (".h", ".hpp"))
+
+    @app.get("/api/tweakables")
+    def tweakables():
+        """Level 2 on the box's own code (P8 round 4): the IDE's ///{...} markers in every file
+        of the current version, main file first, each with the author's hint."""
+        d = current_sketch_dir(box_or_409())
+        out = []
+        for f in sketch_files(d):
+            text = f.read_text()
+            try:
+                tws = [t.to_api() for t in find_tweakables(text)]
+            except TemplateError:
+                tws = []
+            out.append({"name": f.name, "source": text, "tweakables": tws})
+        return {"files": out}
+
+    @app.post("/api/flash/numbers")
+    async def flash_numbers(body: FlashNumbers, request: Request):
+        """Render the kid's numbers into a copy of the current version (every file) and flash it."""
+        src = writable(request)
+        box_id = box_or_409()
+        d = current_sketch_dir(box_id)
+        owners: dict[str, Path] = {}
+        for f in sketch_files(d):
+            try:
+                for t in find_tweakables(f.read_text()):
+                    owners.setdefault(t.name, f)
+            except TemplateError:
+                continue
+        unknown = sorted(set(body.values) - set(owners))
+        if unknown:
+            raise HTTPException(422, f"No such number: {', '.join(unknown)}")
+        parent = Path(tempfile.mkdtemp(prefix="numbers-", dir=_mk(cfg.data_dir / "work")))
+        copy = parent / d.name
+        shutil.copytree(d, copy)
+        for f in sketch_files(copy):
+            mine = {k: v for k, v in body.values.items() if owners[k].name == f.name}
+            if mine:
+                try:
+                    f.write_text(render(f.read_text(), mine))
+                except TemplateError as exc:
+                    raise HTTPException(422, str(exc)) from exc
+        return await start("flash", {"sketch_dir": str(copy), "text": "My numbers"}, src)
 
     @app.post("/api/flash/sketch")
     async def flash_sketch(body: FlashSketch, request: Request):

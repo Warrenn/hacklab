@@ -10,6 +10,7 @@ from hacklab.app import create_app
 from hacklab.board import FakeBoard
 from hacklab.config import Config
 from hacklab.jobs import TERMINAL_STATES
+from tests.conftest import STOCK_MAIN
 
 
 @pytest.fixture
@@ -59,7 +60,7 @@ def test_boxes_behaviours_concepts_come_from_disk(client):
 def test_baseline_is_the_profile_stock_sketch(client):
     client.post("/api/box", json={"id": "testbox"})
     cur = client.get("/api/sketch/current").json()
-    assert cur["version"] == "0000" and cur["source"] == "void setup(){} void loop(){}\n"
+    assert cur["version"] == "0000" and cur["source"] == STOCK_MAIN
 
 
 def test_flash_behaviour_renders_tweakables_then_flashes(client, fb):
