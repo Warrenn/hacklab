@@ -60,6 +60,13 @@ async function pickTurret(page, url) {
   await page.getByRole('button', { name: 'IR Turret', exact: true }).click();
   await page.getByRole('button', { name: "Let's go" }).click();
 }
+// P8 round 3: Send asks the helper; Go! is enabled only once it answers "ready", then flashes.
+async function askAndGo(page, text) {
+  await page.getByPlaceholder(/shake its head|Your answer/).fill(text);
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeEnabled({ timeout: 15000 });
+  await page.getByRole('button', { name: 'Go!' }).click();
+}
 
 test('box picker leads to Home when the AI helper is here', async ({ page }) => {
   await pickTurret(page, homeUrl);
@@ -75,11 +82,14 @@ test('box picker leads to Home when the AI helper is here', async ({ page }) => 
 test('asking walks the Working stages over SSE and lands on Done, then Undo', async ({ page }) => {
   await pickTurret(page, homeUrl);
   await page.getByPlaceholder(/shake its head/).fill('Make it nod when I press 1');
+  await page.getByRole('button', { name: 'Send' }).click();
+  // the kid stays on Home while the helper thinks; stage text comes from the server (message_kid)
+  await expect(page.locator('.chat')).toContainText('Make it nod when I press 1');
+  await expect(page.getByText('The AI helper is thinking about your idea.')).toBeVisible();
+  await expect(page.getByText('Press Go! to send it to the box.')).toBeVisible({ timeout: 15000 });
   await page.getByRole('button', { name: 'Go!' }).click();
   await expect(page.getByText('You asked')).toBeVisible();
   await expect(page.getByText('“Make it nod when I press 1”')).toBeVisible();
-  // Stage text comes from the server (message_kid), not from the page.
-  await expect(page.getByText('The AI helper is thinking about your idea.')).toBeVisible();
   await expect(page.getByText('Turning the code into robot language.')).toBeVisible({ timeout: 10000 });
   await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
   await expect(page.getByText('The code that does it')).toBeVisible();  // (curiosity prompts: full-stack spec)
@@ -90,8 +100,7 @@ test('asking walks the Working stages over SSE and lands on Done, then Undo', as
 
 test('a failed job shows the kid message and one next action', async ({ page }) => {
   await pickTurret(page, homeUrl);
-  await page.getByPlaceholder(/shake its head/).fill('fail on purpose');
-  await page.getByRole('button', { name: 'Go!' }).click();
+  await askAndGo(page, 'fail on purpose');
   await expect(page.getByText('That one did not work. Try again, or press Undo.')).toBeVisible({ timeout: 15000 });
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
   await expect(page.locator('main')).not.toContainText(/Traceback|Error:/);
@@ -149,6 +158,9 @@ test('screenshots of every screen for review', async ({ page }, info) => {
   await expect(page.getByText('Try one of these')).toBeVisible();
   await shot('2-home');
   await page.getByPlaceholder(/shake its head/).fill('Make it shake its head when I press 7');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeEnabled({ timeout: 15000 });
+  await shot('2b-ready');
   await page.getByRole('button', { name: 'Go!' }).click();
   await expect(page.getByText('Turning the code into robot language.')).toBeVisible({ timeout: 10000 });
   await shot('3-working');
@@ -197,7 +209,7 @@ test('helping unlocks remote changes and the kid screen says Uncle is helping', 
   await expect(kid.getByText('Remote view')).toHaveCount(0);
   // turning it off locks the remote viewer again and the line disappears for the kid over SSE
   await page.getByRole('button', { name: 'Turn off helping' }).click();
-  await expect(page.getByRole('button', { name: 'Go!' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Send' })).toBeDisabled();
   await expect(kid.getByText('Uncle is helping')).toHaveCount(0, { timeout: 10000 });
   await kid.context().close();
 });
@@ -238,6 +250,9 @@ test('the Home placeholder and "Try one of these" come from the box profile', as
   await page.getByRole('button', { name: "Let's go" }).click();
   await expect(page.getByPlaceholder('Lift the fork up and down every five seconds')).toBeVisible();
   await page.getByRole('button', { name: 'Say hello on the serial monitor' }).click();
+  await expect(page.locator('.chat')).toContainText('Say hello on the serial monitor');  // the button's own words open the discussion
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeEnabled({ timeout: 15000 });
+  await page.getByRole('button', { name: 'Go!' }).click();
   await expect(page.getByText('“Say hello on the serial monitor”')).toBeVisible();  // quoted by the button's own words
   await expect(page.getByText('Turning the code into robot language.')).toBeVisible({ timeout: 10000 });
 });
@@ -311,20 +326,46 @@ test('Undo: disabled buttons say why, and every Undo path works on the iPad', as
 test('a question from the AI helper opens a discussion the kid can answer', async ({ page }) => {
   await pickTurret(page, homeUrl);
   await page.getByPlaceholder(/shake its head/).fill('which key makes it dance');   // mock: "which..." -> a question back
-  await page.getByRole('button', { name: 'Go!' }).click();
+  await page.getByRole('button', { name: 'Send' }).click();
   await expect(page.getByText('The AI helper is thinking about your idea.')).toBeVisible();
-  // back on Home, with the helper's question and the kid's words in a discussion
-  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 15000 });
+  // still on Home, with the helper's question and the kid's words in a discussion; Go! stays off
   const chat = page.locator('.chat');
   await expect(chat).toContainText('which key makes it dance');
-  await expect(chat).toContainText('Which key on the remote should start it?');
+  await expect(chat).toContainText('Which key on the remote should start it?', { timeout: 15000 });
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeDisabled();
   await expect(page.getByPlaceholder('Your answer')).toBeVisible();
-  await page.getByPlaceholder('Your answer').fill('key 5');
-  await page.getByRole('button', { name: 'Go!' }).click();
+  await askAndGo(page, 'key 5');
   await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
   await page.getByRole('button', { name: 'Try something else' }).click();
   await expect(page.locator('.chat')).toHaveCount(0);                                 // a sketch answer ends the discussion
   await expect(page.getByPlaceholder(/shake its head/)).toBeVisible();
+});
+
+test('the ask box keeps a half-typed request through re-renders, hides the suggestions while typing, and the helper gates Go!', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  const box = page.locator('#ask');                                                  // its placeholder changes once the discussion opens
+  await expect(page.getByText('Try one of these')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeDisabled();           // nothing to go with yet
+  await box.fill('Make it spin\nthen stop');                                          // multiline is fine
+  await expect(page.getByText('Try one of these')).toBeHidden();                      // not relevant while typing
+  // the 20 s refresh and every board status event rebuild the screen: the draft must survive
+  await page.evaluate(() => refresh().then(render));
+  await expect(box).toHaveValue('Make it spin\nthen stop');
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.locator('.chat')).toContainText('Make it spin');
+  await expect(page.locator('.chat')).toContainText('I know what to do', { timeout: 15000 });
+  await expect(page.getByText('Press Go! to send it to the box.')).toBeVisible();
+  const go = page.getByRole('button', { name: 'Go!' });
+  await expect(go).toBeEnabled();
+  await expect(box).toHaveValue('');
+  await box.fill('and faster');                                                      // more words: the plan is stale
+  await expect(go).toBeDisabled();
+  await box.fill('');
+  await expect(go).toBeEnabled();
+  await go.click();
+  await expect(page.getByText('You asked')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
 });
 
 test('box picker cards: name on top, no tick, picture never cut off, at iPad and phone widths', async ({ page }) => {

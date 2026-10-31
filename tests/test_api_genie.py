@@ -34,11 +34,21 @@ def settle(client, job_id, timeout=5.0):
     raise AssertionError("job did not finish")
 
 
+def ask_go(client, text, **kw):
+    """Ask, then press Go! on a ready answer (P8 round 3: the ask alone never flashes)."""
+    job = settle(client, client.post("/api/ask", json={"text": text}, **kw).json()["job_id"])
+    if job["answer"] == "ready":
+        job = settle(
+            client, client.post("/api/go", json={"job_id": job["job_id"]}, **kw).json()["job_id"]
+        )
+    return job
+
+
 def test_ask_end_to_end_with_prompts(tmp_path, boxes_dir):
     with make(tmp_path, boxes_dir, golden("shake-head-on-7")) as c:
         assert c.get("/api/status").json()["ai_available"] is True
         c.post("/api/box", json={"id": "testbox"})
-        j = settle(c, c.post("/api/ask", json={"text": "shake on 7"}).json()["job_id"])
+        j = ask_go(c, "shake on 7")
         assert j["state"] == "done" and isinstance(j["prompts"], list)
         assert c.get("/api/status").json()["current_version"] == "0001"
         assert "cmd7" in c.get("/api/sketch/current").json()["source"]
@@ -73,7 +83,7 @@ def test_config_has_no_cap_of_its_own():
 def test_every_ask_is_logged_and_charged(tmp_path, boxes_dir):
     with make(tmp_path, boxes_dir, golden("fire-when-3-pressed")) as c:
         c.post("/api/box", json={"id": "testbox"})
-        settle(c, c.post("/api/ask", json={"text": "fire on 3"}).json()["job_id"])
+        ask_go(c, "fire on 3")
     assert SpendLedger(tmp_path / "data").month_total() > 0
     log = (tmp_path / "data" / "testbox" / "logs" / "asks.jsonl").read_text()
     assert '"fire on 3"' in log and '"kind": "sketch"' in log

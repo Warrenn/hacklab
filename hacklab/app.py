@@ -90,6 +90,10 @@ def host_of(value: str) -> str:
     return (urlsplit(v).hostname or "").lower()
 
 
+class Go(BaseModel):
+    job_id: str = Field(min_length=1, max_length=64)  # the ask job whose answer was "ready"
+
+
 class Explain(BaseModel):
     scope: Literal["sketch", "lines"] = "sketch"
     from_line: int | None = Field(default=None, alias="from", ge=1)
@@ -424,6 +428,21 @@ def create_app(
             "fail": text.lower().startswith("fail"),  # mock-only: exercises the failure path
             "clarify": text.lower().startswith("which"),  # mock-only: the helper asks back
             "prompts": [],  # mock-only; the real runner fills prompts from the genie
+        }
+        return await start("ask", payload, src)
+
+    @app.post("/api/go")
+    async def go(body: Go, request: Request):
+        """Flash the plan the helper is holding behind a ready answer (no model call)."""
+        src = writable(request)
+        box = box_or_409()
+        plan = runner.get(body.job_id)
+        if plan is None or plan.answer != "ready" or plan.payload.get("box") != box:
+            raise HTTPException(409, "That idea is gone. Say it again.")
+        payload = {
+            "go": plan.id,
+            "fail": plan.payload.get("fail"),
+            "prompts": plan.payload.get("prompts", []),
         }
         return await start("ask", payload, src)
 

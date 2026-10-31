@@ -35,8 +35,8 @@ main{flex:1;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px
 h1{margin:0;font-size:40px;font-weight:900;line-height:1.1}
 .lead{font-size:18px;font-weight:800;color:var(--muted)}
 .sub{margin:0;font-size:20px;font-weight:700;color:var(--muted);line-height:1.4}
-.ask{display:flex;gap:12px;align-items:stretch}
-.ask input{flex:1;font:inherit;font-size:24px;font-weight:600;padding:20px 22px;border:3px solid #D9DCE6;border-radius:18px;min-width:0}
+.ask{display:flex;gap:12px;align-items:flex-end}
+.ask textarea{flex:1;font:inherit;font-size:24px;font-weight:600;line-height:1.3;padding:16px 22px;border:3px solid #D9DCE6;border-radius:18px;min-width:0;resize:none;min-height:72px;max-height:40vh;overflow:auto}
 .primary{font-size:22px;font-weight:900;color:#fff;background:var(--accent);border:0;border-radius:18px;padding:18px 30px;text-align:center;text-decoration:none}
 .primary.wide{flex:1}
 .primary:disabled{opacity:.45;cursor:default}
@@ -170,7 +170,7 @@ pre .ln.sel{background:#3A3F63;box-shadow:inset 3px 0 0 var(--accent)}
 // server (message_kid, titles, prompts) or is copied verbatim from docs/screens.
 const S = { status: null, boxes: [], behaviours: [], sketch: null, job: null, asked: '', screen: 'picker',
             picked: null, tweak: null, concept: null, showCode: true, editor: '', busy: false, chat: [],
-            explanation: null, sel: null, back: 'home' };
+            explanation: null, sel: null, back: 'home', draft: '', ready: null, thinking: false };
 const $app = document.getElementById('app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const api = async (path, body) => {
@@ -254,9 +254,15 @@ function rescue(note) {
 function chat() {
   if (!S.chat.length) return '';
   const turns = S.chat.map((t) => `<div class="bubble ${t.role}">${esc(t.text)}</div>`).join('');
-  return `<div class="chat" role="log" aria-label="Talking with the AI helper">${turns}
-    <button class="link" data-act="startover">Start over</button></div>`;
+  // while the helper works, its stage text (from the server) is the last bubble
+  const thinking = S.thinking ? `<div class="bubble helper">${esc(S.job?.message_kid || 'Getting ready.')}</div>` : '';
+  const hint = S.ready ? '<div class="lead">Press Go! to send it to the box.</div>' : '';
+  return `<div class="chat" role="log" aria-label="Talking with the AI helper">${turns}${thinking}${hint}
+    <button class="link" data-act="startover" ${dis(S.thinking)}>Start over</button></div>`;
 }
+// Go! wakes up only when the helper said it has enough ("ready") and the kid has not typed more since.
+const goReady = () => !!S.ready && !S.thinking && !S.draft.trim();
+const grow = (a) => { a.style.height = 'auto'; a.style.height = a.scrollHeight + 6 + 'px'; };
 function tries() {
   // "Try one of these" comes from the box profile ([copy].suggestions): a shipped trick or a plain ask.
   const box = S.boxes.find((b) => b.id === S.status?.box) || {};
@@ -350,8 +356,8 @@ function home() {
     <section class="col7"><h1>What should the ${name} do?</h1>
       <label class="lead" for="ask">Say it or type it. Tap the mic on your keyboard to talk.</label>
       ${chat()}
-      <form class="ask" data-form="ask"><input id="ask" type="text" placeholder="${S.chat.length ? 'Your answer' : esc((S.boxes.find((b) => b.id === S.status?.box) || {}).ask_placeholder || 'What should it do?')}" autocomplete="off" enterkeyhint="go"><button class="primary" type="submit" ${dis()}>Go!</button></form>
-      ${S.chat.length ? '' : `<div class="lead" style="margin-top:8px">Try one of these</div><div class="list">${tries()}</div>`}</section>
+      <form class="ask" data-form="ask"><textarea id="ask" rows="2" placeholder="${S.chat.length ? 'Your answer' : esc((S.boxes.find((b) => b.id === S.status?.box) || {}).ask_placeholder || 'What should it do?')}" autocomplete="off" enterkeyhint="enter"></textarea><button class="ghost" type="submit" ${dis(S.thinking)}>Send</button><button class="primary" type="button" data-act="flash" ${dis(!goReady())}>Go!</button></form>
+      ${S.chat.length ? '' : `<div id="tries" ${S.draft.trim() ? 'hidden' : ''}><div class="lead" style="margin-top:8px">Try one of these</div><div class="list">${tries()}</div></div>`}</section>
     <aside class="col5">${rightNow()}${rescue('Nothing you try can break it. Those two buttons always put it right.')}</aside></main>`;
 }
 function offline() {
@@ -461,10 +467,15 @@ function editorText() {
 const SCREENS = { picker, home, offline, working, failed, done, tweak, editor, how: howItWorks };
 function render() {
   if (cm) { cm.destroy(); cm = null; }
+  const hadFocus = document.activeElement?.id === 'ask';
   $app.innerHTML = SCREENS[S.screen]();
   if (S.screen === 'editor') mountEditor();
   const a = document.getElementById('ask');
-  if (a && S.screen === 'home' && window.innerWidth > 860) a.focus();
+  if (!a) return;
+  // The screen is rebuilt on every status event and the 20 s refresh: the draft lives in S.
+  a.value = S.draft;
+  grow(a);
+  if (hadFocus || window.innerWidth > 860) { a.focus(); a.setSelectionRange(a.value.length, a.value.length); }
 }
 function homeScreen() { return S.status?.ai_available ? 'home' : 'offline'; }
 async function refresh() {
@@ -480,7 +491,9 @@ async function startJob(kind, path, body, asked) {
   try {
     const { job_id } = await api(path, body);
     S.job = { job_id, kind, state: 'queued', message_kid: 'Getting ready.' };
-    S.screen = 'working';
+    // An ask is a conversation: the kid stays on Home and watches the helper think. Everything
+    // that changes the box (Go!, tricks, Undo) walks the Working screen.
+    if (path === '/ask') S.thinking = true; else S.screen = 'working';
     render();
     // The first stage events can beat this response on the SSE stream; sync once.
     api('/jobs/' + job_id).then(onJob).catch(() => {});
@@ -497,7 +510,7 @@ function onJob(job) {
   if (S.job.state === 'done' || S.job.state === 'failed') return;
   S.job = { ...S.job, ...job };
   if (job.state === 'done' || job.state === 'failed') finishJob();
-  else if (S.screen === 'working') render();
+  else if (S.screen === 'working' || S.thinking) render();
 }
 let finishing = false;
 async function finishJob() {
@@ -505,14 +518,17 @@ async function finishJob() {
   finishing = true;
   try {
     await refresh();
-    if (S.job.state === 'failed') S.screen = 'failed';
-    else if (S.job.kind === 'explain') { S.explanation = S.job.explanation; S.sel = null; S.job = S.prevJob || null; S.screen = 'done'; }
-    else if (S.job.kind === 'ask' && (S.job.answer === 'clarify' || S.job.answer === 'explain')) {
-      // The helper asked back (or explained without changing anything): keep talking on Home.
-      S.chat = [...S.chat, { role: 'kid', text: S.asked }, { role: 'helper', text: S.job.message_kid }];
+    if (S.thinking) {
+      // The helper answered (ready: Go! wakes up; a question or explanation: keep talking;
+      // away/declined: its words, in kid language). Still on Home either way.
+      S.thinking = false;
+      S.chat = [...S.chat, { role: 'helper', text: S.job.message_kid }];
+      S.ready = S.job.state === 'done' && S.job.answer === 'ready' ? S.job.job_id : null;
       S.screen = homeScreen();
-    } else {
-      if (S.job.kind === 'ask') S.chat = [];
+    } else if (S.job.state === 'failed') S.screen = 'failed';
+    else if (S.job.kind === 'explain') { S.explanation = S.job.explanation; S.sel = null; S.job = S.prevJob || null; S.screen = 'done'; }
+    else {
+      if (S.job.kind === 'ask') { S.chat = []; S.ready = null; }
       S.screen = S.job.kind === 'undo' || S.job.kind === 'reset' ? homeScreen() : 'done';
     }
     render();
@@ -521,7 +537,7 @@ async function finishJob() {
 function pollJob(id) {
   // SSE is primary; this poll is the fallback for a dropped stream.
   const t = setInterval(async () => {
-    if (!S.job || S.job.job_id !== id || S.screen !== 'working') return clearInterval(t);
+    if (!S.job || S.job.job_id !== id || !(S.screen === 'working' || S.thinking)) return clearInterval(t);
     try { onJob(await api('/jobs/' + id)); } catch (_) { /* keep waiting */ }
   }, 1500);
 }
@@ -550,8 +566,9 @@ const ACTIONS = {
     finally { S.busy = false; render(); }
   },
   helping: async () => { await api('/helping', { on: !helping() }); await refresh(); render(); },
-  suggest: (text, el) => startJob('ask', '/ask', { text, history: S.chat }, el?.dataset.title || text),
-  startover: () => { S.chat = []; render(); },
+  suggest: (text, el) => ask(text, el?.dataset.title || text),
+  flash: () => startJob('ask', '/go', { job_id: S.ready }, S.chat.filter((t) => t.role === 'kid').pop()?.text || ''),
+  startover: () => { S.chat = []; S.ready = null; S.draft = ''; render(); },
   home: () => { S.screen = homeScreen(); render(); },
   done: () => { S.screen = 'done'; render(); },
   code: () => { S.job = null; S.concept = null; S.explanation = null; S.sel = null; S.screen = 'done'; render(); },
@@ -586,12 +603,29 @@ $app.addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]');
   if (el && !el.disabled) ACTIONS[el.dataset.act](el.dataset.id, el);
 });
+function ask(text, shown = text) {
+  // The kid's words go into the discussion at once; the helper's answer decides what happens next.
+  const history = S.chat;
+  S.chat = [...S.chat, { role: 'kid', text: shown }];
+  S.draft = '';
+  S.ready = null;
+  startJob('ask', '/ask', { text, history }, text);
+}
 $app.addEventListener('submit', (e) => {
   e.preventDefault();
-  const text = document.getElementById('ask').value.trim();
-  if (text) startJob('ask', '/ask', { text, history: S.chat }, text);
+  const text = S.draft.trim();
+  if (text && !S.thinking) ask(text);
 });
 $app.addEventListener('input', (e) => {
+  if (e.target.id === 'ask') {
+    // No re-render per keystroke (iPad dictation and autocorrect compose in place): just the bits that depend on the draft.
+    S.draft = e.target.value;
+    grow(e.target);
+    document.getElementById('tries')?.toggleAttribute('hidden', !!S.draft.trim());
+    const go = $app.querySelector('[data-act="flash"]');
+    if (go) go.disabled = !goReady();
+    return;
+  }
   const name = e.target.dataset.tw;
   if (!name || !S.tweak) return;
   const tw = S.tweak.behaviour.tweakables.find((x) => x.name === name);

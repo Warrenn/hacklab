@@ -16,9 +16,10 @@
   const render = (src, values) => Object.entries(values || {}).reduce(
     (s, [name, v]) => s.replace(new RegExp('(\\b' + name + '\\s*=\\s*)[-\\d.]+'), '$1' + v), src);
   const EXPLANATION = { title: 'The box waits, then acts', story: ['Think of the box as a dog that sits very still, listening for a whistle.', 'Every key on the remote is a different whistle. When one arrives, the code looks it up and runs the matching trick, then goes back to listening.'], steps: [{ label: 'Wait', detail: 'loop() runs round and round, checking for a key.' }, { label: 'Hear a key', detail: 'The IR eye turns the flash of light into a number.' }, { label: 'Pick the trick', detail: 'switch matches the number to one case.' }, { label: 'Do it', detail: 'A helper function moves a servo for a short moment.' }], metaphor: 'A servo is like a tap: open it for a second and water runs, then close it.', watch_for: 'Press 7 and count how many times it shakes.' };
-  function runJob(kind, { fail = false, prompts = [], sketch = null, note = '', clarify = false, explanation = null } = {}) {
+  function runJob(kind, { fail = false, prompts = [], sketch = null, note = '', clarify = false, explanation = null, go = false } = {}) {
     const id = 'preview-' + (++st.seq);
-    const stages = kind === 'explain' ? ['thinking'] : (kind === 'ask' ? ['thinking'] : []).concat(['compiling', 'uploading', 'verifying']);
+    // an ask only thinks and answers (ready | clarify); the go job flashes the held plan
+    const stages = kind === 'explain' || (kind === 'ask' && !go) ? ['thinking'] : ['compiling', 'uploading', 'verifying'];
     const job = { job_id: id, kind, state: 'queued', message_kid: MESSAGES.queued, log_ref: null, prompts: [], sketch_ref: null, answer: null, explanation: null };
     st.jobs[id] = job;
     let i = 0;
@@ -27,6 +28,7 @@
         job.state = stages[i++]; job.message_kid = MESSAGES[job.state]; emit({ ...job });
         if (kind === 'explain') { setTimeout(() => { job.state = 'done'; job.explanation = explanation; job.message_kid = 'Here is what the code does.'; emit({ ...job }); }, 900); return; }
         if (clarify && job.state === 'thinking') { setTimeout(() => { job.state = 'done'; job.answer = 'clarify'; job.message_kid = 'Which key on the remote should start it?'; emit({ ...job }); }, 900); return; }
+        if (kind === 'ask' && !go && job.state === 'thinking') { setTimeout(() => { job.state = 'done'; job.answer = 'ready'; job.message_kid = 'I know what to do. Press Go! and watch the box.'; job.held = { fail, prompts, sketch, note }; emit({ ...job }); }, 900); return; }
         if (fail && job.state === 'compiling') { setTimeout(() => { job.state = 'failed'; job.message_kid = MESSAGES.failed; emit({ ...job }); }, 900); return; }
         setTimeout(step, 1100); return;
       }
@@ -68,6 +70,11 @@
       const prompts = Object.entries(box.concepts).slice(0, 2).map(([id, c]) => ({ id, question: c.question }));
       const sketch = '// The AI helper added a rule for: ' + body.text + '\n' + vs()[0].source;
       return json({ job_id: runJob('ask', { fail: /^fail/i.test(body.text), clarify: /^which/i.test(body.text), prompts, sketch, note: body.text }) });
+    }
+    if (path === '/go') {
+      const plan = st.jobs[body.job_id];
+      if (!plan || plan.answer !== 'ready') return json({ detail: 'That idea is gone. Say it again.' }, 409);
+      return json({ job_id: runJob('ask', { ...plan.held, go: true }) });
     }
     if (path === '/flash/behaviour') {
       const src = box.sketches[body.id]; if (!src) return json({ detail: 'No such trick.' }, 404);

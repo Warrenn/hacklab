@@ -27,6 +27,16 @@ def wait_job(client: TestClient, job_id: str, timeout: float = 5.0) -> dict:
     raise AssertionError(f"job {job_id} never finished: {job}")
 
 
+def ask_go(client, text, **kw):
+    """Ask, then press Go! on a ready answer (P8 round 3: the ask alone never flashes)."""
+    job = wait_job(client, client.post("/api/ask", json={"text": text}, **kw).json()["job_id"])
+    if job["answer"] == "ready":
+        job = wait_job(
+            client, client.post("/api/go", json={"job_id": job["job_id"]}, **kw).json()["job_id"]
+        )
+    return job
+
+
 def test_status_before_box_selected(client):
     s = client.get("/api/status").json()
     assert s["box"] is None
@@ -101,16 +111,14 @@ def test_flash_behaviour_walks_to_done_and_adds_a_version(client):
 def test_ask_walks_through_thinking_and_offers_prompts(client):
     client.post("/api/box", json={"id": "testbox"})
     assert client.post("/api/ask", json={"text": ""}).status_code == 422
-    r = client.post("/api/ask", json={"text": "make it shake its head when I press 7"})
-    job = wait_job(client, r.json()["job_id"])
+    job = ask_go(client, "make it shake its head when I press 7")
     assert job["state"] == "done"
     assert job["prompts"] == []  # P4 adds curiosity prompts
 
 
 def test_ask_can_fail_in_kid_language(client):
     client.post("/api/box", json={"id": "testbox"})
-    r = client.post("/api/ask", json={"text": "fail on purpose"})
-    job = wait_job(client, r.json()["job_id"])
+    job = ask_go(client, "fail on purpose")
     assert job["state"] == "failed"
     assert job["message_kid"]
     assert "Traceback" not in job["message_kid"]
