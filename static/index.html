@@ -247,7 +247,7 @@ function header(opts = {}) {
     ? `<div class="remotebar" role="status"><span>Remote view${helping() ? ' · helping is on' : ' · read only'}</span>
        <button class="ghost small" data-act="helping">${helping() ? 'Turn off helping' : 'Turn on helping'}</button></div>`
     : '';
-  return `<header>${brand}<div class="chips">${boxChip}${opts.chips === false ? '' : aiChip}</div></header>${remoteBar}${helpLine}`;
+  return `<header>${brand}<div class="chips">${opts.chips === false ? '' : aiChip}${boxChip}</div></header>${remoteBar}${helpLine}`;
 }
 // "2 minutes ago" for the Home card; kid words, no clock arithmetic on screen.
 function ago(epochS) {

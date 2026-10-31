@@ -524,6 +524,9 @@ test('the header box button (drawing, name, state) and the Hack Lab mark both le
   expect(face.border).toBeGreaterThan(0);                                                        // looks like a button
   expect(face.bg).not.toBe('rgba(0, 0, 0, 0)');
   await expect(page.getByText('Change box', { exact: true })).toHaveCount(0);                   // no label, the control is self-evident
+  // owner: action items edge-aligned: the box button sits at the right edge, the AI chip to its left
+  const [bb, ab] = await Promise.all([boxBtn.boundingBox(), page.getByText('AI helper is here').boundingBox()]);
+  expect(bb.x).toBeGreaterThan(ab.x + ab.width);
   await boxBtn.click();
   await expect(page.getByRole('heading', { name: 'Which box is plugged in?' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Change box:/ })).toHaveCount(0);               // not on the picker itself
