@@ -389,6 +389,24 @@ test('box picker cards: name on top, no tick, picture never cut off, at iPad and
   expect(svg).not.toMatch(/<rect width="400" height="230" fill/);
 });
 
+test('picking another box starts fresh: no discussion, draft or plan from the last one', async ({ page }) => {
+  await openPicker(page, homeUrl);
+  await page.getByRole('button', { name: 'Omnibot Forklift', exact: true }).click();
+  await page.getByRole('button', { name: 'Say hello on the serial monitor' }).click();     // an ask suggestion opens a discussion
+  await expect(page.locator('.chat')).toContainText('Say hello on the serial monitor');
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeEnabled({ timeout: 15000 });
+  await page.locator('#ask').fill('and drive slower');
+  await brand(page).click();
+  await page.getByRole('button', { name: 'IR Turret', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible();
+  await expect(page.locator('.chat')).toHaveCount(0);                                        // the Forklift's talk is gone
+  await expect(page.locator('#ask')).toHaveValue('');
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeDisabled();                    // and so is its plan
+  await expect(page.getByText('Try one of these')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Shake its head no' })).toBeVisible();      // this box's suggestions
+  await expect(page.getByPlaceholder(/shake its head/)).toBeVisible();
+});
+
 test('the header chip is status; the Hack Lab mark is the way back to the picker', async ({ page }) => {
   await pickTurret(page, homeUrl);
   await expect(page.getByText('IR Turret · plugged in')).toBeVisible();
