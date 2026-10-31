@@ -25,6 +25,7 @@
     st.jobs[id] = job;
     let i = 0;
     const step = () => {
+      if (job.cancelled) { job.state = 'failed'; job.message_kid = 'Stopped. Nothing was changed.'; emit({ ...job }); return; }
       if (i < stages.length) {
         job.state = stages[i++]; job.message_kid = MESSAGES[job.state]; emit({ ...job });
         if (kind === 'explain') { setTimeout(() => { job.state = 'done'; job.explanation = explanation; job.message_kid = 'Here is what the code does.'; emit({ ...job }); }, 900); return; }
@@ -69,11 +70,19 @@
         : body.scope === 'changed' ? { ...EXPLANATION, title: `What changed: ${EXPLANATION.title}` } : EXPLANATION;
       return json({ job_id: runJob('explain', { explanation: x }) });
     }
+    if (path.startsWith('/jobs/') && path.endsWith('/cancel')) {
+      const j = st.jobs[path.slice(6, -7)];
+      if (!j) return json({ detail: 'No such job.' }, 404);
+      if (j.state === 'done' || j.state === 'failed') return json({ detail: 'Already finished.' }, 409);
+      if (j.state === 'uploading' || j.state === 'verifying') return json({ detail: 'Too late to stop: the box is being written.' }, 409);
+      j.cancelled = true; return json({ ok: true });
+    }
     if (path.startsWith('/jobs/')) { const j = st.jobs[path.slice(6)]; return j ? json(j) : json({ detail: 'No such job.' }, 404); }
     if (path.startsWith('/concepts/')) { const c = box && box.concepts[path.slice(10)]; return c ? json(c) : json({ detail: 'No such concept.' }, 404); }
     const bad = needBox() || write(); if (bad) return bad;
     if (path === '/ask') {
       if (!st.ai) return json({ detail: 'The AI helper is away.' }, 409);
+      if (Object.values(st.jobs).some((j) => (j.kind === 'ask' || j.kind === 'explain') && j.state !== 'done' && j.state !== 'failed')) return json({ detail: 'The AI helper is busy with one idea. Wait a moment.' }, 409);
       const prompts = Object.entries(box.concepts).slice(0, 2).map(([id, c]) => ({ id, question: c.question }));
       const sketch = '// The AI helper added a rule for: ' + body.text + '\n' + vs()[0].source;
       return json({ job_id: runJob('ask', { fail: /^fail/i.test(body.text), clarify: /^which/i.test(body.text), prompts, sketch, note: body.text }) });

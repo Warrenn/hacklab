@@ -201,7 +201,11 @@ const $app = document.getElementById('app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const api = async (path, body) => {
   const r = await fetch('/api' + path, body === undefined ? {} : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-  if (!r.ok) throw Object.assign(new Error('api ' + r.status), { status: r.status });
+  if (!r.ok) {
+    let detail = '';
+    try { detail = (await r.json()).detail || ''; } catch (_) { /* no body */ }
+    throw Object.assign(new Error('api ' + r.status), { status: r.status, detail });
+  }
   return r.json();
 };
 // Remote view (owner's P5 notes): a Tailscale viewer may only change things while helping is on.
@@ -444,7 +448,8 @@ function working() {
     <div class="lead" style="font-size:20px">You asked</div><div class="quote">“${esc(S.asked)}”</div>
     <ol class="stages">${items}</ol>
     <div class="explain">${esc(job.message_kid || '')}</div>
-    <div class="faint">${job.kind === 'explain' ? 'Usually takes a few seconds' : 'Usually takes about half a minute'}</div></main>`;
+    <div class="faint">${job.kind === 'explain' ? 'Usually takes a few seconds' : 'Usually takes about half a minute'}</div>
+    ${['queued', 'thinking', 'compiling'].includes(job.state) ? `<button class="ghost" data-act="stopjob" ${dis()}>Stop</button>` : ''}</main>`;
 }
 function failed() {
   return `${header({ chips: false })}<main class="center">
@@ -592,6 +597,10 @@ async function startJob(kind, path, body, asked) {
     api('/jobs/' + job_id).then(onJob).catch(() => {});
     pollJob(job_id);
   } catch (e) {
+    if (path === '/ask' && e.status === 409 && e.detail) {
+      // the helper is busy with another idea (or away): its words become a bubble, the kid's text stays
+      S.thinking = false; S.chat = [...S.chat, { role: 'helper', text: e.detail }]; render(); return;
+    }
     if (e.status === 409) { await refresh(); S.screen = S.status.box ? homeScreen() : 'picker'; render(); }
     else { S.job = { kind, state: 'failed', message_kid: 'That one did not work. Try again, or press Undo.' }; S.screen = 'failed'; render(); }
   }
@@ -669,6 +678,7 @@ const ACTIONS = {
   explainchanged: () => { S.prevJob = S.job; startJob('explain', '/explain', { scope: 'changed' }, 'What just changed?'); },
   explainlines: () => { const a = Math.min(S.sel.a, S.sel.b ?? S.sel.a), b = Math.max(S.sel.a, S.sel.b ?? S.sel.a); S.prevJob = S.job; startJob('explain', '/explain', { scope: 'lines', from: a, to: b }, `What do lines ${a} to ${b} do?`); },
   closeexplain: () => { S.explanation = null; render(); },
+  stopjob: () => { if (S.job) api('/jobs/' + S.job.job_id + '/cancel', {}).catch(() => {}); },
   clearsel: () => { S.sel = null; render(); },
   how: () => { S.back = S.screen === 'done' ? 'done' : 'home'; S.screen = 'how'; render(); },
   behaviour: (id, el) => {

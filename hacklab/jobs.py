@@ -31,6 +31,8 @@ KID_DECLINED = "The AI helper can't help with that one. Pick a trick instead."
 MOCK_QUESTION = "Which key on the remote should start it?"  # mock backend's clarify answer
 MOCK_READY = "I know what to do. Press Go! and watch the box."  # mock backend's ready answer
 KID_MUDDLED = "The AI helper got muddled. Ask again."  # the answer had the wrong shape
+KID_STOPPED = "Stopped. Nothing was changed."  # the kid pressed Stop before the box was written
+KID_BUSY = "The AI helper is busy with one idea. Wait a moment."  # one AI call at a time
 KID_GAVE_UP = (
     "The AI helper tried three times and the code would not build. "
     "Try saying it another way, or pick a trick."
@@ -74,6 +76,7 @@ class Job:
     )
     explanation: dict[str, Any] | None = None  # explain jobs: ExplainResult as a dict
     result: Any = None  # ask jobs: the held GenieResult behind a "ready" answer (server-side only)
+    cancel_requested: bool = False  # honoured at safe points only (never mid-upload)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -139,6 +142,11 @@ class FakeJobRunner:
         job.message_kid = MESSAGES[state]
         self._publish(job)
 
+    def _stop(self, job: Job) -> None:
+        job.state = "failed"
+        job.message_kid = KID_STOPPED
+        self._publish(job)
+
     def _publish(self, job: Job) -> None:
         for q in self._subscribers:
             q.put_nowait(job.to_dict())
@@ -152,6 +160,9 @@ class FakeJobRunner:
         if job.kind == "ask":  # P8 round 3: the ask answers; the go job (payload "go") flashes
             stages = stages[1:] if job.payload.get("go") else stages[:1]
         for stage in stages:
+            if job.cancel_requested:
+                self._stop(job)
+                return
             self._set(job, stage)
             await asyncio.sleep(self.delay)
             if stage == "thinking" and job.kind == "explain":
@@ -170,6 +181,9 @@ class FakeJobRunner:
                 job.log_ref = f"{job.id}.log"
                 self._set(job, "failed")
                 return
+        if job.cancel_requested:
+            self._stop(job)
+            return
         if job.kind == "ask" and not job.payload.get("go"):
             job.answer = "ready"
             job.state = "done"
@@ -296,10 +310,18 @@ class RealJobRunner:
             if sketch_dir is None:
                 self._set(job, "failed")
                 return
+            if job.cancel_requested:
+                self._set(job, "failed", KID_STOPPED)
+                return
             loop = asyncio.get_running_loop()
             progress = lambda stage: loop.call_soon_threadsafe(self._set, job, stage)  # noqa: E731
             res = await asyncio.to_thread(
-                self.flasher.flash, box, sketch_dir, progress, self._spec(box)
+                self.flasher.flash,
+                box,
+                sketch_dir,
+                progress,
+                self._spec(box),
+                lambda: job.cancel_requested,
             )
             job.log_ref = self._write_log(box, job, res.log)
             if not res.ok:
@@ -397,6 +419,9 @@ class RealJobRunner:
             return
         if self.ledger:
             self.ledger.record(genie.model, usage)
+        if job.cancel_requested:
+            self._set(job, "failed", KID_STOPPED)
+            return
         texts = {"title": result.title, "metaphor": result.metaphor, "watch_for": result.watch_for}
         texts.update({f"story[{i}]": p for i, p in enumerate(result.story)})
         for i, step in enumerate(result.steps):
@@ -480,6 +505,9 @@ class RealJobRunner:
                     return
                 if self.ledger:
                     self.ledger.record(genie.model, usage)
+                if job.cancel_requested:  # Stop pressed while the helper was thinking
+                    self._set(job, "failed", KID_STOPPED)
+                    return
                 entry = {
                     "request": text,
                     "box": box,
@@ -529,8 +557,17 @@ class RealJobRunner:
                 if f.is_file() and f.suffix != ".ino":
                     shutil.copy2(f, sketch_dir / f.name)
             (sketch_dir / "genie.ino").write_text(assemble(genie.skeleton, frags))
+            if job.cancel_requested:
+                shutil.rmtree(parent, ignore_errors=True)
+                self._set(job, "failed", KID_STOPPED)
+                return
             res = await asyncio.to_thread(
-                self.flasher.flash, box, sketch_dir, progress, self._spec(box)
+                self.flasher.flash,
+                box,
+                sketch_dir,
+                progress,
+                self._spec(box),
+                lambda: job.cancel_requested,
             )
             log.append(f"[attempt {attempt}] {res.log}")
             if res.ok:
