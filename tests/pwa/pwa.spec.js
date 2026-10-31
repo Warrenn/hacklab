@@ -432,7 +432,7 @@ test('the code page gives the room to the code: full-width, viewport-high panel;
     page.getByRole('heading', { name: 'The code right now' }).boundingBox(),
     page.getByRole('button', { name: 'Try something else' }).boundingBox()]);
   expect(pre.width).toBeGreaterThan(main.width * 0.9);                       // the code spans the page
-  expect(pre.height).toBeGreaterThan(834 * 0.5);                             // and most of the height
+  expect(pre.height).toBeGreaterThan(834 * 0.45);                            // and the bulk of the height (header, three rows, footer take the rest)
   expect(pre.y + pre.height).toBeLessThanOrEqual(834 + 1);                   // without growing the page
   expect(Math.abs(btn.y + btn.height / 2 - (h1.y + h1.height / 2))).toBeLessThan(40);  // buttons beside the message
   expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeLessThanOrEqual(1);
@@ -445,6 +445,30 @@ test('the code page gives the room to the code: full-width, viewport-high panel;
   expect(pre2.width).toBeGreaterThan(main.width * 0.9);
   expect(undo.y).toBeLessThan(pre2.y);
   expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeLessThanOrEqual(1);
+});
+
+test('Curious? is always on the code page, and nothing that acts looks like a hyperlink', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  const noLinkLook = async (name) => {
+    const b = page.getByRole('button', { name, exact: true });
+    await expect(b).toBeVisible();
+    const st = await b.evaluate((el) => { const c = getComputedStyle(el); return { underline: c.textDecorationLine, border: parseFloat(c.borderTopWidth), bg: c.backgroundColor }; });
+    expect(st.underline, name).toBe('none');
+    expect(st.border > 0 || st.bg !== 'rgba(0, 0, 0, 0)', `${name} has a button face`).toBe(true);
+  };
+  await noLinkLook('Show me the code');
+  await page.getByRole('button', { name: 'Show me the code' }).click();
+  await expect(page.getByRole('heading', { name: 'The code right now' })).toBeVisible();
+  await expect(page.getByText('Curious?')).toBeVisible();                                     // no fresh job: the box's own prompts
+  await expect(page.locator('.prompt').first()).toBeVisible();
+  await page.locator('.prompt').first().click();
+  await expect(page.locator('.explain.warm')).toBeVisible();
+  for (const name of ['Try it', 'Level 3: edit all the code', 'What does this code do?', 'How does the whole thing work?']) await noLinkLook(name);
+  await page.getByRole('button', { name: 'Try something else' }).click();
+  await page.getByPlaceholder(/shake its head/).fill('which key');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.locator('.chat')).toContainText('Which key', { timeout: 15000 });
+  await noLinkLook('Start over');
 });
 
 test('the header chip is status; the Hack Lab mark is the way back to the picker', async ({ page }) => {

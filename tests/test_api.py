@@ -58,6 +58,7 @@ def test_boxes_come_from_profiles(client):
             "suggestions",
             "helpers",
             "keys",
+        "concepts",
         }
 
 

@@ -45,6 +45,8 @@ main{flex:1;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px
 .curious .sub{margin-right:10px}
 .curious .prompt{padding:10px 14px;font-size:17px}
 #app.fill{height:100%;overflow:hidden}
+#app.fill main{padding-top:18px;padding-bottom:18px}
+#app.fill .col12{gap:10px}
 #app.fill pre{max-height:none}
 h1{margin:0;font-size:40px;font-weight:900;line-height:1.1}
 .lead{font-size:18px;font-weight:800;color:var(--muted)}
@@ -63,7 +65,8 @@ h1{margin:0;font-size:40px;font-weight:900;line-height:1.1}
 .eyebrow{font-size:16px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 .big{font-size:24px;font-weight:900}
 .small{font-size:17px;font-weight:600;color:var(--muted)}
-.link{background:none;border:0;padding:0;font-size:17px;font-weight:800;color:var(--accent);text-align:left}
+.link,.codefoot button{font:inherit;font-size:16px;font-weight:800;padding:10px 14px;border-radius:999px;border:2px solid var(--line);background:#fff;color:var(--ink);align-self:flex-start}
+.link{border-color:var(--accent);color:var(--accent)}
 .rescue{display:flex;align-items:center;gap:14px;font-size:22px;font-weight:900;padding:20px 22px;border-radius:18px;border:3px solid var(--ink);background:#fff;text-align:left}
 .rescue.teal{border-color:var(--teal);color:var(--teal-dark)}
 .rescue:disabled{opacity:.45;cursor:default}
@@ -102,8 +105,7 @@ pre .set{background:var(--accent);color:#fff;border-radius:6px;padding:1px 8px;f
 pre .cm{color:#8A90A8}
 .pill{font-size:16px;font-weight:800;padding:8px 14px;border-radius:999px;border:2px solid var(--line);background:#fff}
 .codefoot{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:15px;font-weight:700;color:var(--faint);flex-wrap:wrap}
-.codefoot button{background:none;border:0;padding:0;font:inherit;font-weight:700;color:var(--muted);text-decoration:underline}
-.codefoot .try-it{color:var(--accent)}
+.codefoot .try-it{border-color:var(--accent);color:var(--accent);margin-left:8px}
 .banner{margin:20px 32px 0;background:var(--amber-bg);border:2px solid var(--amber-line);border-radius:18px;padding:16px 22px;display:flex;align-items:center;gap:16px;font-size:18px;font-weight:700;color:#5B4A1E;line-height:1.35}
 .tricks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .trick{display:flex;flex-direction:column;gap:6px;text-align:left;padding:18px 20px;border-radius:16px;border:2px solid var(--line);background:var(--card)}
@@ -424,7 +426,9 @@ function failed() {
 function done() {
   const job = S.job;
   const n = changes();
-  const prompts = (job?.prompts || []).map((p) => `<button class="prompt" data-act="concept" data-id="${esc(p.id)}"><span class="q">?</span><span>${esc(p.question)}</span></button>`).join('');
+  // Curious? is always there: the job's prompts when it brought some, else the box's own.
+  const own = (S.boxes.find((b) => b.id === S.status?.box) || {}).concepts || [];
+  const prompts = (job?.prompts?.length ? job.prompts : own.slice(0, 3)).map((p) => `<button class="prompt" data-act="concept" data-id="${esc(p.id)}"><span class="q">?</span><span>${esc(p.question)}</span></button>`).join('');
   const concept = S.concept ? `<div class="explain warm"><strong>${esc(S.concept.title)}.</strong> ${esc(S.concept.explanation)}</div>` : '';
   const head = job ? `<div class="donehead"><span class="tick">${I.tick(32)}</span><h1>${esc(job.message_kid)}</h1></div>` : '<div class="donehead"><h1>The code right now</h1></div>';
   const sub = job ? (n ? `That was change ${n} since it came.` : 'It is back to how it came.') : `Version ${esc(S.status?.current_version)}.`;

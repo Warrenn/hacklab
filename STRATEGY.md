@@ -1981,6 +1981,29 @@ scroll, buttons in the top row, "Curious?" prompts in a row above the code.
 - [x] Step 3 — take 2: no side column; top row message + buttons, second row change line + Curious? prompts, code title + links on one row, code full width filling the page; explaining state keeps 7/5; pwa layout test rewritten; 59 pw tests on WebKit + Chromium — completed 2026-10-31
 - [x] Step 4 — preview v11; release 0.7.5 on the Pi (healthy); code page at hacklab.local (1728x940): code panel 1664x586 full width, buttons in the top row, no page scroll — completed 2026-10-31
 
+## P8 round 3f — Curious? always on the code page; every control is a button (owner's notes 2026-10-31, approved by default)
+
+Owner: the "Curious?" section is gone on the code page (it only showed when a
+fresh job carried prompts; "Show me the code" from Home has no job); and the
+call-to-action style is inconsistent: "Try it" and "Level 3: edit all the
+code" look like hyperlinks while "What does this code do?" is a button. Review
+the whole app: everything that navigates or acts is a button.
+
+Design: `/api/boxes` entries carry `concepts: [{id, question}]` (the box's
+curiosity prompts); the code page shows the job's prompts when it has them,
+else the first three of the box's own, so "Curious?" is always there. One
+secondary button style (`.pill`, the style the code links already use) for
+"Show me the code" on the Home card, "Start over" in the discussion, "Try it"
+and "Level 3: edit all the code" in the code footer; no underlined text
+buttons remain. Decision log row. Tests: `/api/boxes` shape; pwa: Curious?
+chips on the code page opened from Home, and no control on Home / the code
+page has an underline or no border.
+Steps: 1 red -> green; 2 preview v12, release 0.7.6 on the Pi.
+
+## Progress — P8 round 3f
+- [x] Step 1 — /api/boxes entries carry concepts [{id, question}], the code page falls back to the box's own three, one pill face for Show me the code / Start over / Try it / Level 3 (no underlined text buttons left); tighter rhythm on the viewport-high page; unit + pwa tests; 61 pw on WebKit + Chromium — completed 2026-10-31
+- [ ] Step 2 — preview v12, release 0.7.6 live on the Pi
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the
