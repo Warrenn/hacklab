@@ -2053,11 +2053,15 @@ carry ranges; the two recorded goldens get ranges and are re-recorded live.
 Steps: 1 model shape + persona + mock (unit red -> green); 2 page + pwa;
 3 preview v15, release 0.7.9, live explanation on the Pi, goldens re-recorded.
 
+Cap (same day): the model sometimes cites 30+ lines for one step (a 999 px
+snippet on the iPad). A snippet shows about 14 lines and scrolls inside.
+
 ## Progress — P8 round 3h
 - [x] Step 1 — Step.from_line/to_line (optional, 1-based), persona asks for the range per step, mock + preview stand-in + both goldens carry ranges (goldens hand-ranged, re-recorded in Step 3); 270 unit — completed 2026-10-31
 - [x] Step 2 — explanation is one column: title + Close, story, numbered steps each with its lines (pre.snip, numbered, coloured), metaphor, Try it, Back to the code; no code side bar, no step-aside rule, no duplicate version line; pwa + full-stack tests; 63 pw on WebKit + Chromium — completed 2026-10-31
 - [x] Step 3 — preview v15; release 0.7.9 on the Pi (healthy); live on the Pi: "Explain lines 30-44" of the Forklift came back with a range on every step and the snippets embedded; goldens re-recorded live (every step ranged) and committed — completed 2026-10-31
 - [x] Step 4 — cache key explain2-*; snippet boxes no minimum height; release 0.7.10 on the Pi (healthy); live: the Laser Synthesizer's whole-sketch explanation came fresh in 10 s with six ranged steps and embedded snippets, no side bar, version line once — completed 2026-10-31
+- [x] Step 5 — pre.snip max-height 14 lines, scrolls inside; pwa test; 63 pw — completed 2026-10-31
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
