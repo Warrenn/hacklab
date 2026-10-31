@@ -1945,7 +1945,7 @@ checked on the Pi.
 
 ## Progress — P8 round 3d
 - [x] Step 1 — retryPic(): up to five cache-busted retries with growing pauses, no id-based fallback; pwa test refuses the first two loads of every picture and sees real pictures; 57 pw tests on WebKit + Chromium — completed 2026-10-31
-- [ ] Step 2 — preview v9, release 0.7.3 live on the Pi
+- [x] Step 2 — preview v9; release 0.7.3 on the Pi (healthy); real picker at hacklab.local: all three pictures 400x230, retry code served — completed 2026-10-31
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
