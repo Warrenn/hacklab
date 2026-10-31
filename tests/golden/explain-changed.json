@@ -1,0 +1,48 @@
+{
+  "request": "explain changed",
+  "responses": [
+    {
+      "title": "Button 7 Makes the Turret Say No",
+      "story": [
+        "Before this change, the box only reacted to the four arrow keys. Button 7 on the remote did nothing. The new line teaches the box one more trick: when it hears button 7, it shakes its head no.",
+        "Here is how it works. The box listens for the remote all the time. When a button is pressed, it reads a number called a command code. Button 7 has the code 0x7, and the sketch gives that number the nickname cmd7.",
+        "The new line is a case inside a switch. A switch is a list of 'if you hear this, do that' rules. The new rule says: if the key is cmd7, run shakeHeadNo(3) and then stop checking the list. The 3 means three shakes. The break is the stop sign.",
+        "The other changed lines only swapped empty marker comments for blank lines. The computer ignores those, so the box acts the same there."
+      ],
+      "steps": [
+        {
+          "label": "Name the key",
+          "detail": "The sketch gives the code 0x7 the nickname cmd7, so button 7 is easy to read in the code.",
+          "from_line": 74,
+          "to_line": 74
+        },
+        {
+          "label": "Wait for a key",
+          "detail": "The box checks over and over whether the remote sent something.",
+          "from_line": 152,
+          "to_line": 152
+        },
+        {
+          "label": "Read the code",
+          "detail": "The switch looks at the command number that arrived and compares it to its list of rules.",
+          "from_line": 177,
+          "to_line": 177
+        },
+        {
+          "label": "New rule",
+          "detail": "If the number matches cmd7, the box runs shakeHeadNo(3), which is the new line.",
+          "from_line": 182,
+          "to_line": 182
+        },
+        {
+          "label": "Shake no",
+          "detail": "The turret turns right, stops, turns left, stops, and repeats that three times.",
+          "from_line": 295,
+          "to_line": 308
+        }
+      ],
+      "metaphor": "The switch is like a mail sorter: each key code goes into its own slot, and slot 7 now has a job.",
+      "watch_for": "Press button 7 on the remote and watch the turret turn left and right three times, like shaking its head no."
+    }
+  ]
+}

@@ -2168,7 +2168,7 @@ live on the Pi); 3 preview v21, release 0.8.1, live on the Pi.
 
 ## Progress — P8 round 5
 - [x] Step 1 — hacklab/diff.sketch_diff over every *.ino/*.h, status.changed (real: previous exists and differs; mock: >1 version), explain scope changed with the diff + current code and "why", 409 when nothing changed, soft fail in the job, golden client serves explain-changed; tests/test_changed.py; 281 unit — completed 2026-10-31
-- [ ] Step 2 — chip + explanation on the page; golden explain-changed recorded live; pwa + full stack
+- [x] Step 2 — "What just changed?" chip first in the row when status.changed, same explanation view; stand-in mirrors; three explanation goldens re-recorded live locally incl. explain-changed ("Button 7 Makes the Turret Say No", every step ranged); pwa (mock: hidden on stock, shown after a trick, explains) + full stack (ask -> Go! -> chip -> recorded explanation with snippets); 69 pw, 281 unit — completed 2026-10-31
 - [ ] Step 3 — preview v21, release 0.8.1 live on the Pi
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)

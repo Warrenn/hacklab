@@ -86,6 +86,27 @@ def main() -> int:
                 )
                 + "\n"
             )
+        # P8 round 5: "What just changed?": the skeleton vs the skeleton with the recorded
+        # shake-on-7 fragments assembled in (a real AI helper change), explained with its diff
+        from hacklab.diff import sketch_diff
+        from hacklab.genie import GenieResult
+
+        shake = json.loads((GOLDEN / "shake-head-on-7.json").read_text())["responses"][-1]
+        after = assemble(skeleton, GenieResult(**shake).fragments())
+        with tempfile.TemporaryDirectory() as td:
+            before_dir, after_dir = Path(td) / "before", Path(td) / "after"
+            before_dir.mkdir(), after_dir.mkdir()
+            (before_dir / "stock.ino").write_text(skeleton)
+            (after_dir / "stock.ino").write_text(after)
+            diff = sketch_diff(before_dir, after_dir)
+        result, usage = genie.explain(after, None, "medium", diff)
+        print(f"{'explain-changed':22} in={usage.input_tokens} out={usage.output_tokens}")
+        print(f"   title={result.title!r}")
+        print(f"   steps: {[(s.label, s.from_line, s.to_line) for s in result.steps]}")
+        (GOLDEN / "explain-changed.json").write_text(
+            json.dumps({"request": "explain changed", "responses": [result.model_dump()]}, indent=2)
+            + "\n"
+        )
         names = [n for n in names if n in REQUESTS and len(sys.argv) > 2 and n in sys.argv]
     for name in names:
         req = REQUESTS[name]

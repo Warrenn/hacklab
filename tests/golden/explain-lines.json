@@ -4,50 +4,51 @@
     {
       "title": "The Button Sorting Switch",
       "story": [
-        "Think of the box as a mail sorter. Each time you press a button, the remote sends a secret number. Just before this part of the code, the box catches that number and keeps it. Now it has to decide what to do with it.",
-        "Line 169 starts a switch. A switch looks at the number and jumps to the matching case, like a mail sorter dropping a letter into the right slot. Up, down, left and right each move the turret one small step.",
-        "OK fires one dart. Star fires all six darts. Button 1 makes the turret nod yes, and button 2 makes it shake no. Each case ends with break, which means 'done, leave the sorter'. If no case matches, nothing happens."
+        "Imagine the box as a mail sorter. Every time you press a button on the remote, a little note with a code number arrives. The switch statement on line 169 reads that number and decides which slot it belongs in.",
+        "Each case is one slot. If the note says up, the box tilts up one step. If it says left, the box turns left a little. The word break means the sorting is done, so the box skips the other slots.",
+        "The OK button fires one dart. The star button fires all six darts. Button 1 makes the turret nod yes three times, and button 2 makes it shake no three times.",
+        "If you press a button that has no case, like 5, nothing happens. The note has no slot, so the box just waits for the next press."
       ],
       "steps": [
         {
-          "label": "Read the button",
-          "detail": "The switch looks at the command number the remote just sent and picks the matching case.",
+          "label": "Read the code",
+          "detail": "The switch looks at the command number the remote just sent.",
           "from_line": 169,
           "to_line": 169
         },
         {
           "label": "Tilt buttons",
-          "detail": "Up and down call helpers that tilt the barrel one small step each press.",
+          "detail": "Up and down each tilt the barrel one step by calling upMove or downMove.",
           "from_line": 171,
           "to_line": 177
         },
         {
           "label": "Turn buttons",
-          "detail": "Left and right call helpers that spin the whole turret a short, timed burst.",
+          "detail": "Left and right spin the turret a short burst with leftMove or rightMove.",
           "from_line": 179,
           "to_line": 185
         },
         {
-          "label": "Fire one",
-          "detail": "OK calls fire(), which spins the drum just enough to launch a single dart.",
+          "label": "Fire buttons",
+          "detail": "OK fires one dart, and star spins the drum to fire all six.",
           "from_line": 187,
-          "to_line": 190
-        },
-        {
-          "label": "Fire all",
-          "detail": "Star calls fireAll(), which spins the drum six times as long to launch every dart.",
-          "from_line": 192,
           "to_line": 195
         },
         {
-          "label": "Nod and shake",
+          "label": "Head shakes",
           "detail": "Button 1 nods yes and button 2 shakes no, three times each.",
           "from_line": 197,
           "to_line": 203
+        },
+        {
+          "label": "No match",
+          "detail": "If the code matches no case, the switch ends and nothing moves.",
+          "from_line": 205,
+          "to_line": 205
         }
       ],
-      "metaphor": "The switch is like a mail sorter that reads a number on each letter and drops it into the right slot.",
-      "watch_for": "Press OK and count one dart, then press star and see if all six go; a button with no case, like 5, should do nothing."
+      "metaphor": "The switch is like a mail sorter who reads each note and drops it into the right slot.",
+      "watch_for": "Press OK for one dart, then star for all six, and notice that button 5 does nothing because it has no case."
     }
   ]
 }
