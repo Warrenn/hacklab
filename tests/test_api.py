@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from hacklab.app import create_app, format_sse
 from hacklab.config import Config
 from hacklab.jobs import TERMINAL_STATES, FakeJobRunner
+from tests.conftest import STOCK_MAIN
 
 
 @pytest.fixture
@@ -145,7 +146,7 @@ def test_sketch_current_is_the_profile_stock_sketch(client):
     s = client.get("/api/sketch/current").json()
     assert s["box"] == "testbox"
     assert s["version"] == "stock"
-    assert s["source"] == "void setup(){} void loop(){}\n"
+    assert s["source"] == STOCK_MAIN
 
 
 def test_concepts(client):

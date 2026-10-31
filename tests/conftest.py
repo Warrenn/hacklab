@@ -23,6 +23,11 @@ void loop() {
 }
 """
 
+STOCK_MAIN = (
+    '#include "config.h"\nint speed = 5; // how fast -- ///{"range":[1,10]}\n'
+    "void setup(){} void loop(){}\n"
+)
+
 SKETCH = """\
 #include <Servo.h>
 Servo s;
@@ -81,7 +86,12 @@ def write_box(
         'tested = "compile-only"\n'
     )
     (b / "templates" / "wave" / "wave.ino").write_text(SKETCH)
-    (b / "stock" / "stock" / "stock.ino").write_text("void setup(){} void loop(){}\n")
+    # the box's own code carries the IDE's markers (P8 round 4): one in the main, two in config.h
+    (b / "stock" / "stock" / "stock.ino").write_text(STOCK_MAIN)
+    (b / "stock" / "stock" / "config.h").write_text(
+        'int top = 100; // the top -- ///{"min":0,"max":200}\n'
+        'bool flip = false; ///{"options":["true","false"]}\n'
+    )
     return b
 
 

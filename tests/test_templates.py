@@ -29,7 +29,13 @@ def test_find_tweakables_names_values_and_ranges():
 
 def test_to_api_shape_matches_contract():
     api = [t.to_api() for t in find_tweakables(SRC)]
-    assert api[0] == {"name": "yawMoveSpeed", "value": 90, "range": [10, 90], "step": 10}
+    assert api[0] == {
+        "name": "yawMoveSpeed",
+        "value": 90,
+        "range": [10, 90],
+        "step": 10,
+        "hint": "speed",
+    }
     assert api[2] == {"name": "flipM4", "value": True, "options": ["true", "false"]}
 
 

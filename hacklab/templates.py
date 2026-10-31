@@ -34,11 +34,14 @@ class Tweakable:
     step: float | None = None
     options: list[str] | None = None
     label: str | None = None  # our extension: kid-facing slider label
+    hint: str | None = None  # the author's comment before the marker ("the top")
 
     def to_api(self) -> dict[str, Any]:
         d: dict[str, Any] = {"name": self.name, "value": self.value}
         if self.label:
             d["label"] = self.label
+        if self.hint:
+            d["hint"] = self.hint
         if self.range:
             d["range"] = [_num(self.range[0]), _num(self.range[1])]
         if self.step is not None:
@@ -69,9 +72,9 @@ def find_tweakables(source: str) -> list[Tweakable]:
             marker = json.loads(m.group(1))
         except json.JSONDecodeError as exc:
             raise TemplateError(f"bad marker on line {n}: {exc.msg}") from exc
-        code = line[: m.start()].split("//")[
-            0
-        ]  # ponytail: '//' inside a string literal would confuse this
+        raw = line[: m.start()]
+        code = raw.split("//")[0]  # ponytail: '//' inside a string literal would confuse this
+        hint = raw[len(code) :].lstrip("/ ").rstrip(" -") or None
         lits = list(LITERAL.finditer(code))
         if not lits:
             raise TemplateError(f"marker on line {n} has no literal to tweak")
@@ -98,6 +101,7 @@ def find_tweakables(source: str) -> list[Tweakable]:
                 step=float(marker["step"]) if "step" in marker else None,
                 options=[str(o) for o in marker["options"]] if "options" in marker else None,
                 label=marker.get("label"),
+                hint=hint,
             )
         )
     return out
