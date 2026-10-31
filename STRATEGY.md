@@ -1529,6 +1529,36 @@ Parallelism: single small change, serial.
 - [x] Step 2 — remove the app cap (config, app, ledger.over_cap, appliance/example configs, README, DESIGN) — completed 2026-10-31
 - [x] Step 3 — release 0.3.3 on the Pi (healthy; stale cap key removed from /etc/hacklab/config.toml) — completed 2026-10-31
 
+## UI review loop (owner's ask 2026-10-31, approved under standing consent)
+
+Owner: "I need to be able to see something and I want to make comments on the
+page in the UI so that you are also seeing it, I would like to see real time
+changes." Decision: the PWA is published as a private claude.ai Artifact that
+the owner opens on any device (iPad included) and comments on directly; the
+comments reach the maintainer session, each change is republished to the same
+link, so the owner reloads and sees it. Real behaviour stays verifiable on the
+Pi at hacklab.local / over Tailscale.
+
+How: `scripts/preview-build.py` turns `static/index.html` into
+`dist/preview/index.html`, the same page plus an in-page stand-in for the API
+(fetch and EventSource replaced) carrying the real box data from `boxes/`
+(profiles, suggestions, behaviours, concepts, MIT stock code; the Forklift's
+device-only stock is a placeholder comment). Jobs walk the real stage names
+and kid messages from `hacklab/jobs.py` on a timer, like the mock backend;
+an ask starting with "fail" fails at compile; `?remote=1` shows the remote
+view. A thin "Preview" ribbon marks it as not the device. The artifact link
+is private and stays out of the public repo. No new dependency; the page
+code is untouched (the build only strips the document shell and rewrites
+`/static/` to relative paths).
+
+Steps: 1 build script + one test; 2 publish, watch comments; 3 owner comments
+drive the UI backlog (next plan section when the first comments arrive).
+
+## Progress — UI review loop
+- [ ] Step 1 — preview build script + test
+- [ ] Step 2 — artifact published and watched for comments
+- [ ] Step 3 — first round of owner comments planned
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the
