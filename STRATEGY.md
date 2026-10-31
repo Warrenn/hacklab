@@ -1462,6 +1462,34 @@ Steps:
   config only.
 - API key via env only; CI never touches real keys.
 
+## Live board status (owner's ask 2026-10-31, approved under standing consent)
+
+Observed: the Forklift was unplugged from the Pi and the Home card kept saying
+"plugged in" for up to ~30 s. Cause: the page re-reads `/api/status` every
+20 s and the server reuses a detection result for 10 s, and the existing SSE
+feed (`/api/events`) only ever carries job progress. The page already knows
+how to handle a `{"type": "status"}` event (it re-reads status and re-renders),
+nothing on the server sends one.
+
+Fix (small, no new dependency): the server watches the serial device nodes
+(`/dev/ttyUSB*`, `/dev/ttyACM*`; a 1 s glob, far cheaper than `arduino-cli
+board list`) and when the set changes it forces a fresh detection and
+broadcasts `{"type": "status"}` over the SSE feed. Plug or unplug shows on
+every open page within about a second. `Board.device_nodes()` joins the board
+protocol (ArduinoCli: glob; FakeBoard: its port unless unplugged) so the
+behaviour is unit-tested on the emulated board. The 20 s poll stays as the
+fallback for a dropped stream. Parallelism: single tightly-coupled change
+(board.py, app.py, config.py, one test file), serial.
+
+Steps: 1 tests (red); 2 implement; 3 release 0.3.1 + deploy; 4 owner
+plug/unplug check at hacklab.local.
+
+## Progress — live board status
+- [x] Step 1 — tests (tests/test_watch.py: device_nodes on both boards; unplug/replug flips status within the watch interval and pushes {"type": "status"}) — completed 2026-10-31
+- [x] Step 2 — device watch + status event (Board.device_nodes, Config.watch_interval=1.0, lifespan watcher in app.py) — completed 2026-10-31
+- [ ] Step 3 — release 0.3.1 deployed
+- [ ] Step 4 — owner confirms plug/unplug shows within ~1 s
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the

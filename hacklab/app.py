@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
+import logging
 import os
 import shutil
 import tempfile
@@ -27,6 +29,8 @@ from hacklab.skeleton import load_skeleton
 from hacklab.spend import SpendLedger
 from hacklab.store import SketchStore
 from hacklab.templates import TemplateError, render
+
+log = logging.getLogger("hacklab.app")
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 PLACEHOLDER = (
@@ -148,7 +152,33 @@ def create_app(
             raise HTTPException(403, MSG_REMOTE_VIEW)
         return src
 
-    app = FastAPI(title="Hack Lab")
+    async def watch_board() -> None:
+        """Push {"type": "status"} the moment a serial device appears or vanishes, so
+        every open page shows plug/unplug within ~1 s instead of the 20 s poll."""
+        last: frozenset[str] | None = None
+        while True:
+            try:
+                nodes = await asyncio.to_thread(flasher.board.device_nodes)
+                if last is not None and nodes != last:
+                    box = state["box"]
+                    await asyncio.to_thread(flasher.detect, True, spec_for(box) if box else None)
+                    runner.broadcast({"type": "status"})
+                last = nodes
+            except Exception:  # keep watching; a bad listing must not kill the watcher
+                log.exception("board watch")
+            await asyncio.sleep(cfg.watch_interval)
+
+    @contextlib.asynccontextmanager
+    async def lifespan(_: FastAPI):
+        task = asyncio.create_task(watch_board()) if flasher else None
+        yield
+        if task:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+    app = FastAPI(title="Hack Lab", lifespan=lifespan)
+    app.state.runner = runner
     state: dict[str, Any] = {"box": None, "versions": {}}  # mock mode only: box_id -> [version]
 
     def box_or_409() -> str:

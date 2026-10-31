@@ -21,6 +21,7 @@ class Config:
     port: int = 8000
     data_dir: Path = field(default_factory=lambda: Path("data"))
     fake_board: bool = False
+    watch_interval: float = 1.0  # seconds between serial device checks (plug/unplug push)
     model: str = "claude-sonnet-5-5"
     monthly_cap_usd: float = 10
     api_key: str | None = None
