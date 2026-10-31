@@ -61,6 +61,10 @@ test('the whole loop: ask -> real compile/flash on the emulated board -> Done wi
   await expect(page.getByText('How it came', { exact: true })).toBeVisible();
   await expect(page.getByText('Nothing changed yet')).toBeVisible();
   await page.getByPlaceholder(/shake its head/).fill('make it shake its head when I press 7');
+  await page.getByRole('button', { name: 'Send' }).click();
+  // the recorded answer is "ready": its words appear on Home and Go! wakes up; nothing flashed yet
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeEnabled({ timeout: 30000 });
+  await expect(page.getByText('Nothing changed yet')).toBeVisible();
   await page.getByRole('button', { name: 'Go!' }).click();
   await expect(doneScreen(page)).toBeVisible({ timeout: 30000 });
   // the kid message is the recorded model answer, not page copy; prompts come from the box's concepts
@@ -151,10 +155,12 @@ test('Level 3: what the kid types in the editor is exactly what gets flashed', a
 test('discussion: the recorded clarify answer asks a question; the reply (with history) gets a sketch', async ({ page }) => {
   await pickTurret(page);
   await page.getByPlaceholder(/shake its head/).fill('make it move when I press a key');  // golden: clarify
-  await page.getByRole('button', { name: 'Go!' }).click();
-  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 30000 });
-  await expect(page.locator('.chat')).toContainText(/Which key/);
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.locator('.chat')).toContainText(/Which key/, { timeout: 30000 });
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeDisabled();
   await page.getByPlaceholder('Your answer').fill('key 7, shake its head');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeEnabled({ timeout: 30000 });
   await page.getByRole('button', { name: 'Go!' }).click();
   await expect(doneScreen(page)).toBeVisible({ timeout: 30000 });
   await expect(page.locator('pre')).toContainText('IrReceiver.decode()');

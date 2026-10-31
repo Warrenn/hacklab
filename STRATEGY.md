@@ -1883,7 +1883,7 @@ Parallelism: all steps touch static/index.html or the ask job -> serial.
 
 ## Progress — P8 round 3
 - [x] Step 1 — server: `answer: ready` holds the plan (Job.result); `/api/go` flashes it with no model call, 409 unless a ready answer for the current box; mock and existing ask tests go through Go! — completed 2026-10-31
-- [ ] Step 2 — page: textarea draft survives renders, chips hide while typing, Send/Go! split, discussion stays on Home
+- [x] Step 2 — page: textarea draft lives in S.draft and survives every render (focus and caret restored), "Try one of these" hides while typing, Send asks and the kid stays on Home with a thinking bubble, Go! enabled only on a ready answer with an empty draft, suggestions open the discussion; pwa tests updated + one new draft/gate test — completed 2026-10-31
 - [ ] Step 3 — full stack, preview v6, DESIGN decision log, API contract
 - [ ] Step 4 — release 0.7.0 on the Pi, live ask -> ready -> Go!
 
