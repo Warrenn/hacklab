@@ -41,6 +41,11 @@ def test_boxes_behaviours_concepts_come_from_disk(client):
         "name": "Test Box",
         "picture": "/static/boxes/testbox.svg",
     }
+    # P8 round 3f: the box's curiosity prompts travel with it ("Curious?" always on the code page)
+    ids = [c["id"] for c in box["concepts"]]
+    assert "servo" in ids and all(
+        set(c) == {"id", "question"} and c["question"] for c in box["concepts"]
+    )
     assert client.get("/api/behaviours").status_code == 409  # no box picked
     client.post("/api/box", json={"id": "testbox"})
     bh = client.get("/api/behaviours").json()

@@ -100,6 +100,10 @@ class Box:
             "picture": self.picture,
             "ask_placeholder": self.copy["ask_placeholder"],
             "suggestions": self.copy["suggestions"],
+            # curiosity prompts: the code page shows these when the job brought none
+            "concepts": [
+                {"id": k, "question": c.prompt_question()} for k, c in self.concepts.items()
+            ],
             # Level 3 editor completions: helper descriptions ("name(n): ...") and key constants
             "helpers": list(self.genie.get("helpers", [])),
             "keys": list(self.genie.get("keys", [])),

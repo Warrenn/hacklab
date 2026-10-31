@@ -58,6 +58,7 @@ def test_to_api_box_entry(boxes_dir: Path):
         "suggestions",
         "helpers",
         "keys",
+        "concepts",
     }
 
 
