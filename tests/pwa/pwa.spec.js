@@ -423,6 +423,21 @@ test('a box picture that fails to load (app restarting) is retried until it show
   expect(Object.keys(refused).some((u) => /synthesizer\.svg/.test(u))).toBe(false);          // no guessed fallback file
 });
 
+test('the code page gives the room to the code: wide, viewport-high panel; buttons in view without scrolling', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  await page.getByRole('button', { name: 'Show me the code' }).click();
+  await expect(page.getByRole('heading', { name: 'The code right now' })).toBeVisible();
+  const [pre, left, main] = await Promise.all([page.locator('pre').boundingBox(), page.locator('main > section').boundingBox(), page.locator('main').boundingBox()]);
+  expect(pre.width).toBeGreaterThan(left.width * 1.5);                       // the code gets the wide column
+  expect(pre.height).toBeGreaterThan(834 * 0.5);                             // and most of the height
+  expect(pre.y + pre.height).toBeLessThanOrEqual(834 + 1);                   // without growing the page
+  const btn = await page.getByRole('button', { name: 'Try something else' }).boundingBox();
+  expect(btn.y + btn.height).toBeLessThanOrEqual(834 + 1);                   // buttons in view, no page scroll
+  expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeLessThanOrEqual(1);
+  // the code still scrolls inside its panel
+  expect(await page.locator('pre').evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+});
+
 test('the header chip is status; the Hack Lab mark is the way back to the picker', async ({ page }) => {
   await pickTurret(page, homeUrl);
   await expect(page.getByText('IR Turret · plugged in')).toBeVisible();
