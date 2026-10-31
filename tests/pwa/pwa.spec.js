@@ -311,6 +311,7 @@ test('Undo: disabled buttons say why, and every Undo path works on the iPad', as
   await expect(page.getByText('You asked')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 15000 });
   await expect(page.getByText('Nothing changed yet')).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Done! The last change is undone.' })).toBeVisible();   // owner: Home must say it finished
   // after a trick: Home's Undo last change works, and the code page's Undo works
   await page.getByRole('button', { name: 'Nod yes' }).click();
   await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
@@ -572,6 +573,23 @@ test('Stop ends a job before the box is written; the Failed screen says so', asy
   await expect(page.getByRole('button', { name: 'Stop' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Try again' }).click();
   await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible();
+});
+
+test('Back to how it came finishes with a visible confirmation on Home', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  await page.getByRole('button', { name: 'Nod yes' }).click();
+  await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
+  await page.getByRole('button', { name: 'Try something else' }).click();
+  await page.getByRole('button', { name: 'Back to how it came' }).click();
+  await expect(page.getByText('You asked')).toBeVisible();                                     // the Working screen shows the flash
+  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 20000 });
+  const notice = page.getByRole('status').filter({ hasText: 'Done! The IR Turret is back to how it came.' });
+  await expect(notice).toBeVisible();
+  await expect(page.getByText('How it came', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Shake its head no' }).click();                        // the next action clears it
+  await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
+  await page.getByRole('button', { name: 'Try something else' }).click();
+  await expect(page.getByRole('status').filter({ hasText: /back to how it came/ })).toHaveCount(0);
 });
 
 test('the header box button (drawing, name, state) and the Hack Lab mark both lead to the picker', async ({ page }) => {

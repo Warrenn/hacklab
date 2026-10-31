@@ -2221,10 +2221,19 @@ drawings stay); SD re-image, spare card and the read-only root wait for the
 new card the owner is buying; the Laser Synthesizer is checked on the real Pi
 at the nephew visit; the Turret reset is done by the owner in the app.
 
+Round 6b (owner's report 2026-10-31, iPhone): "Back to how it came" on the
+Forklift "didn't complete, it just switched to the Home page". The Pi shows
+three reset jobs, each compiled, uploaded (verified) and ended done in ~20 s;
+the store is on 0000. The page returns to Home after Undo / Reset with no
+confirmation (Undo-clarity round), which reads as unfinished. Fix: a Home
+notice after Undo / Reset: "Done! The <box> is back to how it came." / "Done!
+The last change is undone.", cleared by the next action. Behaviour: pwa test.
+
 ## Progress — P8 round 6
 - [x] Step 1 — profile.toml [labels] for the Turret (8), synthesizer (29), Forklift (5), merged into /api/tweakables and the preview; changed = the main sketch differs; chip row scrolls; 283 unit, 71 pw; release 0.9.0 on the Pi (Forklift sliders read "Top speed", "Flip motor 1-4"; the AI helper'"'"'s own markers on the current version show with their labels) — completed 2026-10-31
 - [x] Step 2 — POST /api/jobs/{id}/cancel sets cancel_requested, honoured before compile, before upload (Flasher.should_stop), on a model answer, and at every mock stage; 409 when finished or mid-write; Working screen shows Stop while queued/thinking/compiling, Failed says "Stopped. Nothing was changed."; one AI call at a time (ask/go/explain 409 KID_BUSY, flashes unaffected), the page shows the words as a bubble; stand-in mirrors; tests/test_cancel.py + pwa Stop test; 287 unit, 73 pw — completed 2026-10-31 (release 0.9.1 below)
 - [x] Step 3 — persistent journal applied on the Pi (Storage=persistent, SyncIntervalSec=30s, SystemMaxUse=200M; /var/log/journal populated after a flush, journald active); stale checkboxes closed and deferrals recorded. Tailscale SSH re-check was approved by the owner at 18:49 — completed 2026-10-31
+- [x] Step 4 — S.notice: "Done! The <box> is back to how it came." / "Done! The last change is undone." shown on Home (role=status) after a reset / undo, cleared by the next job or a box change; pwa tests; 75 pw — completed 2026-10-31 (release 0.9.2 below)
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 

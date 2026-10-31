@@ -55,6 +55,7 @@ main{flex:1;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px
 #app.fill pre{max-height:none}
 h1{margin:0;font-size:40px;font-weight:900;line-height:1.1}
 .lead{font-size:18px;font-weight:800;color:var(--muted)}
+.notice{background:var(--teal-soft);color:var(--teal-dark);border-radius:14px;padding:12px 16px;font-size:18px;font-weight:800}
 .sub{margin:0;font-size:20px;font-weight:700;color:var(--muted);line-height:1.4}
 .ask{display:flex;gap:12px;align-items:flex-end}
 .ask textarea{flex:1;font:inherit;font-size:24px;font-weight:600;line-height:1.3;padding:16px 22px;border:3px solid #D9DCE6;border-radius:18px;min-width:0;resize:none;min-height:72px;max-height:40vh;overflow:auto}
@@ -196,7 +197,7 @@ pre .ln.sel{background:#3A3F63;box-shadow:inset 3px 0 0 var(--accent)}
 // server (message_kid, titles, prompts) or is copied verbatim from docs/screens.
 const S = { status: null, boxes: [], behaviours: [], sketch: null, job: null, asked: '', screen: 'picker',
             picked: null, tweak: null, concept: null, showCode: true, editor: '', busy: false, chat: [],
-            explanation: null, sel: null, back: 'home', draft: '', ready: null, thinking: false, numbers: null };
+            explanation: null, sel: null, back: 'home', draft: '', ready: null, thinking: false, numbers: null, notice: '' };
 const $app = document.getElementById('app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const api = async (path, body) => {
@@ -418,6 +419,7 @@ function home() {
   return `${header()}<main>
     <section class="col7"><h1>What should the ${name} do?</h1>
       <label class="lead" for="ask">Say it or type it. Tap the mic on your keyboard to talk.</label>
+      ${S.notice ? `<div class="notice" role="status">${esc(S.notice)}</div>` : ''}
       ${chat()}
       <form class="ask" data-form="ask"><textarea id="ask" rows="2" placeholder="${S.chat.length ? 'Your answer' : esc((S.boxes.find((b) => b.id === S.status?.box) || {}).ask_placeholder || 'What should it do?')}" autocomplete="off" enterkeyhint="enter"></textarea><button class="ghost" type="submit" ${dis(S.thinking)}>Send</button><button class="primary" type="button" data-act="flash" ${dis(!goReady())}>Go!</button></form>
       ${S.chat.length ? '' : `<div id="tries" ${S.draft.trim() ? 'hidden' : ''}><div class="lead" style="margin-top:8px">Try one of these</div><div class="list">${tries()}</div></div>`}</section>
@@ -576,7 +578,7 @@ async function refresh() {
   if (was !== undefined && S.status.box !== was) {
     // A different box, however it was picked (here, by a remote helper, after a restart): the
     // discussion, the held plan and the half-typed request belonged to the old one.
-    S.chat = []; S.ready = null; S.draft = '';
+    S.chat = []; S.ready = null; S.draft = ''; S.notice = '';
   }
   if (!S.boxes.length) S.boxes = await api('/boxes').catch(() => []);
   if (S.status.box) {
@@ -586,6 +588,7 @@ async function refresh() {
 async function startJob(kind, path, body, asked) {
   S.asked = asked;
   S.concept = null;
+  S.notice = '';
   try {
     const { job_id } = await api(path, body);
     S.job = { job_id, kind, state: 'queued', message_kid: 'Getting ready.' };
@@ -631,6 +634,10 @@ async function finishJob() {
     else if (S.job.kind === 'explain') { S.explanation = S.job.explanation; S.sel = null; S.job = S.prevJob || null; S.screen = 'done'; }
     else {
       if (S.job.kind === 'ask') { S.chat = []; S.ready = null; }
+      // Undo and Back to how it came land on Home: say plainly that they finished (owner, 2026-10-31: on
+      // an iPhone the silent return read as "it did not complete").
+      if (S.job.kind === 'reset') S.notice = `Done! The ${boxName()} is back to how it came.`;
+      if (S.job.kind === 'undo') S.notice = 'Done! The last change is undone.';
       S.screen = S.job.kind === 'undo' || S.job.kind === 'reset' ? homeScreen() : 'done';
     }
     render();
