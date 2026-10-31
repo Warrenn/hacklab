@@ -608,8 +608,12 @@ test('the header box button (drawing, name, state) and the Hack Lab mark both le
   const boxBtn = page.getByRole('button', { name: /Change box: IR Turret, plugged in/ });
   await expect(boxBtn).toBeVisible();
   await expect(boxBtn).toContainText('IR Turret · plugged in');
-  await expect(boxBtn.locator('img')).toHaveAttribute('src', '/static/boxes/ir-turret.svg');   // the box's drawing
-  await expect.poll(() => boxBtn.locator('img').evaluate((el) => el.naturalWidth)).toBeGreaterThan(0);
+  // the box's drawing, tinted with the button's text colour (a CSS mask, no white box behind it)
+  const thumb = boxBtn.locator('.thumb');
+  expect(await thumb.getAttribute('style')).toContain('/static/boxes/ir-turret.svg');
+  const tint = await thumb.evaluate((el) => { const c = getComputedStyle(el); return { bg: c.backgroundColor, text: getComputedStyle(el.parentElement).color, mask: (c.maskImage || c.webkitMaskImage || '') }; });
+  expect(tint.bg).toBe(tint.text);
+  expect(tint.mask).toContain('ir-turret.svg');
   const face = await boxBtn.evaluate((el) => { const c = getComputedStyle(el); return { border: parseFloat(c.borderTopWidth), bg: c.backgroundColor, color: c.color }; });
   expect(face.border).toBeGreaterThan(0);                                                        // looks like a button
   expect(face.bg).not.toBe('rgba(0, 0, 0, 0)');

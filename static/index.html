@@ -33,7 +33,7 @@ button.brand{background:none;border:0;padding:0;text-align:left}
 .chip.away{background:var(--amber);color:var(--amber-dark)}
 .boxbtn{display:inline-flex;align-items:center;gap:10px;padding:6px 12px 6px 8px;border-radius:999px;border:2px solid var(--teal);background:var(--teal-soft);color:var(--teal-dark);font-weight:800;font-size:17px}
 .boxbtn.off{border-color:var(--amber-dark);background:var(--amber);color:var(--amber-dark)}
-.boxbtn .thumb{width:46px;height:28px;object-fit:contain;border-radius:8px;background:#fff}
+.boxbtn .thumb{width:46px;height:28px;flex:0 0 auto;background:currentColor;-webkit-mask:var(--pic) center/contain no-repeat;mask:var(--pic) center/contain no-repeat}
 .boxbtn svg{width:18px;height:18px}
 main{flex:1;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px;padding:28px 32px;min-height:0}
 .col7{grid-column:span 7;display:flex;flex-direction:column;gap:20px;min-width:0}
@@ -236,7 +236,7 @@ const tweakable = () => S.behaviours.find((b) => b.id === S.lastBehaviour && b.t
 const I = {
   cross: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   logo: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>',
-  tick: (s) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>`,
+  tick: (s, colour = '#fff') => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${colour}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>`,
   arrow: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF6B1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
   undo: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-2"/></svg>',
   reset: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>',
@@ -253,10 +253,10 @@ function header(opts = {}) {
   // an arrow; teal when plugged in, amber when not. The Hack Lab mark opens the picker too.
   const pic = (S.boxes.find((b) => b.id === st.box) || {}).picture || '';
   const boxChip = st.box && S.screen !== 'picker'
-    ? `<button class="boxbtn ${st.board_connected ? '' : 'off'}" data-act="picker" aria-label="Change box: ${esc(boxName())}, ${plugged}"><img class="thumb" alt="" src="${esc(pic)}" data-src="${esc(pic)}" onerror="retryPic(this)"><span class="long">${esc(boxName())} · ${plugged}</span>${I.arrow}</button>`
+    ? `<button class="boxbtn ${st.board_connected ? '' : 'off'}" data-act="picker" aria-label="Change box: ${esc(boxName())}, ${plugged}"><span class="thumb" style="--pic:url('${esc(pic)}')" aria-hidden="true"></span><span class="long">${esc(boxName())} · ${plugged}</span>${I.arrow}</button>`
     : '';
   const aiChip = opts.ai === false ? '' : st.ai_available
-    ? `<span class="chip ai" aria-label="AI helper is here"><span class="long">AI helper is here</span><span class="short" aria-hidden="true">AI ${I.tick(16)}</span></span>`
+    ? `<span class="chip ai" aria-label="AI helper is here"><span class="long">AI helper is here</span><span class="short" aria-hidden="true">AI ${I.tick(16, 'currentColor')}</span></span>`
     : `<span class="chip away" aria-label="AI helper is away"><span class="long">AI helper is away</span><span class="short" aria-hidden="true">AI ${I.cross}</span></span>`;
   const left = opts.back
     ? `<button class="back" data-act="${opts.back}" aria-label="Back">${I.back}</button><div style="font-size:26px;font-weight:900">${opts.title}</div>`
