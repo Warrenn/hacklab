@@ -47,6 +47,18 @@ def test_sketch_diff_covers_every_source_file(tmp_path):
     assert sketch_diff(a, a) == ""
 
 
+def test_sketch_diff_pairs_the_main_sketch_by_role_not_by_name(tmp_path):
+    # a shipped trick's main file is nod-yes.ino, the stock's is stock.ino: the diff must be the
+    # changed lines, not "stock.ino removed, nod-yes.ino added" (657 lines, seen on the Pi)
+    a, b = tmp_path / "a", tmp_path / "b"
+    a.mkdir(), b.mkdir()
+    (a / "stock.ino").write_text("int x = 1;\nvoid loop() {}\nvoid setup() {}\n")
+    (b / "nod-yes.ino").write_text("int x = 1;\nvoid loop() { nod(); }\nvoid setup() {}\n")
+    d = sketch_diff(a, b)
+    assert "+void loop() { nod(); }" in d and "-void loop() {}" in d
+    assert "-int x = 1;" not in d and len(d.splitlines()) < 12
+
+
 def test_genie_explains_a_change_with_the_diff_and_asks_why(boxes_dir):
     box = load_boxes(boxes_dir)["testbox"]
     client = FakeGenieClient([EXPLANATION])
