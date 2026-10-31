@@ -154,3 +154,22 @@ async def test_ask_sketch_dir_carries_the_stock_sketch_siblings(tmp_path, boxes_
     assert "config.h" in fb.last_sketch_files and "genie.ino" in fb.last_sketch_files
     cur = store.current("testbox")
     assert (store.path("testbox", cur) / "config.h").is_file()  # stored version keeps it too
+
+
+async def test_guard_rejects_escaping_fragments_and_retries(tmp_path, boxes_dir):
+    bad = {"kind": "sketch", "params": "#include <EEPROM.h>", "message_kid": "Done."}
+    good = {"kind": "sketch", "cases": "case cmd7: fire(); break;", "message_kid": "Press 7."}
+    fb, store, runner, client = make(tmp_path, boxes_dir, [bad, good])
+    job = await wait_done(runner, await runner.submit("ask", {"box": "testbox", "text": "x"}))
+    assert job.state == "done" and fb.uploads == 1
+    assert len(client.calls) == 2
+    assert "#include" in client.calls[1]["messages"][0]["content"]
+    assert "EEPROM" not in fb.last_uploaded_source  # the skeleton has its own includes
+
+
+async def test_guard_declines_an_explain_with_a_link(tmp_path, boxes_dir):
+    bad = {"kind": "explain", "message_kid": "Watch https://example.com to learn servos."}
+    fb, store, runner, client = make(tmp_path, boxes_dir, [bad])
+    job = await wait_done(runner, await runner.submit("ask", {"box": "testbox", "text": "x"}))
+    assert job.state == "failed" and "Pick a trick" in job.message_kid
+    assert fb.uploads == 0 and runner.genie_away() is False

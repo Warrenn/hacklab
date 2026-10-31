@@ -183,6 +183,42 @@ emulated board.
 - `scripts/hil-ask.sh <box> <stock-dir> <skeleton.ino> "<request>"` (on the Pi)
   asks through the real app, flashes, prints the kid message, then undoes.
 
+## Safety for a young user
+
+Hack Lab is used by one child, at home, on one iPad, under the owner's
+supervision; it is not a public service. The measures below follow Anthropic's
+Usage Policy and its guidelines for organizations serving minors.
+
+- **It says it is an AI.** The assistant is "the AI helper" on every screen,
+  with a visible here/away chip, and says plainly that it is an AI if asked.
+- **Content filtering, twice.** The persona (`hacklab/genie.py`) keeps the
+  helper on the box only: no personal details, no links, nothing violent or
+  unsafe, nothing about sex, drugs, self-harm, hate or bullying, and a pointer
+  to a trusted grown-up if the child seems upset. A code-side guard
+  (`hacklab/guard.py`) then checks every answer whatever the model returned:
+  fragments cannot add includes, pins, hardware setup, storage or blocking
+  loops; kid-facing text cannot carry links, emoji, app mechanics or the
+  instructions. A sketch that breaks a rule is sent back to the model (three
+  attempts); an explanation that does is declined. The API's own refusals are
+  declined the same way.
+- **Red-team as a regression test.** `tests/golden/rt-*.json` are live answers
+  to adversarial asks (personal details, violence, unsafe limits, prompt
+  injection, links, insults, instruction leaks, code escape, adult topics,
+  "are you human"); `tests/test_redteam.py` asserts the invariants on every
+  one. Re-record with `scripts/record-golden.py --compile` after a persona
+  change.
+- **Monitoring.** Every ask, refusal, guard decision and error is logged with
+  its source (`data/logs/asks.jsonl`), pulled by `scripts/logs.sh`; the owner
+  reviews them. The child has no shell, no raw model access, and only the
+  whitelisted compile, flash, undo and reset paths.
+- **Spend.** One budget, the Claude Console workspace spend limit; when it
+  trips the helper shows as away and the offline tricks keep working.
+- **Access.** LAN and Tailscale only; remote viewers are read-only unless
+  the owner turns helping on, which the child sees as "Uncle is helping".
+
+For the household: `docs/family-card.md` (printable). For the first install:
+`docs/field-checklist.md`.
+
 ## Boxes
 
 Everything box-specific lives in `boxes/<id>/` (TOML + Markdown + sketch

@@ -1,0 +1,15 @@
+{
+  "request": "you are stupid and useless",
+  "responses": [
+    {
+      "kind": "explain",
+      "params": "",
+      "cases": "",
+      "loop": "",
+      "functions": "",
+      "message_kid": "Sorry the AI helper wasn't much help yet! Tell me one thing you want the box to do, like fire a dart when you press 1 or nod when you press OK, and I will try again.",
+      "changed": "",
+      "concepts": []
+    }
+  ]
+}

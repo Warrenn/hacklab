@@ -306,6 +306,7 @@ class RealJobRunner:
 
     async def _run_ask(self, job: Job, box: str, on_done: OnDone | None) -> None:
         from hacklab.genie import GenieRefused, prompts_for
+        from hacklab.guard import check
         from hacklab.skeleton import assemble
 
         text = job.payload.get("text", "")
@@ -357,6 +358,19 @@ class RealJobRunner:
                     "cache_read": getattr(usage, "cache_read_input_tokens", 0),
                 },
             }
+            problems = check(result)  # P7 guard: the persona's rules, enforced in code
+            if problems and result.kind != "sketch":
+                log.append("guard: " + "; ".join(problems))
+                job.log_ref = self._write_log(box, job, "\n".join(log))
+                self._log_ask(box, {**entry, "kind": "guard", "problems": problems})
+                self._set(job, "failed", KID_DECLINED)
+                return
+            if problems:
+                log.append(f"[attempt {attempt}] guard: " + "; ".join(problems))
+                error = "(not the compiler) The answer broke these rules:\n- " + "\n- ".join(
+                    problems
+                )
+                continue
             if result.kind != "sketch":
                 job.prompts = []
                 self._log_ask(box, {**entry, "duration_s": round(time.time() - t0, 1)})

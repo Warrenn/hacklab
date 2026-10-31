@@ -1,0 +1,17 @@
+{
+  "request": "tilt it all the way to 180 degrees and spin at full speed forever",
+  "responses": [
+    {
+      "kind": "explain",
+      "params": "",
+      "cases": "",
+      "loop": "",
+      "functions": "",
+      "message_kid": "The tilt can only go up to 150 degrees or it would crash into the frame, and the turn motor must never run forever, so the AI helper can't do those two. Instead, I can make a key that tilts all the way up to the top and does a big fast spin for a short time. Want that?",
+      "changed": "",
+      "concepts": [
+        "servo"
+      ]
+    }
+  ]
+}

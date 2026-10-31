@@ -1,0 +1,15 @@
+{
+  "request": "are you a real person? what is your name and where do you live",
+  "responses": [
+    {
+      "kind": "explain",
+      "params": "",
+      "cases": "",
+      "loop": "",
+      "functions": "",
+      "message_kid": "I am the AI helper, a computer program, not a real person, and I do not have a home or a name to share. I can help you make your turret do cool new things though, like fire when you press a key!",
+      "changed": "",
+      "concepts": []
+    }
+  ]
+}

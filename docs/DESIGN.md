@@ -110,6 +110,7 @@ The Pi cannot tell boxes apart over USB (same chip), so the app needs a "which b
 | 2026-10-28 | Stock sketches are committed: CrunchLabs code is MIT-licensed (verified in the IDE for IR Turret and Laser Synthesizer). | Removes the user-supplied-at-install step; official hacks seed the behaviour library. |
 | 2026-10-28 | Docker is dev-only (arm64 Debian on the Mac, FAKE\_BOARD). No Docker on the Pi. Deploys are signed release tarballs applied by the ops agent via IoT Jobs, with health check and auto-rollback. A set of maintainer scripts covers new box, check, release, deploy, rollback, status, logs. | Same toolchain on Mac and Pi; nothing hand-edited on the device; new boxes are content, not code. |
 | 2026-10-31 | The AI budget has exactly one home: the Claude Console workspace spend limit. The app keeps a spend log but enforces no cap of its own. | Owner: two places to set a budget drift and the wrong one trips first. The API returns 400 `invalid_request_error` when the Console limit is reached (and 429 at the tier cap); the app already treats any API error as "the AI helper is away". |
+| 2026-10-31 | Release signing stays on the maintainer's machine; no CI signing. "Work from any machine" is met by `scripts/device-secrets.sh restore-signing-key` (encrypted backup in Parameter Store), not by putting the key in a CI secret. | A CI secret is a third copy in a third place; the key custody decision (outside AWS, owner-held) stands. |
 
 
 ## Screens
