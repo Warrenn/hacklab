@@ -1947,6 +1947,29 @@ checked on the Pi.
 - [x] Step 1 — retryPic(): up to five cache-busted retries with growing pauses, no id-based fallback; pwa test refuses the first two loads of every picture and sees real pictures; 57 pw tests on WebKit + Chromium — completed 2026-10-31
 - [x] Step 2 — preview v9; release 0.7.3 on the Pi (healthy); real picker at hacklab.local: all three pictures 400x230, retry code served — completed 2026-10-31
 
+## P8 round 3e — the code page gives the room to the code (owner's note 2026-10-31, approved by default)
+
+Owner, on the Done / code page: too much wasted white space on the left that
+would be better used to show the code. Today the left column (message, change
+line, prompts, buttons pinned to the bottom) spans 7 of 12 columns and the
+code 5, capped at 60 vh, so the code is clipped sideways and short.
+
+Design: the columns swap weight: left 4 of 12 (message at 30 px, change line,
+Curious prompts, the buttons stay at the bottom), code 8 of 12. On a wide
+screen the page is viewport-high (`main.codepage` = 100 vh minus the header)
+and the code panel fills it and scrolls inside. While an explanation is open
+the explanation needs the width, so the columns go back to 7 / 5 for that
+state (the narrow-screen step-aside rule is unchanged). Under 860 px the
+single column stays, code capped at 40 vh. Departs from Done.dc.html (owner's
+request): decision log row. Test: at iPad landscape the code panel is wider
+than the left column and at least half the viewport high, and no page scroll
+is needed to see the buttons.
+Steps: 1 red -> green; 2 preview v10, release 0.7.4, screenshot on the Pi.
+
+## Progress — P8 round 3e
+- [x] Step 1 — 4/8 columns (7/5 while explaining), #app.fill makes the code page viewport-high with the code scrolling inside, message at 30 px, phone rule keeps one column; pwa layout test; 59 pw tests on WebKit + Chromium; DESIGN decision log — completed 2026-10-31
+- [ ] Step 2 — preview v10, release 0.7.4 live on the Pi
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the

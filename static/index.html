@@ -33,6 +33,11 @@ main{flex:1;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px
 .col7{grid-column:span 7;display:flex;flex-direction:column;gap:20px;min-width:0}
 .col6{grid-column:span 6;display:flex;flex-direction:column;gap:22px;min-width:0}
 .col5{grid-column:span 5;display:flex;flex-direction:column;gap:16px;min-width:0}
+.col4{grid-column:span 4;display:flex;flex-direction:column;gap:16px;min-width:0;min-height:0}
+.col8{grid-column:span 8;display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0}
+/* The code page is viewport-high: the code panel fills it and scrolls inside (owner, 2026-10-31). */
+#app.fill{height:100%;overflow:hidden}
+#app.fill pre{max-height:none}
 h1{margin:0;font-size:40px;font-weight:900;line-height:1.1}
 .lead{font-size:18px;font-weight:800;color:var(--muted)}
 .sub{margin:0;font-size:20px;font-weight:700;color:var(--muted);line-height:1.4}
@@ -79,7 +84,7 @@ h1{margin:0;font-size:40px;font-weight:900;line-height:1.1}
 .faint{font-size:16px;font-weight:700;color:var(--faint)}
 .donehead{display:flex;align-items:center;gap:16px}
 .donehead .tick{width:60px;height:60px}
-.donehead h1{font-size:38px}
+.donehead h1{font-size:30px;line-height:1.2}
 .prompt{display:flex;align-items:center;gap:14px;text-align:left;font-size:19px;font-weight:800;padding:16px 20px;border-radius:16px;border:2px solid var(--line);background:var(--card)}
 .q{width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent-dark);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:900}
 .actions{margin-top:auto;display:flex;gap:12px;flex-wrap:wrap}
@@ -111,7 +116,9 @@ footer{padding:16px 32px 24px;display:flex;justify-content:center}
 @media (max-width:860px){
   header,main{padding-left:16px;padding-right:16px}
   main{grid-template-columns:1fr;gap:20px;padding-top:20px}
-  .col7,.col6,.col5{grid-column:auto}
+  .col7,.col6,.col5,.col4,.col8{grid-column:auto}
+  #app.fill{height:auto;overflow:visible}
+  #app.fill pre{max-height:40vh}
   h1{font-size:30px}
   .brand{font-size:22px}
   .ask{flex-direction:column}
@@ -414,11 +421,12 @@ function done() {
   const head = job ? `<div class="donehead"><span class="tick">${I.tick(32)}</span><h1>${esc(job.message_kid)}</h1></div>
       <p class="sub">${n ? `That was change ${n} since it came.` : 'It is back to how it came.'}</p>` : `<h1>The code right now</h1><p class="sub">Version ${esc(S.status?.current_version)}.</p>`;
   const twk = tweakable();
+  // The code gets the wide column; an open explanation needs the width instead (7/5).
   return `${header({ chips: false })}<main class="${S.explanation ? 'explaining' : ''}">
-    <section class="col7" style="gap:18px">${head}
+    <section class="${S.explanation ? 'col7' : 'col4'}" style="gap:18px">${head}
       ${S.explanation ? explanation() : `${prompts ? `<div class="lead" style="margin-top:6px">Curious?</div><div class="list" style="gap:10px">${prompts}</div>` : ''}${concept}`}
       <div class="actions"><button class="primary wide" data-act="home">Try something else</button>${n ? '<button class="ghost" data-act="undo">Undo</button>' : ''}</div></section>
-    <aside class="col5" style="gap:12px">
+    <aside class="${S.explanation ? 'col5' : 'col8'}" style="gap:12px">
       <div class="lead">The code that does it</div>
       <div class="codelinks"><button class="ai" data-act="explaincode" ${dis()}>What does this code do?</button><button data-act="how">How does the whole thing work?</button></div>
       ${selbar()}
@@ -480,6 +488,7 @@ const SCREENS = { picker, home, offline, working, failed, done, tweak, editor, h
 function render() {
   if (cm) { cm.destroy(); cm = null; }
   const hadFocus = document.activeElement?.id === 'ask';
+  $app.classList.toggle('fill', S.screen === 'done' && !S.explanation);
   $app.innerHTML = SCREENS[S.screen]();
   if (S.screen === 'editor') mountEditor();
   const a = document.getElementById('ask');
