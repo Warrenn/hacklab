@@ -28,3 +28,4 @@ _to_delete/
 .claude/worktrees/
 .pw-artifacts/
 dist/
+node_modules/

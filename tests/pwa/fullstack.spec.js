@@ -56,7 +56,7 @@ const doneScreen = (page) => page.getByRole('button', { name: 'Try something els
 test('the whole loop: ask -> real compile/flash on the emulated board -> Done with the real code -> Undo', async ({ page }) => {
   await pickTurret(page);
   await expect(page.getByText('How it came', { exact: true })).toBeVisible();
-  await expect(page.getByText('version 0000')).toBeVisible();
+  await expect(page.getByText('Nothing changed yet')).toBeVisible();
   await page.getByPlaceholder(/shake its head/).fill('make it shake its head when I press 7');
   await page.getByRole('button', { name: 'Go!' }).click();
   await expect(doneScreen(page)).toBeVisible({ timeout: 30000 });
@@ -71,7 +71,7 @@ test('the whole loop: ask -> real compile/flash on the emulated board -> Done wi
   await expect(page.locator('pre')).not.toContainText('//@@');
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 30000 });
-  await expect(page.getByText('version 0000')).toBeVisible();
+  await expect(page.getByText('How it came', { exact: true })).toBeVisible();
   // the store on disk agrees: baseline only after the undo
   const versions = fs.readdirSync(path.join(dataDir, 'ir-turret', 'versions'));
   expect(versions).toEqual(['0000']);
@@ -86,6 +86,11 @@ test('a trick from the box profile flashes and becomes a version; the code is th
   await expect(page.locator('pre')).toContainText('shakeNo(3)');  // the shipped behaviour's own code
   const stored = fs.readdirSync(path.join(dataDir, 'ir-turret', 'versions')).sort();
   expect(stored[stored.length - 1]).not.toBe('0000');
+  // the Home card names the version by what the kid tapped, with a relative time (spec: Main.dc.html)
+  await page.getByRole('button', { name: 'Try something else' }).click();
+  const card = page.locator('.panel', { hasText: 'Right now the IR Turret' });
+  await expect(card).toContainText('Shake its head no');
+  await expect(card).toContainText(/Change \d+ of \d+ · just now/);
 });
 
 test('changing the numbers renders the chosen value into the flashed sketch, clamped to the range', async ({ page }) => {
@@ -116,6 +121,26 @@ test('Back to how it came restores the stock sketch after several changes', asyn
     await page.getByRole('button', { name: 'Try something else' }).click();
   }
   await page.getByRole('button', { name: 'Back to how it came' }).click();
-  await expect(page.getByText('version 0000')).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText('How it came', { exact: true })).toBeVisible({ timeout: 30000 });
   expect(fs.readdirSync(path.join(dataDir, 'ir-turret', 'versions'))).toEqual(['0000']);
+});
+
+test('Level 3: what the kid types in the editor is exactly what gets flashed', async ({ page }) => {
+  await pickTurret(page);
+  await page.getByRole('button', { name: 'Show me the code' }).click();
+  await page.getByRole('button', { name: 'Level 3: edit all the code' }).click();
+  const content = page.locator('.cm-editor .cm-content');
+  await expect(content).toContainText('LICENSE');  // only the visible lines are in the DOM
+  await content.click();
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('// hello from level 3');
+  await page.getByRole('button', { name: /^Send to IR Turret/ }).click();
+  await expect(doneScreen(page)).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('pre')).toContainText('hello from level 3');
+  const versions = fs.readdirSync(path.join(dataDir, 'ir-turret', 'versions')).sort();
+  const latest = versions[versions.length - 1];
+  const files = fs.readdirSync(path.join(dataDir, 'ir-turret', 'versions', latest), { recursive: true });
+  const ino = files.find((f) => String(f).endsWith('.ino'));
+  expect(fs.readFileSync(path.join(dataDir, 'ir-turret', 'versions', latest, ino), 'utf8')).toContain('// hello from level 3');
 });

@@ -231,6 +231,42 @@ test('the Home placeholder and "Try one of these" come from the box profile', as
   await page.getByRole('button', { name: "Let's go" }).click();
   await expect(page.getByPlaceholder('Lift the fork up and down every five seconds')).toBeVisible();
   await page.getByRole('button', { name: 'Say hello on the serial monitor' }).click();
-  await expect(page.getByText('“print the word hello on the serial monitor every two seconds”')).toBeVisible();
+  await expect(page.getByText('“Say hello on the serial monitor”')).toBeVisible();  // quoted by the button's own words
   await expect(page.getByText('Turning the code into robot language.')).toBeVisible({ timeout: 10000 });
+});
+
+test('a "Try one of these" button is quoted by its own words and becomes the Home card title', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  await page.getByRole('button', { name: 'Shake its head no' }).click();
+  await expect(page.getByText('“Shake its head no”')).toBeVisible();   // not the trick's internal title
+  await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
+  await page.getByRole('button', { name: 'Try something else' }).click();
+  const card = page.locator('.panel', { hasText: 'Right now the IR Turret' });
+  await expect(card).toContainText('Shake its head no');
+  await expect(card).toContainText(/Change \d+ of \d+ · just now/);
+  await page.getByRole('button', { name: 'Back to how it came' }).click();
+  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible({ timeout: 15000 });
+  await expect(card).toContainText('How it came');
+  await expect(card).toContainText('Nothing changed yet');
+});
+
+test('the code view has syntax colours and Level 3 opens a real editor with completions', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  await page.getByRole('button', { name: 'Show me the code' }).click();
+  const pre = page.locator('pre');
+  await expect(pre).toContainText('void loop');
+  await expect(pre.locator('.tok-keyword').first()).toBeVisible();          // syntax colours
+  await expect(pre.locator('.hl, .set').first()).toBeVisible();              // tweakable marks still there
+  await page.getByRole('button', { name: 'Level 3: edit all the code' }).click();
+  const editor = page.locator('.cm-editor');
+  await expect(editor).toBeVisible();
+  await expect(editor.locator('.cm-content')).toContainText('LICENSE');  // CodeMirror renders only the visible lines
+  await editor.locator('.cm-content').click();
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('shakeHe');
+  const completion = page.locator('.cm-tooltip-autocomplete');
+  await expect(completion).toBeVisible();
+  await expect(completion).toContainText('shakeHeadNo');                     // seeded from the sketch's identifiers
+  await page.keyboard.press('Escape');
 });

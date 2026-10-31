@@ -233,6 +233,18 @@ Usage Policy and its guidelines for organizations serving minors.
 For the household: `docs/family-card.md` (printable). For the first install:
 `docs/field-checklist.md`.
 
+## The code views and the Level 3 editor
+
+Done and Tweak show the sketch in a dark panel with syntax colours and the
+tweakable numbers marked; "Level 3: edit all the code" opens a real editor
+(CodeMirror 6, MIT) with C++ highlighting, bracket matching, line numbers and
+autocompletion seeded from the box's helper functions, remote keys and every
+identifier in the sketch. It ships as one vendored bundle,
+`static/vendor/editor.js`, built once from `vendor/editor/` (`npm ci && npm run
+build`; versions pinned in its package.json; node_modules is git-ignored, the
+bundle is committed) so the Pi needs no CDN and no Node. If the bundle fails
+to load the page falls back to a plain text area.
+
 ## Boxes
 
 Everything box-specific lives in `boxes/<id>/` (TOML + Markdown + sketch

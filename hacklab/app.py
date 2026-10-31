@@ -10,6 +10,7 @@ import os
 import re
 import shutil
 import tempfile
+import time
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
@@ -50,6 +51,7 @@ class BoxSelect(BaseModel):
 class FlashBehaviour(BaseModel):
     id: str
     tweakables: dict[str, Any] | None = Field(default=None, max_length=32)
+    label: str | None = Field(default=None, max_length=80)  # what the kid tapped, for the card
 
 
 class FlashTemplate(BaseModel):
@@ -206,7 +208,30 @@ def create_app(
             return JSONResponse({"detail": MSG_CROSS_SITE}, status_code=403)
         return await call_next(request)
 
-    state: dict[str, Any] = {"box": None, "versions": {}}  # mock mode only: box_id -> [version]
+    state: dict[str, Any] = {"box": None, "versions": {}, "meta": {}}  # versions/meta: mock mode
+    selected_file = cfg.data_dir / "selected.json"  # P8: the picked box survives a restart
+
+    def remember_box(box_id: str) -> None:
+        if store is None:  # mock backend (dev / browser tests): nothing on disk
+            return
+        with contextlib.suppress(OSError):
+            _mk(cfg.data_dir)
+            selected_file.write_text(json.dumps({"box": box_id}))
+
+    def restore_box() -> None:
+        if store is None:
+            return
+        try:
+            box_id = json.loads(selected_file.read_text()).get("box")
+        except (OSError, ValueError, AttributeError):
+            return
+        if box_id in boxes:
+            try:
+                ensure_baseline(box_id)
+            except HTTPException:
+                return  # stock not on the device yet: back to the picker
+            state["box"] = box_id
+            state["versions"].setdefault(box_id, [STOCK])
 
     def box_or_409() -> str:
         if not state["box"]:
@@ -239,6 +264,8 @@ def create_app(
         (d / f"{item.id}.ino").write_text(source)
         return d
 
+    restore_box()
+
     async def start(kind: str, payload: dict[str, Any], src: str = "local") -> dict[str, str]:
         box = box_or_409()
         payload = {**payload, "box": box, "origin": src}  # not "source": that is a sketch field
@@ -254,8 +281,26 @@ def create_app(
                 del vs[1:]
             else:
                 vs.append(job.sketch_ref)
+                state["meta"].setdefault(box, {})[job.sketch_ref] = {
+                    "note": payload.get("text", ""),
+                    "created": int(time.time()),
+                }
 
         return {"job_id": await runner.submit(kind, payload, on_done)}
+
+    def current_meta(box: str | None, vs: list[str]) -> dict[str, Any]:
+        """The Home card's title and time: the current version's note and creation
+        time, or "" / None for the stock version ("How it came")."""
+        if not box or len(vs) < 2:
+            return {"current_note": "", "current_created": None}
+        if store:
+            cur = store.current(box)
+            return {
+                "current_note": cur.note if cur else "",
+                "current_created": cur.created if cur else None,
+            }
+        m = state["meta"].get(box, {}).get(vs[-1], {})
+        return {"current_note": m.get("note", ""), "current_created": m.get("created")}
 
     @app.get("/api/status")
     def status(request: Request):
@@ -278,6 +323,7 @@ def create_app(
             ),
             "current_version": vs[-1] if vs else None,
             "versions_count": len(vs),
+            **current_meta(box, vs),
             "source": source(request),
             "helping": helping.is_on(),
         }
@@ -302,6 +348,7 @@ def create_app(
         ensure_baseline(body.id)  # may 409: the box stays unselected
         state["box"] = body.id
         state["versions"].setdefault(body.id, [STOCK])
+        remember_box(body.id)
         return {"box": body.id}
 
     @app.get("/api/behaviours")
@@ -315,7 +362,8 @@ def create_app(
         if item is None:
             raise HTTPException(404, "No such behaviour.")
         d = rendered_sketch_dir(item, body.tweakables)
-        return await start("flash", {"id": body.id, "sketch_dir": str(d), "text": item.title}, src)
+        text = body.label or item.title
+        return await start("flash", {"id": body.id, "sketch_dir": str(d), "text": text}, src)
 
     @app.post("/api/flash/template")
     async def flash_template(body: FlashTemplate, request: Request):

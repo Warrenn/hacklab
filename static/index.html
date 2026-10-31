@@ -119,6 +119,13 @@ footer{padding:16px 32px 24px;display:flex;justify-content:center}
   .quote{font-size:26px}
   pre{max-height:40vh}
 }
+pre .tok-keyword{color:#C9A7FF}pre .tok-typeName,pre .tok-standard{color:#7FD1FF}pre .tok-number,pre .tok-bool{color:#FFB86B}pre .tok-string{color:#A8E6A1}pre .tok-comment,pre .tok-lineComment,pre .tok-blockComment{color:#8A90A8}pre .tok-function,pre .tok-variableName2{color:#FFD86B}pre .tok-processingInstruction,pre .tok-macroName{color:#F28FAD}
+.cm-editor{flex:1;min-height:360px;font-size:16px;border:3px solid #D9DCE6;border-radius:18px;overflow:hidden;background:#fff}
+.cm-editor.cm-focused{outline:none;border-color:var(--accent)}
+.cm-editor .cm-scroller{font-family:ui-monospace,Menlo,Consolas,monospace;line-height:1.5}
+.cm-editor .cm-gutters{background:var(--panel);border-right:2px solid var(--line);color:var(--faint)}
+.cm-editor .tok-keyword{color:#7A3FD1}.cm-editor .tok-typeName,.cm-editor .tok-standard{color:#0B6B9E}.cm-editor .tok-number,.cm-editor .tok-bool{color:#B35C00}.cm-editor .tok-string{color:#1F7A3A}.cm-editor .tok-comment,.cm-editor .tok-lineComment,.cm-editor .tok-blockComment{color:#7A7F99}.cm-editor .tok-function{color:#8A5A00}.cm-editor .tok-processingInstruction,.cm-editor .tok-macroName{color:#B8236B}
+.cm-tooltip-autocomplete{font-size:17px}.cm-tooltip-autocomplete ul li{padding:8px 12px !important}
 .remotebar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 24px;background:#FFF4E5;color:#8A5A00;font-weight:800}
 .remotebar .small{padding:8px 14px;font-size:15px}
 .helping{padding:8px 24px;background:#E6F7F2;color:#0B6B57;font-weight:800;text-align:center}
@@ -126,6 +133,7 @@ footer{padding:16px 32px 24px;display:flex;justify-content:center}
 </head>
 <body>
 <div id="app" aria-live="polite"></div>
+<script src="/static/vendor/editor.js"></script>
 <script>
 'use strict';
 // One screen router keyed on state. All kid-facing copy either comes from the
@@ -178,12 +186,26 @@ function header(opts = {}) {
     : '';
   return `<header><div class="brand">${left}</div><div class="chips">${boxChip}${opts.chips === false ? '' : aiChip}</div></header>${remoteBar}${helpLine}`;
 }
+// "2 minutes ago" for the Home card; kid words, no clock arithmetic on screen.
+function ago(epochS) {
+  if (!epochS) return '';
+  const s = Math.max(0, Math.floor(Date.now() / 1000 - epochS));
+  if (s < 60) return 'just now';
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} minute${m === 1 ? '' : 's'} ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? 'yesterday' : `${d} days ago`;
+}
 function rightNow() {
   const st = S.status || {};
   const n = changes();
+  const title = n ? (st.current_note || `Change ${n}`) : 'How it came';
+  const line = n ? `Change ${n} of ${n} · ${ago(st.current_created)}` : 'Nothing changed yet';
   return `<div class="panel"><div class="eyebrow">Right now the ${esc(boxName())}</div>
-    <div class="big">${n ? `Change ${n}` : 'How it came'}</div>
-    <div class="small">${n ? `${n} change${n === 1 ? '' : 's'} since it came` : 'Nothing changed yet'} · version ${esc(st.current_version)}</div>
+    <div class="big">${esc(title)}</div>
+    <div class="small">${esc(line)}</div>
     <button class="link" data-act="code">Show me the code</button></div>`;
 }
 function rescue(note) {
@@ -198,15 +220,18 @@ function tries() {
   const box = S.boxes.find((b) => b.id === S.status?.box) || {};
   const sugg = box.suggestions || S.behaviours.slice(0, 3).map((b) => ({ title: b.title, behaviour: b.id }));
   return sugg.map((x) => x.behaviour
-    ? `<button class="try" data-act="behaviour" data-id="${esc(x.behaviour)}" ${dis()}><span>${esc(x.title)}</span>${I.arrow}</button>`
-    : `<button class="try" data-act="suggest" data-id="${esc(x.ask)}" ${dis()}><span>${esc(x.title)}</span>${I.arrow}</button>`).join('');
+    ? `<button class="try" data-act="behaviour" data-id="${esc(x.behaviour)}" data-title="${esc(x.title)}" ${dis()}><span>${esc(x.title)}</span>${I.arrow}</button>`
+    : `<button class="try" data-act="suggest" data-id="${esc(x.ask)}" data-title="${esc(x.title)}" ${dis()}><span>${esc(x.title)}</span>${I.arrow}</button>`).join('');
 }
 function highlight(src, values) {
   // Numbers carrying a ///{...} Level 2 marker get the highlight; values the
-  // kid set in Tweak are shown in the accent colour.
-  const lines = src.split('\n').map((line) => {
-    let out = esc(line);
+  // kid set in Tweak are shown in the accent colour. Other lines get syntax
+  // colours from the vendored editor bundle when it is loaded.
+  const coloured = window.HLEditor ? HLEditor.highlightLines(src) : null;
+  const lines = src.split('\n').map((line, i) => {
+    let out = coloured ? coloured[i] : esc(line);
     if (/\/\/\/\{/.test(line)) {
+      out = esc(line);
       const code = line.split('///')[0];
       const m = code.match(/(\w+)\s*=\s*(-?[\d.]+)|\((\d+)\)/);
       if (m) {
@@ -321,16 +346,36 @@ function tweak() {
 }
 function editor() {
   const name = esc(boxName());
+  const field = window.HLEditor
+    ? '<div id="editor-mount" aria-label="The code"></div>'
+    : `<textarea class="editor" id="editor" spellcheck="false">${esc(S.editor)}</textarea>`;
   return `${header({ back: 'done', title: 'Level 3: edit all the code', chips: false })}<main style="display:flex;flex-direction:column;gap:16px">
     <p class="sub">Change anything you like, then send it. If it does not build, you get it back to fix. Undo always works.</p>
-    <textarea class="editor" id="editor" spellcheck="false">${esc(S.editor)}</textarea>
+    ${field}
     <div class="actions"><button class="primary wide" data-act="sendsketch">Send to ${name}</button><button class="ghost" data-act="done">Back</button></div></main>`;
+}
+// Completion words for Level 3: the box's helper function names, keys, pins and the sketch's own identifiers.
+function editorWords() {
+  const box = S.boxes.find((b) => b.id === S.status?.box) || {};
+  const helpers = (box.helpers || []).map((h) => (h.match(/^([A-Za-z_]\w*)\s*\(/) || [])[1]).filter(Boolean);
+  return [...helpers, ...(box.keys || [])];
+}
+let cm = null;
+function mountEditor() {
+  const el = document.getElementById('editor-mount');
+  if (!el || !window.HLEditor) return;
+  cm = HLEditor.mount(el, S.editor, { words: editorWords(), onChange: (t) => { S.editor = t; } });
+}
+function editorText() {
+  return cm ? cm.get() : (document.getElementById('editor')?.value ?? S.editor);
 }
 
 // ---------- state + actions ----------
 const SCREENS = { picker, home, offline, working, failed, done, tweak, editor };
 function render() {
+  if (cm) { cm.destroy(); cm = null; }
   $app.innerHTML = SCREENS[S.screen]();
+  if (S.screen === 'editor') mountEditor();
   const a = document.getElementById('ask');
   if (a && S.screen === 'home' && window.innerWidth > 860) a.focus();
 }
@@ -410,24 +455,29 @@ const ACTIONS = {
     finally { S.busy = false; render(); }
   },
   helping: async () => { await api('/helping', { on: !helping() }); await refresh(); render(); },
-  suggest: (text) => startJob('ask', '/ask', { text }, text),
+  suggest: (text, el) => startJob('ask', '/ask', { text }, el?.dataset.title || text),
   home: () => { S.screen = homeScreen(); render(); },
   done: () => { S.screen = 'done'; render(); },
   code: () => { S.job = null; S.concept = null; S.screen = 'done'; render(); },
   togglecode: () => { S.showCode = !S.showCode; render(); },
-  behaviour: (id) => { S.lastBehaviour = id; const b = S.behaviours.find((x) => x.id === id); startJob('flash', '/flash/behaviour', { id }, b ? b.title : id); },
+  behaviour: (id, el) => {
+    S.lastBehaviour = id;
+    const b = S.behaviours.find((x) => x.id === id);
+    const label = el?.dataset.title || (b ? b.title : id);
+    startJob('flash', '/flash/behaviour', { id, label }, label);
+  },
   undo: () => startJob('undo', '/undo', {}, 'Undo last change'),
   reset: () => startJob('reset', '/reset', {}, 'Back to how it came'),
   tweak: (id) => openTweak(id),
   resetnumbers: () => openTweak(S.tweak.behaviour.id),
-  send: () => startJob('flash', '/flash/behaviour', { id: S.tweak.behaviour.id, tweakables: S.tweak.values }, `${S.tweak.behaviour.title}, with my numbers`),
+  send: () => { const label = `${S.tweak.behaviour.title}, with my numbers`; startJob('flash', '/flash/behaviour', { id: S.tweak.behaviour.id, tweakables: S.tweak.values, label }, label); },
   editor: () => { S.editor = S.sketch?.source || ''; S.screen = 'editor'; render(); },
-  sendsketch: () => startJob('flash', '/flash/sketch', { source: document.getElementById('editor').value }, 'My own code'),
+  sendsketch: () => startJob('flash', '/flash/sketch', { source: editorText() }, 'My own code'),
   concept: async (id) => { S.concept = await api('/concepts/' + id).catch(() => null); render(); },
 };
 $app.addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]');
-  if (el && !el.disabled) ACTIONS[el.dataset.act](el.dataset.id);
+  if (el && !el.disabled) ACTIONS[el.dataset.act](el.dataset.id, el);
 });
 $app.addEventListener('submit', (e) => {
   e.preventDefault();

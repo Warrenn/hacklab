@@ -1721,6 +1721,55 @@ drive the UI backlog (next plan section when the first comments arrive).
 - [x] Step 2 — artifact published (private link given to the owner in chat, not in the repo) and watched for comments — completed 2026-10-31
 - [ ] Step 3 — first round of owner comments planned
 
+## P8 plan — UI backlog (2026-10-31, approved by default under full autonomy)
+
+Owner: start from the backlog; comments on the preview artifact drive later
+rounds. Visual spec stays docs/screens/*.dc.html; kid-facing default stays
+simple, developer comfort lives in Level 3.
+
+1. **Wording**: the Working/Done screens quote what the kid chose. A "Try one
+   of these" button started from a suggestion shows the suggestion's title
+   (e.g. "Shake its head no"), not the behaviour's internal title ("Shake
+   head"). pwa.spec test.
+2. **Home card per the spec** ("Change 3 of 3 · 2 minutes ago"): `/api/status`
+   gains `current_note` (the ask text / trick title) and `current_created`
+   (epoch s); the card shows the note as its title, "Change N of N" and a
+   relative time ("just now", "4 minutes ago", "yesterday"), "How it came"
+   for stock. Mock backend fakes note/created. Unit + pwa tests.
+3. **Remembered box**: the selected box is written to `data/selected.json`
+   and restored at start, so a deploy restart does not send the kid back to
+   the picker (found 2026-10-31). Unit test.
+4. **Level 3 editor and code colours**: CodeMirror 6 (MIT), vendored as one
+   bundle `static/vendor/editor.js` built once with esbuild from
+   `vendor/editor/` (package.json pins @codemirror/state 6.7.6, view 6.43.15,
+   language 6.13.1, lang-cpp 6.0.3, autocomplete 6.20.4, commands 6.11.1,
+   @lezer/highlight 1.2.5; versions from the npm registry 2026-10-31);
+   node_modules git-ignored, the bundle committed, no runtime CDN (offline
+   Pi, no external links). Exposes `window.HLEditor = { mount(el, text,
+   {words}) -> {get()}, highlight(text) -> html }`. Level 3 screen uses the
+   editor with C++ highlighting, bracket matching, and autocompletion seeded
+   from the box's helper function names, pins, remote keys, every identifier
+   in the current sketch, and a short Arduino core list; Done/Tweak `<pre>`
+   views get syntax colours from `highlight()` while keeping the tweakable
+   number marks. Big tap targets kept (iPad). pwa tests: editor mounts,
+   completion offers a helper name, edited source is what gets flashed
+   (full-stack spec on FakeBoard), Done view has token spans.
+5. Job cancel: not now (cannot cancel an upload safely; thinking/compiling
+   are short). Box pictures: wait for the owner's photos. Both recorded.
+6. Preview artifact republished after each step; release 0.5.0.
+
+Parallelism: steps 1-3 (hacklab/app.py, static/index.html, tests) and step 4
+(vendor/editor, static/vendor, the editor screen in index.html) share
+index.html -> serial, in order.
+
+## Progress — P8
+- [x] Step 1 — wording from the suggestion title (Working quote, Home card title; `label` on /api/flash/behaviour) — completed 2026-10-31
+- [x] Step 2 — Home card per Main.dc.html: `current_note` + `current_created` in /api/status, "Change N of N · 2 minutes ago" — completed 2026-10-31
+- [x] Step 3 — remembered box across restarts (`data/selected.json`, real appliance only; a missing box falls back to the picker) — completed 2026-10-31
+- [x] Step 4 — vendored CodeMirror 6 editor (`static/vendor/editor.js`, 452 KB, built from `vendor/editor/`) with C++ colours, bracket matching and completions seeded from the box's helpers/keys and the sketch's identifiers; Done/Tweak code views coloured per line with the tweakable marks kept — completed 2026-10-31
+- [x] Step 5 — recorded deferrals: job cancel (no safe cancel mid-upload), box pictures (owner's photos) — completed 2026-10-31
+- [ ] Step 6 — preview republished; release 0.5.0 on the Pi
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the
