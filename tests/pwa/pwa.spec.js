@@ -166,7 +166,7 @@ test('screenshots of every screen for review', async ({ page }, info) => {
   await shot('3-working');
   await expect(page.getByRole('heading', { name: /^Done!/ })).toBeVisible({ timeout: 15000 });
   await shot('4-done');
-  await page.goto(offlineUrl);
+  await openPicker(page, offlineUrl);                                                           // the offline server may remember a box
   await page.getByRole('button', { name: 'IR Turret', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Pick a trick' })).toBeVisible();
   await shot('5-offline');
@@ -463,14 +463,17 @@ test('Curious? is always on the code page, and nothing that acts looks like a hy
   // the two code questions are chips in the prompt row, first, then the box's own prompts (no fresh job here)
   await expect(page.getByText('Curious?')).toHaveCount(0);
   await expect(page.getByText('The code that does it')).toHaveCount(0);
-  const [h1, ver] = await Promise.all([page.getByRole('heading', { name: 'The code right now' }).boundingBox(), page.getByText(/^Version \w+\.$/).boundingBox()]);
+  const [h1, ver] = await Promise.all([page.getByRole('heading', { name: 'The code right now' }).boundingBox(), page.getByText(/^Version \S+\.$/).boundingBox()]);   // mock versions carry a .ino suffix
   expect(Math.abs(ver.y + ver.height / 2 - (h1.y + h1.height / 2))).toBeLessThan(30);     // same row
   expect(ver.x).toBeGreaterThan(h1.x + h1.width - 1);                                        // to its right
   const chips = page.locator('.prompt');
-  await expect(chips.nth(0)).toHaveText(/What does this code do\?/);
-  await expect(chips.nth(1)).toHaveText(/How does the whole thing work\?/);
-  expect(await chips.count()).toBeGreaterThanOrEqual(3);
-  await chips.nth(2).click();
+  await expect(chips.first()).toBeVisible();
+  const texts = await chips.allTextContents();                                               // "What just changed?" may lead when a change is known
+  const i = texts.findIndex((t) => /What does this code do\?/.test(t));
+  expect(i).toBeGreaterThanOrEqual(0);
+  expect(texts[i + 1]).toMatch(/How does the whole thing work\?/);
+  expect(texts.length).toBeGreaterThanOrEqual(i + 3);
+  await chips.nth(i + 2).click();
   await expect(page.locator('.explain.warm')).toBeVisible();
   for (const name of ['Change the numbers', 'Level 3: edit all the code', 'What does this code do?', 'How does the whole thing work?']) await noLinkLook(name);
   await page.getByRole('button', { name: 'Try something else' }).click();
@@ -556,6 +559,19 @@ test('What just changed? appears only once a change is known, and explains it', 
   const xp = page.getByRole('region', { name: 'What the code does' });
   await expect(xp).toBeVisible({ timeout: 15000 });
   await expect(xp.locator('.xstep').first()).toBeVisible();
+});
+
+test('Stop ends a job before the box is written; the Failed screen says so', async ({ page }) => {
+  await pickTurret(page, homeUrl);
+  await page.getByRole('button', { name: 'Fire a burst' }).click();
+  await expect(page.getByText('You asked')).toBeVisible();
+  const stop = page.getByRole('button', { name: 'Stop' });
+  await expect(stop).toBeVisible();                                                               // queued / compiling: safe to stop
+  await stop.click();
+  await expect(page.getByText('Stopped. Nothing was changed.')).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('button', { name: 'Stop' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByRole('heading', { name: 'What should the IR Turret do?' })).toBeVisible();
 });
 
 test('the header box button (drawing, name, state) and the Hack Lab mark both lead to the picker', async ({ page }) => {

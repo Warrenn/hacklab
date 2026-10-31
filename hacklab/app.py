@@ -26,7 +26,7 @@ from hacklab.config import Config, load_config
 from hacklab.diff import sketch_diff
 from hacklab.flash import Flasher
 from hacklab.genie import Genie
-from hacklab.jobs import FakeJobRunner, JobRunner, RealJobRunner
+from hacklab.jobs import KID_BUSY, TERMINAL_STATES, FakeJobRunner, JobRunner, RealJobRunner
 from hacklab.profiles import Behaviour, load_boxes
 from hacklab.remote import MSG_NO_SWITCH, MSG_REMOTE_VIEW, Helping, source_of
 from hacklab.skeleton import load_skeleton
@@ -327,8 +327,16 @@ def create_app(
 
     restore_box()
 
+    def ai_busy() -> bool:
+        return any(
+            j.kind in ("ask", "explain") and j.state not in TERMINAL_STATES
+            for j in runner.jobs.values()
+        )
+
     async def start(kind: str, payload: dict[str, Any], src: str = "local") -> dict[str, str]:
         box = box_or_409()
+        if kind in ("ask", "explain") and ai_busy():  # P8 round 6: one AI call at a time
+            raise HTTPException(409, KID_BUSY)
         payload = {**payload, "box": box, "origin": src}  # not "source": that is a sketch field
         vs = None if store else versions()
 
@@ -568,6 +576,20 @@ def create_app(
         if j is None:
             raise HTTPException(404, "No such job.")
         return j.to_dict()
+
+    @app.post("/api/jobs/{job_id}/cancel")
+    def cancel_job(job_id: str, request: Request):
+        """Stop a job at the next safe point (P8 round 6). Not while the box is being written."""
+        writable(request)
+        j = runner.get(job_id)
+        if j is None:
+            raise HTTPException(404, "No such job.")
+        if j.state in TERMINAL_STATES:
+            raise HTTPException(409, "Already finished.")
+        if j.state in ("uploading", "verifying"):
+            raise HTTPException(409, "Too late to stop: the box is being written.")
+        j.cancel_requested = True
+        return {"ok": True}
 
     @app.post("/api/undo")
     async def undo(request: Request):

@@ -21,6 +21,7 @@ NANO_FQBN = "arduino:avr:nano"
 DETECT_TTL = 10.0  # seconds a detect() result is reused by /api/status
 
 KID = {
+    "stopped": "Stopped. Nothing was changed.",
     "detecting": "I can't find the box. Is the USB cable plugged in?",
     "compiling": "That code did not build. Try again, or press Undo.",
     "uploading": "The box did not take the code. Check the cable and try again.",
@@ -93,9 +94,14 @@ class Flasher:
         sketch_dir: Path,
         progress: Callable[[str], None],
         spec: BoardSpec | None = None,
+        should_stop: Callable[[], bool] | None = None,
     ) -> FlashResult:
+        """Compile, upload, verify. `should_stop` is asked before the compile and before the
+        upload (never during: a half-written board is worse than a finished flash)."""
         spec = spec or self.spec
         log: list[str] = []
+        if should_stop and should_stop():
+            return self._fail("stopped", log)
         port = self.detect(fresh=True, spec=spec)
         if port is None:
             log.append(f"[detect] ports={self.last_ports} error={self.last_error}")
@@ -109,6 +115,8 @@ class Flasher:
             log.append(" ".join(f"{k}={s}/{m}" for k, (s, m) in c.sizes.items()))
         if not c.ok:
             return self._fail("compiling", log)
+        if should_stop and should_stop():
+            return self._fail("stopped", log)
         progress("uploading")
         fqbn_used = None
         for fqbn in candidates:
