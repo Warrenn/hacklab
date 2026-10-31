@@ -357,7 +357,7 @@ def create_app(
         cur, prev = store.current(box_id), store.previous(box_id)
         if cur is None or prev is None:
             return False
-        return sketch_diff(store.path(box_id, prev), store.path(box_id, cur)) != ""
+        return sketch_diff(store.path(box_id, prev), store.path(box_id, cur), main_only=True) != ""
 
     def current_meta(box: str | None, vs: list[str]) -> dict[str, Any]:
         """The Home card's title and time: the current version's note and creation
@@ -466,7 +466,9 @@ def create_app(
     def tweakables():
         """Level 2 on the box's own code (P8 round 4): the IDE's ///{...} markers in every file
         of the current version, main file first, each with the author's hint."""
-        d = current_sketch_dir(box_or_409())
+        box_id = box_or_409()
+        d = current_sketch_dir(box_id)
+        labels = boxes[box_id].labels  # kid-facing names from profile.toml [labels]
         out = []
         for f in sketch_files(d):
             text = f.read_text()
@@ -474,6 +476,9 @@ def create_app(
                 tws = [t.to_api() for t in find_tweakables(text)]
             except TemplateError:
                 tws = []
+            for t in tws:
+                if "label" not in t and t["name"] in labels:
+                    t["label"] = labels[t["name"]]
             out.append({"name": f.name, "source": text, "tweakables": tws})
         return {"files": out}
 

@@ -45,6 +45,7 @@ def test_sketch_diff_covers_every_source_file(tmp_path):
     assert "-int x = 1;" in d and "+int x = 2;" in d and "+void loop() { blink(); }" in d
     assert "config.h" not in d and "+int added = 1;" in d
     assert sketch_diff(a, a) == ""
+    assert "extra.h" not in sketch_diff(a, b, main_only=True)  # the flag looks at the sketch only
 
 
 def test_sketch_diff_pairs_the_main_sketch_by_role_not_by_name(tmp_path):
@@ -77,7 +78,10 @@ def test_status_changed_and_the_explanation_of_the_change_real_mode(tmp_path, bo
         c.post("/api/box", json={"id": "testbox"})
         assert c.get("/api/status").json()["changed"] is False  # stock: nothing to compare
         assert c.post("/api/explain", json={"scope": "changed"}).status_code == 409
+        # a change only in config.h (My numbers) is not offered: the chip is about the sketch
         settle(c, c.post("/api/flash/numbers", json={"values": {"top": 150}}).json()["job_id"])
+        assert c.get("/api/status").json()["changed"] is False
+        settle(c, c.post("/api/flash/numbers", json={"values": {"speed": 9}}).json()["job_id"])
         assert c.get("/api/status").json()["changed"] is True
         settle(c, c.post("/api/undo").json()["job_id"])
         assert c.get("/api/status").json()["changed"] is False

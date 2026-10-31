@@ -39,6 +39,12 @@ def test_tweakables_come_from_every_file_of_the_current_version(tmp_path, boxes_
         assert "void setup" in files[0]["source"] and "int top" in files[1]["source"]
         assert [t["name"] for t in files[0]["tweakables"]] == ["speed"]
         assert files[0]["tweakables"][0]["hint"] == "how fast"
+        # kid-facing names come from profile.toml [labels]; a marker without one keeps its code name
+        assert files[0]["tweakables"][0]["label"] == "How fast"
+        assert (
+            files[1]["tweakables"][0]["label"] == "The top"
+            and "label" not in files[1]["tweakables"][1]
+        )
         assert [t["name"] for t in files[1]["tweakables"]] == ["top", "flip"]
         assert files[1]["tweakables"][0]["range"] == [0, 200]
 

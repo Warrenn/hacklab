@@ -24,6 +24,17 @@ behaviour = "nod-yes"
 title = "Fire a burst"
 behaviour = "fire-burst"
 
+# Kid-facing names for the sliders (the IDE markers keep their code names in the code).
+[labels]
+yawMoveSpeed = "How fast it turns"
+yawStopSpeed = "The turn motor's stop point (keep at 90)"
+yawPrecision = "How long each turn lasts"
+rollPrecision = "How long each roll lasts"
+upMove = "Tilt-up steps per press"
+downMove = "Tilt-down steps per press"
+leftMove = "Turn-left steps per press"
+rightMove = "Turn-right steps per press"
+
 [genie]
 skeleton = "genie/skeleton.ino"   # relative to the box dir (or data/boxes/<id>/ when stock.location = "device")
 # Helper functions the AI helper may call in rules (all defined in the skeleton):

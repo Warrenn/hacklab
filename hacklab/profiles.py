@@ -86,6 +86,7 @@ class Box:
     templates: dict[str, Behaviour]
     concepts: dict[str, Concept]
     genie: dict[str, Any] = field(default_factory=dict)  # skeleton, helpers, keys
+    labels: dict[str, str] = field(default_factory=dict)  # marker name -> kid-facing slider name
     copy: dict[str, Any] = field(default_factory=dict)  # ask_placeholder, suggestions (UI copy)
 
     def stock_dir(self, data_dir: Path) -> Path:
@@ -266,6 +267,7 @@ def load_box(box_dir: Path, whitelist: Path | None = None) -> Box:
         templates=templates,
         concepts=concepts,
         genie=dict(prof.get("genie", {})),
+        labels={str(k): str(v) for k, v in dict(prof.get("labels", {})).items()},
         copy=_copy_section(prof, _need(prof, "name", where + "/profile.toml"), behaviours, where),
     )
 

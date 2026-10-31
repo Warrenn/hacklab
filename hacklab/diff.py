@@ -21,11 +21,14 @@ def _sources(d: Path) -> dict[str, Path]:
     return out
 
 
-def sketch_diff(before: Path, after: Path, context: int = 2) -> str:
+def sketch_diff(before: Path, after: Path, context: int = 2, main_only: bool = False) -> str:
     """Unified diff of `before` -> `after`, the main sketch paired by role and the other
-    files by name; "" when nothing differs."""
+    files by name; "" when nothing differs. `main_only` looks at the sketch alone (the
+    "What just changed?" flag: a numbers-only change in config.h is not offered)."""
     a_files, b_files = _sources(before), _sources(after)
     keys = sorted(set(a_files) | set(b_files), key=lambda k: (k != "main", k))
+    if main_only:
+        keys = [k for k in keys if k == "main"]
     out: list[str] = []
     for key in keys:
         pa, pb = a_files.get(key), b_files.get(key)

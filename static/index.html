@@ -45,7 +45,8 @@ main{flex:1;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px
 .toprow .donehead{flex:1 1 420px;min-width:0}
 .toprow .actions{margin-top:0;flex:0 0 auto}
 .toprow .primary.wide{flex:0 0 auto}
-.curious{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.curious{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.curious .prompt{flex:0 0 auto}
 .curious .sub{margin-right:10px}
 .curious .prompt{padding:10px 14px;font-size:17px}
 #app.fill{height:100%;overflow:hidden}
