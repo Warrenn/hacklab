@@ -2084,6 +2084,7 @@ Steps: 1 red -> green; 2 preview v18, release 0.7.13 on the Pi.
 ## Progress — P8 round 3i
 - [x] Step 1 — button.boxbtn in the header: drawing (retryPic), "<name> · plugged in", arrow, 2 px border, teal / amber faces, aria-label "Change box: …"; hidden on the picker; brand unchanged; pwa test; 63 pw on WebKit + Chromium; decision log — completed 2026-10-31
 - [x] Step 2 — preview v18; release 0.7.13 on the Pi (healthy); live at hacklab.local: the header button showed the synthesizer's drawing, "Laser Synthesizer · not plugged in" on an amber face with a 2 px border, opened the picker (absent on the picker), the mark opened it too — completed 2026-10-31
+- [ ] Step 3 — header order: AI chip first, the box button at the right edge (cosmetic: no new test, the owner's rule); preview v19, release 0.7.14
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
