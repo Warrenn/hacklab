@@ -6,7 +6,7 @@
 set -euo pipefail
 device=${1:?usage: provision-device.sh <device>}
 region=${HACKLAB_AWS_REGION:-eu-west-1}   # IoT Core is not offered in af-south-1
-export AWS_PROFILE=${AWS_PROFILE:-busyweb-sso}
+export AWS_PROFILE=${AWS_PROFILE:-busyweb-trusted}
 root=$(cd "$(dirname "$0")/.." && pwd)
 out="$root/provisioning/local/$device"
 stack="hacklab-device-$device"

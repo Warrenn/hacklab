@@ -4,7 +4,7 @@
 set -euo pipefail
 device=${1:?usage: status.sh <device>}
 region=${HACKLAB_AWS_REGION:-eu-west-1}
-export AWS_PROFILE=${AWS_PROFILE:-busyweb-sso}
+export AWS_PROFILE=${AWS_PROFILE:-busyweb-trusted}
 aws iot-data get-thing-shadow --region "$region" --thing-name "hacklab-$device" /dev/stdout \
   | python3 -c '
 import json, sys, time

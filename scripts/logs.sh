@@ -4,7 +4,7 @@ set -euo pipefail
 device=${1:?usage: logs.sh <device>}
 root=$(cd "$(dirname "$0")/.." && pwd)
 region=${HACKLAB_AWS_REGION:-eu-west-1}
-export AWS_PROFILE=${AWS_PROFILE:-busyweb-sso}
+export AWS_PROFILE=${AWS_PROFILE:-busyweb-trusted}
 out="$root/provisioning/local/$device/logs"; mkdir -p "$out"
 result=$("$root/scripts/deploy.sh" "$device" --op upload-logs) || { echo "$result"; exit 1; }
 key=$(echo "$result" | sed -n 's/^  key: //p' | tail -1)

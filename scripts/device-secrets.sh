@@ -15,7 +15,7 @@ set -euo pipefail
 cmd=${1:?usage: device-secrets.sh backup|restore|list <device> [dir] | backup-key|restore-key [env-file]}
 case $cmd in backup-key|restore-key|backup-signing-key|restore-signing-key) device=${2:-};; *) device=${2:?usage: device-secrets.sh backup|restore|list <device> [dir]};; esac
 region=${HACKLAB_AWS_REGION:-eu-west-1}
-export AWS_PROFILE=${AWS_PROFILE:-busyweb-sso}
+export AWS_PROFILE=${AWS_PROFILE:-busyweb-trusted}
 root=$(cd "$(dirname "$0")/.." && pwd)
 dir=${3:-$root/provisioning/local/$device}
 prefix="/hacklab/devices/$device"

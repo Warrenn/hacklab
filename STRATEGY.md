@@ -1484,10 +1484,20 @@ fallback for a dropped stream. Parallelism: single tightly-coupled change
 Steps: 1 tests (red); 2 implement; 3 release 0.3.1 + deploy; 4 owner
 plug/unplug check at hacklab.local.
 
+AWS access decision (2026-10-31): the maintainer scripts default to
+`AWS_PROFILE=busyweb-trusted`, an IAM Roles Anywhere profile (certificate +
+`aws_signing_helper` under `~/.aws/rolesanywhere/`, cert valid to 2036) that
+needs no interactive login, so unattended releases and deploys do not stall on
+an expired SSO token. The certificate is machine-bound; from another machine
+use `AWS_PROFILE=busyweb-sso` (SSO, works anywhere) or enrol that machine's
+own certificate. Note: the selected box lives in app memory, so every deploy
+restart clears it and the kid picks the box again; persisting it is a small
+follow-up.
+
 ## Progress — live board status
 - [x] Step 1 — tests (tests/test_watch.py: device_nodes on both boards; unplug/replug flips status within the watch interval and pushes {"type": "status"}) — completed 2026-10-31
 - [x] Step 2 — device watch + status event (Board.device_nodes, Config.watch_interval=1.0, lifespan watcher in app.py) — completed 2026-10-31
-- [ ] Step 3 — release 0.3.1 deployed
+- [x] Step 3 — release 0.3.1 deployed (IoT Job, healthy; shipped with the Roles Anywhere profile, no SSO login) — completed 2026-10-31
 - [ ] Step 4 — owner confirms plug/unplug shows within ~1 s
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)

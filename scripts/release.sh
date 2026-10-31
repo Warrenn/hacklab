@@ -12,7 +12,7 @@ key=${MINISIGN_KEY:-$HOME/.minisign/hacklab.key}
 [ -f "$key" ] || { echo "signing key not found: $key (scripts/device-secrets.sh restore-signing-key)" >&2; exit 1; }
 out=${RELEASE_OUT:-$root/dist}; mkdir -p "$out"
 region=${HACKLAB_AWS_REGION:-eu-west-1}
-export AWS_PROFILE=${AWS_PROFILE:-busyweb-sso}
+export AWS_PROFILE=${AWS_PROFILE:-busyweb-trusted}
 name="hacklab-$version.tar.gz"
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
 

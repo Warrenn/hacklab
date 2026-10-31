@@ -8,7 +8,7 @@ shift
 if [ "${1:-}" = "--op" ]; then op=${2:?}; doc="{\"op\":\"$op\"}"; label=$op
 else version=${1:?usage: deploy.sh <device> <version>}; op=deploy; doc="{\"op\":\"deploy\",\"version\":\"$version\"}"; label="deploy-$version"; fi
 region=${HACKLAB_AWS_REGION:-eu-west-1}
-export AWS_PROFILE=${AWS_PROFILE:-busyweb-sso}
+export AWS_PROFILE=${AWS_PROFILE:-busyweb-trusted}
 thing="hacklab-$device"
 acct=$(aws sts get-caller-identity --query Account --output text)
 job="hacklab-$device-$label-$(date -u +%Y%m%dT%H%M%S)"

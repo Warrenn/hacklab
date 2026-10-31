@@ -86,6 +86,11 @@ deploy, rollback, status and logs (P5).
 
 ## Releases and remote updates (P5c)
 
+AWS access for the scripts: `AWS_PROFILE` defaults to `busyweb-trusted` (an IAM
+Roles Anywhere profile: certificate-based, no interactive login, so unattended
+releases do not stall on an expired SSO token). From a machine without that
+certificate, run with `AWS_PROFILE=busyweb-sso` after `aws sso login`.
+
 ```
 scripts/release.sh 0.2.0          # git archive of HEAD + manifest, minisign-signed, uploaded to S3
 scripts/deploy.sh pi3 0.2.0       # IoT Job; waits and prints SUCCEEDED/FAILED with the reason
