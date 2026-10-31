@@ -149,8 +149,14 @@ class ArduinoCli:
     def device_nodes(self) -> frozenset[str]:
         return frozenset(n for pat in self.device_globs for n in glob.glob(pat))
 
+    # Linux: read the ports from the kernel (instant). `board list` waits out its
+    # discovery timeout and took 12.7 s on the Pi 3, which was the plug/unplug lag.
+    sysfs_tty = Path("/sys/class/tty")
+
     def list_ports(self) -> list[Port]:
-        # 5 s: on a loaded Pi 3 the serial discovery can miss a 2 s window (seen under the service)
+        if self.sysfs_tty.is_dir():
+            return self._sysfs_ports()
+        # macOS dev box: no sysfs, fall back to arduino-cli's discovery (slow but complete)
         _, data, _ = self._json(["board", "list", "--discovery-timeout", "5s"])
         ports = []
         for item in data.get("detected_ports", []):
@@ -164,6 +170,28 @@ class ArduinoCli:
                         props.get("serialNumber", ""),
                     )
                 )
+        return ports
+
+    def _sysfs_ports(self) -> list[Port]:
+        ports = []
+        for tty in sorted(p for pat in ("ttyUSB*", "ttyACM*") for p in self.sysfs_tty.glob(pat)):
+            dev = (tty / "device").resolve()
+            usb = next((d for d in (dev, *dev.parents) if (d / "idVendor").is_file()), None)
+            if usb is None:
+                continue  # not a USB serial adapter (e.g. the Pi's own UART)
+
+            def attr(name: str, usb: Path = usb) -> str:
+                f = usb / name
+                return f.read_text().strip() if f.is_file() else ""
+
+            ports.append(
+                Port(
+                    f"/dev/{tty.name}",
+                    "0x" + attr("idVendor").lower(),
+                    "0x" + attr("idProduct").lower(),
+                    attr("serial"),
+                )
+            )
         return ports
 
     def compile(self, sketch_dir: Path, fqbn: str, out_dir: Path) -> Result:

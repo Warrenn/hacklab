@@ -129,7 +129,9 @@ source address, not a password). Remote asks and flashes are logged with
 
 Plug and unplug show within about a second: the server watches the serial
 device nodes (`/dev/ttyUSB*`, `/dev/ttyACM*`, every `watch_interval` seconds,
-default 1) and pushes a `status` event over `/api/events`; the page re-reads
+default 1), reads the port list from sysfs (instant; arduino-cli's discovery,
+12.7 s on a Pi 3, is used only where sysfs is absent, i.e. on a Mac) and pushes
+a `status` event over `/api/events`; the page re-reads
 `/api/status` on it. The 20 s poll remains as the fallback for a dropped stream.
 
 Browser tests: `pw test "hacklab/tests/pwa/"` runs the mock-backend UI suite and the
