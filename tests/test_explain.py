@@ -92,7 +92,8 @@ async def test_explain_job_returns_the_explanation_and_caches_it(tmp_path, boxes
     # same version, same scope: served from the cache, no second API call
     again = await wait_done(runner, await runner.submit("explain", whole))
     assert again.explanation == job.explanation and len(client.calls) == 1
-    cached = store.version_dir("testbox", store.current("testbox")) / "explain-sketch.json"
+    # explain2-: explanations recorded before steps carried line ranges are not served again
+    cached = store.version_dir("testbox", store.current("testbox")) / "explain2-sketch.json"
     assert json.loads(cached.read_text())["title"] == EXPLANATION["title"]
     # a different range is a different explanation
     some = {"box": "testbox", "scope": "lines", "from": 2, "to": 3}
