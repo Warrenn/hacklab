@@ -73,7 +73,7 @@ def main() -> int:
         for gname, rng in (("explain-sketch", None), ("explain-lines", (a, b))):
             result, usage = genie.explain(stock, rng)
             print(f"{gname:22} in={usage.input_tokens} out={usage.output_tokens} title={result.title!r}")
-            print(f"   steps: {[s.get('label') for s in result.steps]}")
+            print(f"   steps: {[s.label for s in result.steps]}")
             (GOLDEN / f"{gname}.json").write_text(
                 json.dumps({"request": f"explain {rng or 'sketch'}", "responses": [result.model_dump()]}, indent=2)
                 + "\n"

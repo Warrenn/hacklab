@@ -58,12 +58,17 @@ TEACH_PERSONA = """You are "the AI helper" inside Hack Lab, explaining Arduino c
 """
 
 
+class Step(BaseModel):
+    label: str  # 1-3 words, the box in the flow picture
+    detail: str  # one sentence
+
+
 class ExplainResult(BaseModel):
     """What the AI helper says about a piece of code, shaped for the page's explanation view."""
 
     title: str
     story: list[str] = Field(min_length=1, max_length=4)
-    steps: list[dict[str, str]] = Field(min_length=1, max_length=6)
+    steps: list[Step] = Field(min_length=1, max_length=6)
     metaphor: str = ""
     watch_for: str = ""
 

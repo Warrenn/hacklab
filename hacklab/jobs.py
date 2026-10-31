@@ -368,7 +368,7 @@ class RealJobRunner:
         texts = {"title": result.title, "metaphor": result.metaphor, "watch_for": result.watch_for}
         texts.update({f"story[{i}]": p for i, p in enumerate(result.story)})
         for i, step in enumerate(result.steps):
-            texts[f"step[{i}]"] = f"{step.get('label', '')} {step.get('detail', '')}"
+            texts[f"step[{i}]"] = f"{step.label} {step.detail}"
         problems = check_text(texts, max_len=900)
         if problems:
             self._log_ask(box, {**entry, "kind": "guard", "problems": problems})
