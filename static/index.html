@@ -483,7 +483,13 @@ function render() {
 }
 function homeScreen() { return S.status?.ai_available ? 'home' : 'offline'; }
 async function refresh() {
+  const was = S.status?.box;
   S.status = await api('/status');
+  if (was !== undefined && S.status.box !== was) {
+    // A different box, however it was picked (here, by a remote helper, after a restart): the
+    // discussion, the held plan and the half-typed request belonged to the old one.
+    S.chat = []; S.ready = null; S.draft = '';
+  }
   if (!S.boxes.length) S.boxes = await api('/boxes').catch(() => []);
   if (S.status.box) {
     [S.behaviours, S.sketch] = await Promise.all([api('/behaviours').catch(() => []), api('/sketch/current').catch(() => null)]);

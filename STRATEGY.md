@@ -1910,6 +1910,23 @@ release 0.7.1, picker driven on the Pi.
 - [x] Step 1 — header brand is the button back to the picker (aria-label "Hack Lab: pick a box"), Change box gone, tapping a card picks and goes Home with a greyed locked busy state; 53 pw tests on WebKit + Chromium; DESIGN decision log; field checklist — completed 2026-10-31
 - [x] Step 2 — preview v7; release 0.7.1 on the Pi (healthy); real page driven at hacklab.local: no Change box, brand button "Hack Lab: pick a box" opens the picker with the current box marked, no Let's go, card tap -> Getting ready -> Home — completed 2026-10-31
 
+## P8 round 3c — the discussion belongs to one box (owner's report 2026-10-31, approved by default)
+
+Owner: after picking a new box the Home screen kept the discussion from the
+previous one ("Drive slower" on the Laser Synthesizer). Cause: `S.chat`,
+`S.ready` and `S.draft` are page state and nothing resets them when
+`status.box` changes. Fix at the one place every box change passes through:
+`refresh()` clears the discussion, the ready plan and the draft whenever the
+box id differs from the last one it saw (covers the picker, a remote helper
+picking, and a restart). Server side `/api/go` already refuses a plan from
+another box. pwa test: an open discussion on the Forklift is gone after
+picking the Turret, whose own suggestions and placeholder show.
+Steps: 1 red -> green; 2 preview v8, release 0.7.2, verified on the Pi.
+
+## Progress — P8 round 3c
+- [x] Step 1 — refresh() resets chat/ready/draft when status.box changes; pwa test (Forklift discussion gone after picking the Turret); 55 pw tests on WebKit + Chromium — completed 2026-10-31
+- [ ] Step 2 — preview v8, release 0.7.2 live on the Pi
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the
