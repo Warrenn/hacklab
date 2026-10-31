@@ -171,7 +171,8 @@ test('explanations come from the recorded model answers and are cached per versi
   await page.getByRole('button', { name: 'What does this code do?' }).click();
   const xp = page.getByRole('region', { name: 'What the code does' });
   await expect(xp).toBeVisible({ timeout: 30000 });
-  await expect(xp.locator('.flow .step').first()).toBeVisible();
+  await expect(xp.locator('.xstep').first()).toBeVisible();
+  await expect(xp.locator('.xstep pre.snip').first()).toBeVisible();                   // the recorded steps carry line ranges
   await expect(xp).not.toContainText(/http/);
   const cached = fs.readdirSync(path.join(dataDir, 'ir-turret', 'versions', '0000')).filter((f) => f.startsWith('explain-'));
   expect(cached).toContain('explain-sketch.json');

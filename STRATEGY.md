@@ -2055,7 +2055,7 @@ Steps: 1 model shape + persona + mock (unit red -> green); 2 page + pwa;
 
 ## Progress — P8 round 3h
 - [x] Step 1 — Step.from_line/to_line (optional, 1-based), persona asks for the range per step, mock + preview stand-in + both goldens carry ranges (goldens hand-ranged, re-recorded in Step 3); 270 unit — completed 2026-10-31
-- [ ] Step 2 — single-column explanation with embedded snippets, no duplicate version line; pwa tests
+- [x] Step 2 — explanation is one column: title + Close, story, numbered steps each with its lines (pre.snip, numbered, coloured), metaphor, Try it, Back to the code; no code side bar, no step-aside rule, no duplicate version line; pwa + full-stack tests; 63 pw on WebKit + Chromium — completed 2026-10-31
 - [ ] Step 3 — preview v15, release 0.7.9 live on the Pi, goldens re-recorded with ranges
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)

@@ -523,26 +523,29 @@ test('the header chip is status; the Hack Lab mark is the way back to the picker
   await expect(page.getByRole('button', { name: 'IR Turret', exact: true })).toHaveAttribute('aria-pressed', 'true');  // the current box is marked
 });
 
-test('the code page explains itself: What does this code do, lines, how it all works; code steps aside when narrow', async ({ page }) => {
+test('the code page explains itself: the explanation is one column with the lines embedded under each step', async ({ page }) => {
   await pickTurret(page, homeUrl);
   await page.getByRole('button', { name: 'Show me the code' }).click();
   await expect(page.getByRole('button', { name: 'Hide code' })).toHaveCount(0);          // owner: gone
-  // whole-sketch explanation: story, flow picture, metaphor, try-it line
   await page.getByRole('button', { name: 'What does this code do?' }).click();
   await expect(page.getByText('“What does this code do?”')).toBeVisible();
   const xp = page.getByRole('region', { name: 'What the code does' });
   await expect(xp).toBeVisible({ timeout: 15000 });
   await expect(xp.getByRole('heading', { name: 'The box waits, then acts' })).toBeVisible();
-  await expect(xp.locator('.flow .step')).toHaveCount(4);
+  // owner: no side bar of code; each step carries the lines it talks about, numbered
+  await expect(page.locator('pre:not(.snip)')).toHaveCount(0);
+  const steps = xp.locator('.xstep');
+  await expect(steps).toHaveCount(4);
+  await expect(steps.nth(0).locator('pre.snip .ln')).toHaveCount(2);                     // mock: lines 1-2
+  await expect(steps.nth(0).locator('pre.snip .ln').first()).toHaveAttribute('data-ln', '1');
+  await expect(steps.nth(2).locator('pre.snip .ln').first()).toHaveAttribute('data-ln', '5');
   await expect(xp.locator('.metaphor')).toContainText('tap');
   await expect(xp).toContainText('Try it: Press 7');
-  await expect(page.locator('pre')).toBeVisible();                                        // iPad landscape: room for both
-  // narrow screen: the code steps aside while explaining, and comes back on Close
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator('pre')).toBeHidden();
+  await expect(page.getByText(/^Version \w+\.$/)).toHaveCount(1);                        // owner: not repeated
+  const [xb, mb] = await Promise.all([xp.boundingBox(), page.locator('main').boundingBox()]);
+  expect(xb.width).toBeGreaterThan(mb.width * 0.9);                                       // one column, no wasted side
   await xp.getByRole('button', { name: 'Close' }).click();
-  await expect(page.locator('pre')).toBeVisible();
-  await page.setViewportSize({ width: 1194, height: 834 });
+  await expect(page.locator('pre:not(.snip)')).toBeVisible();
   // tap two lines -> a range -> explain just those
   const lines = page.locator('pre .ln');
   await lines.nth(2).click();

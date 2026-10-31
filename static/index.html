@@ -156,17 +156,16 @@ pre .tok-keyword{color:#C9A7FF}pre .tok-typeName,pre .tok-standard{color:#7FD1FF
 .xp{display:flex;flex-direction:column;gap:14px;background:var(--panel);border-radius:22px;padding:22px}
 .xp h2{margin:0;font-size:28px;font-weight:900;line-height:1.15}
 .xp p{margin:0;font-size:19px;font-weight:600;line-height:1.5}
-.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px}
-.flow .step{flex:1 1 150px;min-width:0;background:#fff;border:2px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
-.flow .step b{font-size:18px;font-weight:900}
-.flow .step span{font-size:15px;font-weight:600;color:var(--muted);line-height:1.35}
-.flow .arrow{align-self:center;color:var(--accent);font-size:26px;font-weight:900}
+.xsteps{display:flex;flex-direction:column;gap:12px}
+.xstep{display:flex;flex-direction:column;gap:6px;background:#fff;border:2px solid var(--line);border-radius:14px;padding:14px 16px}
+.xstep b{font-size:19px;font-weight:900}
+.xstep span{font-size:17px;font-weight:600;color:var(--muted);line-height:1.4}
+pre.snip{flex:none;max-height:none;margin:6px 0 0;font-size:14px;padding:12px 14px;border-radius:12px}
+pre.snip .ln{cursor:default;margin:0;padding:0}
+pre.snip .ln:hover{background:none}
+pre.snip .no{display:inline-block;width:3ch;margin-right:14px;text-align:right;color:#8A90A8;font-style:normal;user-select:none}
 .xp .metaphor{background:var(--peach);border-radius:16px;padding:14px 18px;font-size:19px;font-weight:700;line-height:1.4}
 .xp .watch{font-size:17px;font-weight:800;color:var(--teal-dark)}
-.codehead{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.codelinks{display:flex;gap:10px;flex-wrap:wrap}
-.codelinks button{font:inherit;font-size:16px;font-weight:800;padding:10px 14px;border-radius:999px;border:2px solid var(--line);background:#fff;color:var(--ink)}
-.codelinks button.ai{border-color:var(--teal);color:var(--teal-dark);background:var(--teal-soft)}
 pre .ln{display:block;min-height:1.55em;cursor:pointer;border-radius:4px;margin:0 -6px;padding:0 6px}
 pre .ln:hover{background:#2A2F52}
 pre .ln.sel{background:#3A3F63;box-shadow:inset 3px 0 0 var(--accent)}
@@ -176,7 +175,6 @@ pre .ln.sel{background:#3A3F63;box-shadow:inset 3px 0 0 var(--accent)}
 .how svg{width:100%;height:auto;display:block}
 .how ol{margin:0;padding-left:26px;font-size:19px;font-weight:600;line-height:1.5;display:flex;flex-direction:column;gap:8px}
 /* Explanation mode: when the screen is too narrow for both, the code steps aside and comes back after. */
-@media (max-width:1100px){ main.explaining aside pre, main.explaining aside .selbar, main.explaining aside .codefoot{display:none} }
 .remotebar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 24px;background:#FFF4E5;color:#8A5A00;font-weight:800}
 .ghost.small,.remotebar .small{padding:8px 14px;font-size:15px}
 .helping{padding:8px 24px;background:#E6F7F2;color:#0B6B57;font-weight:800;text-align:center}
@@ -322,13 +320,24 @@ function highlight(src, values) {
 function explanation() {
   const x = S.explanation;
   if (!x) return '';
-  const steps = (x.steps || []).map((s, i) => `${i ? '<div class="arrow" aria-hidden="true">&rarr;</div>' : ''}<div class="step"><b>${esc(s.label || '')}</b><span>${esc(s.detail || '')}</span></div>`).join('');
+  // Each step shows the lines it talks about right under its words (owner, 2026-10-31).
+  const src = S.sketch?.source || '';
+  const all = src.split('\n');
+  const coloured = window.HLEditor ? HLEditor.highlightLines(src) : null;
+  const snippet = (a, b) => {
+    if (!a || !b || b < a || a > all.length) return '';
+    const rows = [];
+    for (let n = a; n <= Math.min(b, all.length); n++) rows.push(`<span class="ln" data-ln="${n}"><i class="no">${n}</i>${coloured ? coloured[n - 1] : esc(all[n - 1])}</span>`);
+    return `<pre class="snip">${rows.join('')}</pre>`;
+  };
+  const steps = (x.steps || []).map((st, i) => `<div class="xstep"><b>${i + 1}. ${esc(st.label || '')}</b><span>${esc(st.detail || '')}</span>${snippet(st.from_line, st.to_line)}</div>`).join('');
   return `<div class="xp" role="region" aria-label="What the code does">
     <div class="row"><h2>${esc(x.title)}</h2><button class="pill" data-act="closeexplain">Close</button></div>
     ${(x.story || []).map((p) => `<p>${esc(p)}</p>`).join('')}
-    ${steps ? `<div class="flow">${steps}</div>` : ''}
+    ${steps ? `<div class="xsteps">${steps}</div>` : ''}
     ${x.metaphor ? `<div class="metaphor">${esc(x.metaphor)}</div>` : ''}
-    ${x.watch_for ? `<div class="watch">Try it: ${esc(x.watch_for)}</div>` : ''}</div>`;
+    ${x.watch_for ? `<div class="watch">Try it: ${esc(x.watch_for)}</div>` : ''}
+    <div class="actions" style="margin-top:6px"><button class="primary" data-act="closeexplain">Back to the code</button></div></div>`;
 }
 function selbar() {
   if (!S.sel) return '';
@@ -438,16 +447,11 @@ function done() {
   const twk = tweakable();
   const foot = `<div class="codefoot"><span>Tap a line to ask about it. The highlighted numbers are the ones you can change yourself. ${twk ? `<button class="try-it" data-act="tweak" data-id="${esc(twk.id)}">Try it</button>` : ''}</span>
       <button data-act="editor">Level 3: edit all the code</button></div>`;
-  const code = `<div class="codehead"><span class="lead">The code that does it</span>
-      <div class="codelinks"><button class="ai" data-act="explaincode" ${dis()}>What does this code do?</button><button data-act="how">How does the whole thing work?</button></div></div>
-      ${selbar()}
-      <pre>${highlight(S.sketch?.source || '')}</pre>
-      ${foot}`;
-  // An open explanation needs the width: two columns, code beside it.
+  // An open explanation takes the whole page: one column, the lines embedded under each step
+  // (owner, 2026-10-31: no side bar to correlate with). The page scrolls as a whole here.
   if (S.explanation) {
-    return `${header({ chips: false })}<main class="explaining">
-    <section class="col7" style="gap:18px">${head}<p class="sub">${sub}</p>${explanation()}${actions}</section>
-    <aside class="col5" style="gap:12px">${code}</aside></main>`;
+    return `${header({ chips: false })}<main><section class="col12">
+    <div class="toprow">${head}${actions}</div>${explanation()}</section></main>`;
   }
   // Otherwise the page stacks and the code gets all the room (owner, 2026-10-31): message and
   // buttons in one row; a row of chips (the two code questions first, then the prompts); code below.
