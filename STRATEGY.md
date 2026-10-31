@@ -1499,7 +1499,7 @@ follow-up.
 - [x] Step 2 — device watch + status event (Board.device_nodes, Config.watch_interval=1.0, lifespan watcher in app.py) — completed 2026-10-31
 - [x] Step 3 — release 0.3.1 deployed (IoT Job, healthy; shipped with the Roles Anywhere profile, no SSO login) — completed 2026-10-31
 - [x] Step 4 — owner tested 2026-10-31: still ~15 s. Kernel logged the unplug at 07:33:55, the page re-read status at 07:34:10: the watcher saw the node vanish within 1 s but `arduino-cli board list --discovery-timeout 5s` took 12.7 s on the Pi 3 before the push. Fix below.
-- [ ] Step 5 — ports from sysfs (`/sys/class/tty/tty{USB,ACM}*` -> USB parent's idVendor/idProduct/serial; instant; arduino-cli discovery kept only where sysfs is absent, i.e. the Mac) in release 0.3.2
+- [x] Step 5 — completed 2026-10-31 (release 0.3.2 on the Pi; 4.5 ms vs 12.7 s; Linux CI fix in PR #17) — ports from sysfs (`/sys/class/tty/tty{USB,ACM}*` -> USB parent's idVendor/idProduct/serial; instant; arduino-cli discovery kept only where sysfs is absent, i.e. the Mac) in release 0.3.2
 - [ ] Step 6 — owner re-tests plug/unplug at hacklab.local (expect ~1 s)
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
