@@ -1925,7 +1925,7 @@ Steps: 1 red -> green; 2 preview v8, release 0.7.2, verified on the Pi.
 
 ## Progress — P8 round 3c
 - [x] Step 1 — refresh() resets chat/ready/draft when status.box changes; pwa test (Forklift discussion gone after picking the Turret); 55 pw tests on WebKit + Chromium — completed 2026-10-31
-- [ ] Step 2 — preview v8, release 0.7.2 live on the Pi
+- [x] Step 2 — preview v8; release 0.7.2 on the Pi (healthy); driven live at hacklab.local: a ready discussion and a typed draft on the Laser Synthesizer were gone after picking the Forklift (its own suggestions showed, Go! off), and gone again on the way back; box left on the Laser Synthesizer, stock version — completed 2026-10-31
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
