@@ -161,7 +161,7 @@ test('discussion: the recorded clarify answer asks a question; the reply (with h
   await page.getByPlaceholder(/shake its head/).fill('make it move when I press a key');  // golden: clarify
   await page.getByRole('button', { name: 'Send' }).click();
   await expect(page.locator('.chat')).toContainText(/Which key/, { timeout: 30000 });
-  await expect(page.getByRole('button', { name: 'Go!' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Go!' })).toBeHidden();
   await page.getByPlaceholder('Your answer').fill('key 7, shake its head');
   await page.getByRole('button', { name: 'Send' }).click();
   await expect(page.getByRole('button', { name: 'Go!' })).toBeEnabled({ timeout: 30000 });

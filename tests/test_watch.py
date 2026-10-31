@@ -92,3 +92,30 @@ def test_cli_sysfs_ignores_ttys_without_a_usb_parent(tmp_path: Path):
     (tmp_path / "devices" / "soc").mkdir(parents=True)
     cli.sysfs_tty = tty
     assert cli.list_ports() == []
+
+
+def test_a_board_that_needs_a_moment_to_settle_is_seen_connected_by_the_watcher(tmp_path: Path):
+    # owner 2026-10-31: "disconnected was fast but connecting was slow". A fresh USB device
+    # shows up in /dev before its sysfs parent is ready; the first detection says "nothing",
+    # and nothing re-checked until the poll. The watcher now looks again after a short settle.
+    root = tmp_path / "boxes"
+    write_box(root, "nanobox")
+    fb = FakeBoard()
+    cfg = Config(data_dir=tmp_path / "data", fake_board=False, boxes_dir=root, watch_interval=0.02)
+    app = create_app(cfg, board=fb)
+    with TestClient(app) as c:
+        c.post("/api/box", json={"id": "nanobox"})
+        assert c.get("/api/status").json()["board_connected"] is True
+        q = app.state.runner.subscribe()
+        fb.unplugged = True
+        deadline = time.monotonic() + 2  # let the watcher itself notice the unplug (its event)
+        while {"type": "status"} not in drain(q) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        fb.unplugged = False
+        fb._gap = 1  # the node is there, the first listing still shows no port
+        deadline = time.monotonic() + 4
+        while not c.get("/api/status").json()["board_connected"] and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert c.get("/api/status").json()["board_connected"] is True
+        time.sleep(0.05)
+        assert drain(q).count({"type": "status"}) >= 2  # at the change, and again after settling

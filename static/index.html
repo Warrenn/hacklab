@@ -429,7 +429,7 @@ function home() {
     <section class="col7"><h1>What should the ${name} do?</h1>
       <label class="lead" for="ask">Say it or type it. Tap the mic on your keyboard to talk.</label>
       ${chat()}
-      <form class="ask" data-form="ask"><textarea id="ask" rows="2" placeholder="${S.chat.length ? 'Your answer' : esc((S.boxes.find((b) => b.id === S.status?.box) || {}).ask_placeholder || 'What should it do?')}" autocomplete="off" enterkeyhint="enter"></textarea><button class="ghost" type="submit" ${dis(S.thinking)}>Send</button><button class="primary" type="button" data-act="flash" ${dis(!goReady())}>Go!</button></form>
+      <form class="ask" data-form="ask"><textarea id="ask" rows="2" placeholder="${S.chat.length ? 'Your answer' : esc((S.boxes.find((b) => b.id === S.status?.box) || {}).ask_placeholder || 'What should it do?')}" autocomplete="off" enterkeyhint="enter"></textarea><button class="ghost" type="submit" ${dis(S.thinking)}>Send</button><button class="primary" type="button" data-act="flash" ${goReady() ? '' : 'hidden'}>Go!</button></form>
       ${S.chat.length ? '' : `<div id="tries" ${S.draft.trim() ? 'hidden' : ''}><div class="lead" style="margin-top:8px">Try one of these</div><div class="list">${tries()}</div></div>`}</section>
     <aside class="col5">${rightNow()}${rescue('Nothing you try can break it. Those two buttons always put it right.')}</aside></main>`;
 }
@@ -655,15 +655,27 @@ function pollJob(id) {
     try { onJob(await api('/jobs/' + id)); } catch (_) { /* keep waiting */ }
   }, 1500);
 }
+// The stream pushes status the moment a cable moves; the server pings every 15 s so a dead
+// stream (phones in the background) is noticed within 40 s and reopened; a 5 s poll is the floor.
+let es = null, lastEvent = 0;
 function connectEvents() {
-  const es = new EventSource('/api/events');
+  if (es) { es.close(); es = null; }
+  es = new EventSource('/api/events');
+  lastEvent = Date.now();
   es.onmessage = (ev) => {
-    let d; try { d = JSON.parse(ev.data); } catch (_) { return; /* ping */ }
+    lastEvent = Date.now();
+    let d; try { d = JSON.parse(ev.data); } catch (_) { return; }
+    if (d.type === 'ping') return;
     if (d.type === 'status') { refresh().then(render); return; }
     onJob(d);
   };
-  es.onerror = () => { es.close(); setTimeout(connectEvents, 3000); };
+  es.onerror = () => { es.close(); es = null; setTimeout(connectEvents, 3000); };
 }
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  connectEvents();
+  if (S.screen !== 'working' && !S.thinking) refresh().then(render).catch(() => {});
+});
 function openTweak(id) {
   const b = id === 'numbers' ? numbersItem() : S.behaviours.find((x) => x.id === id);
   if (!b) return;
@@ -752,7 +764,7 @@ $app.addEventListener('input', (e) => {
     grow(e.target);
     document.getElementById('tries')?.toggleAttribute('hidden', !!S.draft.trim());
     const go = $app.querySelector('[data-act="flash"]');
-    if (go) go.disabled = !goReady();
+    if (go) go.hidden = !goReady();
     return;
   }
   const name = e.target.dataset.tw;
@@ -774,7 +786,14 @@ $app.addEventListener('input', (e) => {
   }
   render();
   connectEvents();
-  setInterval(async () => { if (S.screen === 'home' || S.screen === 'offline') { const was = S.status?.ai_available; await refresh().catch(() => {}); if (S.status?.ai_available !== was) S.screen = homeScreen(); render(); } }, 20000);
+  setInterval(async () => {
+    if (es && Date.now() - lastEvent > 40000) connectEvents();                       // no ping for 40 s: the stream is dead
+    if (!['home', 'offline', 'done', 'picker'].includes(S.screen) || S.thinking) return;
+    const was = S.status?.ai_available;
+    await refresh().catch(() => {});
+    if (S.status?.ai_available !== was && (S.screen === 'home' || S.screen === 'offline')) S.screen = homeScreen();
+    render();
+  }, 5000);
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('/static/sw.js').catch(() => {});
 })();
 </script>
