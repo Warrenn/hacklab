@@ -100,6 +100,9 @@ class Box:
             "picture": self.picture,
             "ask_placeholder": self.copy["ask_placeholder"],
             "suggestions": self.copy["suggestions"],
+            # Level 3 editor completions: helper descriptions ("name(n): ...") and key constants
+            "helpers": list(self.genie.get("helpers", [])),
+            "keys": list(self.genie.get("keys", [])),
         }
 
 

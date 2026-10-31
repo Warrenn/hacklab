@@ -10,12 +10,12 @@
   const listeners = new Set();
   window.EventSource = class { constructor() { listeners.add(this); } close() { listeners.delete(this); } };
   const emit = (o) => listeners.forEach((es) => es.onmessage && es.onmessage({ data: JSON.stringify(o) }));
-  const vs = () => st.versions[st.box] || (st.versions[st.box] = [{ id: 'stock', source: D.data[st.box].stock }]);
+  const vs = () => st.versions[st.box] || (st.versions[st.box] = [{ id: 'stock', source: D.data[st.box].stock, note: '', created: null }]);
   const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
   const locked = () => source === 'remote' && !st.helping;
   const render = (src, values) => Object.entries(values || {}).reduce(
     (s, [name, v]) => s.replace(new RegExp('(\\b' + name + '\\s*=\\s*)[-\\d.]+'), '$1' + v), src);
-  function runJob(kind, { fail = false, prompts = [], sketch = null } = {}) {
+  function runJob(kind, { fail = false, prompts = [], sketch = null, note = '' } = {}) {
     const id = 'preview-' + (++st.seq);
     const stages = (kind === 'ask' ? ['thinking'] : []).concat(['compiling', 'uploading', 'verifying']);
     const job = { job_id: id, kind, state: 'queued', message_kid: MESSAGES.queued, log_ref: null, prompts: [], sketch_ref: null };
@@ -30,7 +30,7 @@
       const v = vs();
       if (kind === 'undo') { if (v.length > 1) v.pop(); }
       else if (kind === 'reset') v.splice(1);
-      else v.push({ id: 'v' + (v.length + 1), source: sketch });
+      else v.push({ id: 'v' + (v.length + 1), source: sketch, note, created: Math.floor(Date.now() / 1000) });
       job.state = 'done'; job.message_kid = MESSAGES.done; job.prompts = prompts; job.sketch_ref = v[v.length - 1].id;
       emit({ ...job });
     };
@@ -48,7 +48,8 @@
     if (path === '/status') {
       const v = st.box ? vs() : [];
       return json({ box: st.box, online: true, ai_available: st.ai, board_connected: st.board,
-        current_version: v.length ? v[v.length - 1].id : null, versions_count: v.length, source, helping: st.helping });
+        current_version: v.length ? v[v.length - 1].id : null, versions_count: v.length, source, helping: st.helping,
+        current_note: v.length > 1 ? v[v.length - 1].note : '', current_created: v.length > 1 ? v[v.length - 1].created : null });
     }
     if (path === '/boxes') return json(D.boxes);
     if (path === '/box') { if (!D.data[body.id]) return json({ detail: 'No such box.' }, 404); st.box = body.id; vs(); return json({ box: st.box }); }
@@ -62,11 +63,12 @@
       if (!st.ai) return json({ detail: 'The AI helper is away.' }, 409);
       const prompts = Object.entries(box.concepts).slice(0, 2).map(([id, c]) => ({ id, question: c.question }));
       const sketch = '// The AI helper added a rule for: ' + body.text + '\n' + vs()[0].source;
-      return json({ job_id: runJob('ask', { fail: /^fail/i.test(body.text), prompts, sketch }) });
+      return json({ job_id: runJob('ask', { fail: /^fail/i.test(body.text), prompts, sketch, note: body.text }) });
     }
     if (path === '/flash/behaviour') {
       const src = box.sketches[body.id]; if (!src) return json({ detail: 'No such trick.' }, 404);
-      return json({ job_id: runJob('flash', { sketch: render(src, body.tweakables) }) });
+      const title = (box.behaviours.find((b) => b.id === body.id) || {}).title || body.id;
+      return json({ job_id: runJob('flash', { sketch: render(src, body.tweakables), note: body.label || title }) });
     }
     if (path === '/flash/template') { const src = box.sketches[body.id] || vs()[0].source; return json({ job_id: runJob('flash', { sketch: render(src, body.values) }) }); }
     if (path === '/flash/sketch') return json({ job_id: runJob('flash', { fail: /fail/i.test(body.source.slice(0, 40)), sketch: body.source }) });

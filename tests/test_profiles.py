@@ -50,7 +50,15 @@ def test_to_api_box_entry(boxes_dir: Path):
         "name": "Test Box",
         "picture": "/static/boxes/testbox.svg",
     }
-    assert set(api) == {"id", "name", "picture", "ask_placeholder", "suggestions"}
+    assert set(api) == {
+        "id",
+        "name",
+        "picture",
+        "ask_placeholder",
+        "suggestions",
+        "helpers",
+        "keys",
+    }
 
 
 @pytest.mark.parametrize(

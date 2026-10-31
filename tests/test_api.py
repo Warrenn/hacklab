@@ -40,7 +40,15 @@ def test_boxes_come_from_profiles(client):
     ids = {b["id"] for b in client.get("/api/boxes").json()}
     assert ids == {"testbox"}
     for b in client.get("/api/boxes").json():
-        assert set(b) == {"id", "name", "picture", "ask_placeholder", "suggestions"}
+        assert set(b) == {
+            "id",
+            "name",
+            "picture",
+            "ask_placeholder",
+            "suggestions",
+            "helpers",
+            "keys",
+        }
 
 
 def test_select_box(client):
