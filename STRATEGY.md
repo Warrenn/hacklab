@@ -1555,8 +1555,8 @@ Steps: 1 build script + one test; 2 publish, watch comments; 3 owner comments
 drive the UI backlog (next plan section when the first comments arrive).
 
 ## Progress — UI review loop
-- [ ] Step 1 — preview build script + test
-- [ ] Step 2 — artifact published and watched for comments
+- [x] Step 1 — preview build script + test (PR #19) — completed 2026-10-31
+- [x] Step 2 — artifact published (private link given to the owner in chat, not in the repo) and watched for comments — completed 2026-10-31
 - [ ] Step 3 — first round of owner comments planned
 
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
