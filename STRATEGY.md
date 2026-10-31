@@ -2033,6 +2033,31 @@ Steps: 1 red -> green; 2 preview v14, release 0.7.8 on the Pi.
 - [x] Step 1 — render() keeps the code panel scroll across rebuilds; pickLine(): any order, expand outside, contract inside (nearer end), same line clears; pwa test on visible lines; 63 pw on WebKit + Chromium — completed 2026-10-31
 - [x] Step 2 — preview v14; release 0.7.8 on the Pi (healthy); driven live at hacklab.local: scroll stayed at 400 px through six taps, 30 then 27 -> 27 to 30, expand to 33 and 25, contract to 31 and 26, Clear — completed 2026-10-31
 
+## P8 round 3h — explanations carry the code they explain (owner's note 2026-10-31, approved by default)
+
+Owner, on the iPad: the explanation page wastes space, "Version 0003." is
+repeated, and a side bar of code is hard to correlate with the words. If we
+explain the code, embed the lines into the explanation at the step that talks
+about them.
+
+Design: each explanation step names the lines it is about (`from_line`,
+`to_line`, 1-based inclusive, a short range) and the page shows those lines,
+numbered and syntax-coloured, right under the step. The explanation is a
+single column: title + Close, the story, the steps each with its snippet, the
+metaphor, "Try it", and "Back to the code" at the bottom; the big code panel
+is not shown while an explanation is open (no side bar, no step-aside rule).
+The duplicated version line goes (the heading row already carries it). Older
+cached explanations without line refs show steps without snippets. Teaching
+persona asks for the line range per step; the mock and the preview stand-in
+carry ranges; the two recorded goldens get ranges and are re-recorded live.
+Steps: 1 model shape + persona + mock (unit red -> green); 2 page + pwa;
+3 preview v15, release 0.7.9, live explanation on the Pi, goldens re-recorded.
+
+## Progress — P8 round 3h
+- [x] Step 1 — Step.from_line/to_line (optional, 1-based), persona asks for the range per step, mock + preview stand-in + both goldens carry ranges (goldens hand-ranged, re-recorded in Step 3); 270 unit — completed 2026-10-31
+- [x] Step 2 — explanation is one column: title + Close, story, numbered steps each with its lines (pre.snip, numbered, coloured), metaphor, Try it, Back to the code; no code side bar, no step-aside rule, no duplicate version line; pwa + full-stack tests; 63 pw on WebKit + Chromium — completed 2026-10-31
+- [ ] Step 3 — preview v15, release 0.7.9 live on the Pi, goldens re-recorded with ranges
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the
