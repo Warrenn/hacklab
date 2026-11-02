@@ -499,6 +499,19 @@ function done() {
     <pre>${highlight(S.sketch?.source || '')}</pre>
     ${foot}</section></main>`;
 }
+// The live code beside the sliders. Rebuilt on its own when a slider moves: a full render() would
+// replace the slider under the finger, and iOS Safari then hands the lifted finger to whatever is
+// there instead (the Back button, on a phone), which looked like a jump to Home (owner, 2026-11-02).
+function tweakCode(t) {
+  if (t.behaviour.numbers) {
+    // the box's own numbers: grouped by file, the live code is each file that has markers
+    return t.behaviour.files.filter((f) => f.tweakables.length).map((f) => `<div class="lead">${esc(f.name)}</div><pre>${highlight(f.source, t.values)}</pre>`).join('');
+  }
+  const src = S.sketch?.source || '';
+  const missing = t.behaviour.tweakables.filter((tw) => !new RegExp(`\\b${tw.name}\\b`).test(src));
+  const setLine = missing.length ? `<span class="cm">// your numbers: ${missing.map((tw) => `${esc(tw.name)} = <span class="set">${esc(t.values[tw.name])}</span>`).join(', ')}</span>\n` : '';
+  return `<div class="lead">The code, live</div><pre>${setLine}${highlight(src, t.values)}</pre>`;
+}
 function tweak() {
   const t = S.tweak;
   const name = esc(boxName());
@@ -513,24 +526,14 @@ function tweak() {
     return `<div class="slider"><label for="${id}"><span>${esc(tw.label || tw.name)}</span><output data-testid="val-${esc(tw.name)}">${esc(v)}</output></label>${hint}
       <input id="${id}" type="range" min="${esc(min)}" max="${esc(max)}" step="${esc(tw.step || 1)}" value="${esc(v)}" data-tw="${esc(tw.name)}"></div>`;
   };
-  let controls, code;
-  if (t.behaviour.numbers) {
-    // the box's own numbers: grouped by file, the live code is each file that has markers
-    const files = t.behaviour.files.filter((f) => f.tweakables.length);
-    controls = files.map((f) => `<div class="lead">${esc(f.name)}</div>${f.tweakables.map(control).join('')}`).join('');
-    code = files.map((f) => `<div class="lead">${esc(f.name)}</div><pre>${highlight(f.source, t.values)}</pre>`).join('');
-  } else {
-    controls = t.behaviour.tweakables.map(control).join('');
-    const src = S.sketch?.source || '';
-    const missing = t.behaviour.tweakables.filter((tw) => !new RegExp(`\\b${tw.name}\\b`).test(src));
-    const setLine = missing.length ? `<span class="cm">// your numbers: ${missing.map((tw) => `${esc(tw.name)} = <span class="set">${esc(t.values[tw.name])}</span>`).join(', ')}</span>\n` : '';
-    code = `<div class="lead">The code, live</div><pre>${setLine}${highlight(src, t.values)}</pre>`;
-  }
+  const controls = t.behaviour.numbers
+    ? t.behaviour.files.filter((f) => f.tweakables.length).map((f) => `<div class="lead">${esc(f.name)}</div>${f.tweakables.map(control).join('')}`).join('')
+    : t.behaviour.tweakables.map(control).join('');
   return `${header({ back: 'home', title: `${esc(t.behaviour.title)} · Level 2: change the numbers`, chips: false })}<main>
     <section class="col6"><p class="sub">Slide these and watch the code change on the right. The ${name} can't be hurt — every number has a safe limit.</p>
       ${controls}
       <div class="actions"><button class="primary wide" data-act="send" ${dis()}>Send to ${name}</button><button class="ghost" data-act="resetnumbers">Reset numbers</button></div></section>
-    <aside class="col6" style="gap:12px">${code}
+    <aside class="col6" style="gap:12px">${tweakCode(t)}
       <div class="summary"><strong style="color:var(--ink)">What it will do:</strong> ${esc(t.behaviour.description)}</div></aside></main>`;
 }
 function editor() {
@@ -773,7 +776,12 @@ $app.addEventListener('input', (e) => {
   let v = e.target.value;
   if (!tw.options) { const [min, max] = tw.range || [tw.min, tw.max]; v = Math.min(max, Math.max(min, Number(v))); }
   S.tweak.values[name] = v;
-  render();
+  // In place, no render(): the slider being dragged must stay the same element.
+  e.target.closest('.slider').querySelector('output').textContent = v;
+  const aside = $app.querySelector('aside');
+  const summary = aside.querySelector('.summary');
+  aside.innerHTML = tweakCode(S.tweak);
+  aside.appendChild(summary);
 });
 
 (async function boot() {
