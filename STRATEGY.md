@@ -2238,6 +2238,19 @@ The last change is undone.", cleared by the next action. Behaviour: pwa test.
 - [x] Step 6 — (owner, evening) Go! exists only when the helper is ready (hidden, not disabled). Live status on phones: the Pi showed the cable out at 19:45:59 and the page'"'"'s next status fetch was the 20 s timer at 19:46:05, so the push never reached that page: the stream'"'"'s keep-alive was an SSE comment the browser cannot see, so a dead stream looked alive. Now: ping events every 15 s (cfg.sse_ping) the page times (reopened after 40 s of silence), reconnect + refresh when the page returns to the foreground, and a 5 s status poll on home / offline / done / picker; unit ping test, pwa foreground test; 289 unit, 76 pw — completed 2026-10-31 (release 0.9.6 below)
 - [x] Step 7 — "disconnected was fast but connecting was slow": a freshly plugged board shows up in /dev before its USB identity is readable, so the watcher'"'"'s one detection said nothing and no one re-checked until the poll; the watcher now pushes at the change and again 1.5 s later (a change during the settle is seen next tick); test_watch; release 0.9.6 on the Pi, ping events confirmed on the live stream — completed 2026-10-31
 
+## P8 round 7 — iPhone: a slider move jumped to Home (owner's report 2026-11-02, approved by default)
+
+Owner: on the iPhone, moving "How many shakes" on Change the numbers went straight to
+"What should the turret do?"; the Mac did not. Cause: the slider's `input` handler called
+`render()`, which rebuilt the whole page (the slider included) under the finger. A mouse
+does not care; iOS Safari finishes the touch on a node that no longer exists and hands the
+lifted finger to whatever is under it, which on the stacked phone layout is the header's
+Back button (data-act="home"). Fix: the handler updates the `<output>` and the live code
+block in place and never calls `render()` mid-touch. Single-file change, no parallelism.
+
+## Progress — P8 round 7
+- [x] Step 1 — tweakCode() split out of tweak(); slider input patches the output and the aside only; pwa test asserts the dragged slider is the same element and the page stays on Level 2; 290 unit, 79 pw — completed 2026-11-02 (release 0.9.7 below)
+
 ## UI backlog (owner, 2026-10-30; postponed, not yet planned)
 
 - **Per-box suggestions and copy.** "Try one of these" is empty for the

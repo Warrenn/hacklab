@@ -682,3 +682,20 @@ test('the code page explains itself: the explanation is one column with the line
   await page.getByRole('button', { name: 'Back to the code' }).click();
   await expect(page.getByRole('heading', { name: 'The code right now' })).toBeVisible();
 });
+
+test('moving a slider updates the value and the live code in place: the slider under the finger is never replaced', async ({ page }) => {
+  // iPhone report (2026-11-02): dragging "How many shakes" jumped straight back to Home. The input
+  // handler rebuilt the whole page mid-touch; Safari then delivered the lifted finger to the Back button.
+  await pickTurret(page, offlineUrl);
+  await page.getByRole('button', { name: /Change the numbers/ }).click();
+  await expect(page.getByText('Level 2: change the numbers')).toBeVisible();
+  const slider = page.locator('input[type=range]').first();
+  const name = await slider.getAttribute('data-tw');
+  const max = await slider.getAttribute('max');
+  await slider.evaluate((el) => { el.dataset.sameNode = 'yes'; });
+  await slider.fill(max);
+  await expect(page.getByTestId(`val-${name}`)).toHaveText(max);
+  await expect(page.locator('pre .set').filter({ hasText: max }).first()).toBeVisible();   // live code follows
+  await expect(page.locator('input[type=range]').first()).toHaveAttribute('data-same-node', 'yes'); // same element, not a rebuilt one
+  await expect(page.getByText('Level 2: change the numbers')).toBeVisible();              // still here, not Home
+});
