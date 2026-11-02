@@ -2105,6 +2105,10 @@ Reading 2026-10-31 18:51, after the supply was put back: `throttled=0x50005`,
 106 "Undervoltage detected!" lines in 69 minutes, a further reboot at 17:40.
 That is the supply or the cable being marginal, not the knock: the Pi 3B
 wants 5 V / 2.5 A on a short, thick cable. Owner item.
+Reading 2026-11-02 11:43 (owner asked): `throttled=0x0`, zero under-voltage lines
+since the boot at 11:14, 29 minutes idle. The "has occurred since boot" bits are
+clear too, so this boot has been clean so far. Re-check after a flash and a longer
+run before calling the supply fixed; if the supply or cable was changed, that is why.
 
 ## P8 round 4 — Level 2 on the box's own code (owner's ask 2026-10-31, approved by default)
 
